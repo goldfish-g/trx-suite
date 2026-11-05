@@ -1,0 +1,11 @@
+node_modules
+dist
+.vite
+.work
+*.log
+.DS_Store
+*.tsbuildinfo
+data/*
+!data/README.md
+!data/catalog.example.json
+.env

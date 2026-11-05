@@ -1,0 +1,14 @@
+{
+  "games": {
+    "tr1": "games/tr1.zip",
+    "tr1-ub": "games/tr1-ub.zip",
+    "tr2": "games/tr2.zip",
+    "tr2-gm": "games/tr2-gm.zip",
+    "tr3": "games/tr3.zip",
+    "tr3-la": "games/tr3-la.zip",
+    "tr4": "games/tr4.zip"
+  },
+  "flyby": [
+    { "file": "flyby/house.tr2", "name": "Croft Manor", "mod": "tr3" }
+  ]
+}

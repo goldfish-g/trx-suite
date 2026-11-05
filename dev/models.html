@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <title>Artifacts preview</title>
+        <style>
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                overflow: hidden;
+                background: radial-gradient(ellipse at 50% 40%, #3a2818 0%, #1c130c 55%, #0a0705 100%);
+                color: #d9c7a4;
+                font: 12px/1.3 ui-sans-serif, system-ui, sans-serif;
+            }
+            canvas {
+                display: block;
+                position: fixed;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+            }
+            .label {
+                position: fixed;
+                transform: translateX(-50%);
+                text-align: center;
+                letter-spacing: 0.04em;
+                opacity: 0.75;
+                pointer-events: none;
+                white-space: nowrap;
+            }
+            .label b {
+                display: block;
+                font-size: 13px;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                color: #f0dcb0;
+            }
+        </style>
+    </head>
+    <body>
+        <script type="module" src="./models.ts"></script>
+    </body>
+</html>
