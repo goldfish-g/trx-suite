@@ -111,7 +111,7 @@ describe('the Steam callback page', () => {
         expect(html).toContain('&#60;img src=x');
         expect(html).not.toContain('</script><script>alert(1)');
         expect(html).toContain('postMessage(m,"https://trx.example.com")');
-        expect(html).toContain("new BroadcastChannel('trx-web-auth')");
+        expect(html).toContain("new BroadcastChannel('trx-suite-auth')");
     });
 
     it('does not close itself on failure', () => {

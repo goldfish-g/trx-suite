@@ -14,8 +14,8 @@ import type {
     SteamStartResponse,
 } from '../../shared/api.ts';
 
-const ME_KEY = 'trx-web:me';
-const CATALOG_KEY = 'trx-web:catalog';
+const ME_KEY = 'trx-suite:me';
+const CATALOG_KEY = 'trx-suite:catalog';
 
 interface AccountState {
     me: MeResponse | null;
@@ -117,7 +117,7 @@ const POLL_LIMIT_MS = 10 * 60 * 1000;
  */
 export async function startSteamSignIn(): Promise<SignInHandle> {
     // Open the window before awaiting, while the click still counts as one.
-    const popup = window.open('about:blank', 'trx-web-steam', 'popup,width=820,height=760');
+    const popup = window.open('about:blank', 'trx-suite-steam', 'popup,width=820,height=760');
     let start: SteamStartResponse;
     try {
         start = await api<SteamStartResponse>('/api/auth/steam/start', { method: 'POST' });
@@ -131,7 +131,7 @@ export async function startSteamSignIn(): Promise<SignInHandle> {
     let wake: (() => void) | null = null;
     const onMessage = (event: MessageEvent) => {
         const data = event.data as { type?: string; state?: string } | null;
-        if (event.origin === location.origin && data?.type === 'trx-web-auth' && data.state === start.state) wake?.();
+        if (event.origin === location.origin && data?.type === 'trx-suite-auth' && data.state === start.state) wake?.();
     };
     window.addEventListener('message', onMessage);
 

@@ -1,4 +1,4 @@
-# TRX Web
+# TRX Suite
 
 Tomb Raider I–IV and their expansions in the browser, played with the
 [TRX](https://github.com/LostArtefacts/TRX) engine's WebGL build. It installs
@@ -68,11 +68,11 @@ send both; the service worker adds them to what it serves from its cache.
 ### Docker
 
 ```bash
-docker build -t trx-web .
+docker build -t trx-suite .
 docker run -p 8080:8080 -v /path/to/data:/data \
   -e PUBLIC_URL=https://trx.example.com \
   -e SESSION_SECRET="$(openssl rand -base64 48)" \
-  -e STEAM_API_KEY=… trx-web
+  -e STEAM_API_KEY=… trx-suite
 ```
 
 ### Previews while developing

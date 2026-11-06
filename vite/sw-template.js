@@ -12,8 +12,8 @@
 
 const VERSION = __VERSION__;
 const PRECACHE = __PRECACHE__;
-const SHELL = `trx-web-shell-${VERSION}`;
-const RUNTIME = 'trx-web-runtime';
+const SHELL = `trx-suite-shell-${VERSION}`;
+const RUNTIME = 'trx-suite-runtime';
 const NAVIGATION_TIMEOUT_MS = 4000;
 const ISOLATION = {
     'Cross-Origin-Opener-Policy': 'same-origin',
@@ -36,7 +36,7 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(
         (async () => {
             for (const name of await caches.keys()) {
-                if (name.startsWith('trx-web-shell-') && name !== SHELL) await caches.delete(name);
+                if (name.startsWith('trx-suite-shell-') && name !== SHELL) await caches.delete(name);
             }
             await self.clients.claim();
         })(),

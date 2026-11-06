@@ -30,7 +30,7 @@ async function put(path: string, content: string | Buffer): Promise<void> {
 }
 
 export async function makeFixture(): Promise<Fixture> {
-    const root = await mkdtemp(join(tmpdir(), 'trx-web-test-'));
+    const root = await mkdtemp(join(tmpdir(), 'trx-suite-test-'));
     const dataDir = join(root, 'data');
     const enginesDir = join(dataDir, 'engines');
     const staticDir = join(root, 'dist');

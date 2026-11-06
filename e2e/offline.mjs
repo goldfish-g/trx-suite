@@ -9,7 +9,7 @@ const SHOTS = process.env.SHOTS ?? '.work/shots';
 mkdirSync(SHOTS, { recursive: true });
 const start = Date.now();
 const note = (text) => console.log(`[${((Date.now() - start) / 1000).toFixed(1)}] ${text}`);
-const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'trx-web-e2e-')), {
+const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'trx-suite-e2e-')), {
   ignoreHTTPSErrors: true, viewport: { width: 1280, height: 720 },
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required', '--ignore-certificate-errors'],
 });
@@ -26,7 +26,7 @@ note('online: ' + await isolated() + ' caption ' + await page.locator('.hints__c
 await page.reload();
 await page.locator('.hints__caption').waitFor({ timeout: 60000 });
 note('after reload: ' + await isolated());
-const cached = await page.evaluate(async () => (await caches.keys()).join(',') + ' | runtime: ' + (await (await caches.open('trx-web-runtime')).keys()).map((r) => new URL(r.url).pathname).join(','));
+const cached = await page.evaluate(async () => (await caches.keys()).join(',') + ' | runtime: ' + (await (await caches.open('trx-suite-runtime')).keys()).map((r) => new URL(r.url).pathname).join(','));
 note('caches: ' + cached);
 
 // Download The Golden Mask and play it once, which stores the engine.

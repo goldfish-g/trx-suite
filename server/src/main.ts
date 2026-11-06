@@ -10,7 +10,7 @@ try {
     loaded = loadConfig(process.env);
 } catch (error) {
     if (!(error instanceof ConfigError)) throw error;
-    console.error(`trx-web: ${error.message}`);
+    console.error(`trx-suite: ${error.message}`);
     process.exit(1);
 }
 const { config, warnings } = loaded;
@@ -33,5 +33,5 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 await app.listen({ port: config.port, host: config.host });
 app.log.info(
     { publicUrl: config.publicUrl, dataDir: config.dataDir, enginesDir: config.enginesDir, staticDir: config.staticDir },
-    `trx-web is up; players reach it at ${config.publicUrl}`,
+    `trx-suite is up; players reach it at ${config.publicUrl}`,
 );

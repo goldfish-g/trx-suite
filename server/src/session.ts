@@ -9,7 +9,7 @@ import type { LinkedAccount, MeResponse, Provider } from '../../shared/api.ts';
 import { OFFICIAL_GAMES, isUnlocked, type Ownership } from '../../shared/games.ts';
 import type { Config } from './config.ts';
 
-export const SESSION_COOKIE = 'trxweb_session';
+export const SESSION_COOKIE = 'trxsuite_session';
 export const SESSION_MAX_AGE_SECONDS = 180 * 24 * 60 * 60;
 
 interface SessionClaims {

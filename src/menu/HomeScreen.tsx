@@ -35,7 +35,7 @@ type SheetState =
     | { kind: 'settings' }
     | null;
 
-const SELECTED_KEY = 'trx-web:selected';
+const SELECTED_KEY = 'trx-suite:selected';
 
 function initialSelection(): number {
     try {

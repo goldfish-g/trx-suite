@@ -8,7 +8,7 @@ const SHOTS = process.env.SHOTS ?? '.work/shots';
 mkdirSync(SHOTS, { recursive: true });
 const start = Date.now();
 const note = (text) => console.log(`[${((Date.now() - start) / 1000).toFixed(1)}] ${text}`);
-const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'trx-web-e2e-')), {
+const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), 'trx-suite-e2e-')), {
   ignoreHTTPSErrors: true, viewport: { width: 1280, height: 720 },
   args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'],
 });

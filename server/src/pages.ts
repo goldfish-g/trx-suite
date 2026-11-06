@@ -51,9 +51,9 @@ export function authResultPage(options: AuthPageOptions): string {
     // opener when there is one (COOP usually severs it), and a broadcast to
     // the app's other tabs. Either way the app polls for the outcome.
     const script = state
-        ? `<script>(function(){var m={type:'trx-web-auth',state:${scriptJson(state)}};
+        ? `<script>(function(){var m={type:'trx-suite-auth',state:${scriptJson(state)}};
 try{if(window.opener)window.opener.postMessage(m,${scriptJson(origin)})}catch(e){}
-try{var c=new BroadcastChannel('trx-web-auth');c.postMessage(m);c.close()}catch(e){}
+try{var c=new BroadcastChannel('trx-suite-auth');c.postMessage(m);c.close()}catch(e){}
 ${ok ? 'setTimeout(function(){try{window.close()}catch(e){}},400);' : ''}})();</script>`
         : '';
     return `<!doctype html>

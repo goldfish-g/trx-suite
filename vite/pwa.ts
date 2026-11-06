@@ -32,7 +32,7 @@ function listFiles(directory: string, root = directory): string[] {
 
 export function serviceWorker(templatePath: string, publicDir: string): Plugin {
     return {
-        name: 'trx-web:service-worker',
+        name: 'trx-suite:service-worker',
         apply: 'build',
         generateBundle(_options, bundle) {
             const built = Object.keys(bundle).filter(

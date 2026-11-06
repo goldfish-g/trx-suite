@@ -3,7 +3,7 @@
 // the browser already holds.
 
 const MANIFEST_URL = '/engines/manifest.json';
-const CACHE_KEY = 'trx-web:engine-versions';
+const CACHE_KEY = 'trx-suite:engine-versions';
 
 let versions: Promise<string[]> | null = null;
 

@@ -15,7 +15,7 @@ export interface FlybyChoice {
     key: string;
 }
 
-const LAST_KEY = 'trx-web:last-flyby';
+const LAST_KEY = 'trx-suite:last-flyby';
 const OFFICIAL_MODS = new Set(OFFICIAL_GAMES.map((game) => game.mod));
 
 /** Cutscenes are tiny sets; title levels of TR1–3 are a single room. */

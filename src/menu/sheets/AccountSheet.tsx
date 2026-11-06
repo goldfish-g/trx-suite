@@ -69,7 +69,7 @@ export function AccountSheet({ onClose }: { onClose(): void }) {
     const openGog = async () => {
         setError(null);
         // Open the window within the click, before awaiting the address.
-        const popup = window.open('about:blank', 'trx-web-gog', 'popup,width=820,height=760');
+        const popup = window.open('about:blank', 'trx-suite-gog', 'popup,width=820,height=760');
         try {
             const url = await gogSignInUrl();
             setGogUrl(url);

@@ -1,7 +1,7 @@
 // Whether to keep movement down: the system setting, unless the player chose
 // otherwise in the settings.
 
-const KEY = 'trx-web:reduced-motion';
+const KEY = 'trx-suite:reduced-motion';
 
 export function reducedMotionChoice(): 'system' | 'on' | 'off' {
     try {
