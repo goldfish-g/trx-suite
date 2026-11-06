@@ -18,7 +18,10 @@ import { describeProgress } from '../library/describe';
 import { ProgressBar } from '../ui/ProgressBar';
 import { formatBytes } from '../ui/format';
 import { isLockedLook, itemStatus, RING_ITEMS, type ItemStatus, type RingItem } from './items';
+import { createArtifact, type Artifact } from './models';
+import { createGameArtifact } from './models/game';
 import { RingLayer } from './RingLayer';
+import { loadRingModels } from './ringModels';
 import { AccountSheet } from './sheets/AccountSheet';
 import { CustomSheet } from './sheets/CustomSheet';
 import { GameSheet } from './sheets/GameSheet';
@@ -93,13 +96,33 @@ export function HomeScreen() {
             return;
         }
         const ring = new RingLayer(
-            RING_ITEMS.map((item, index) => ({ artifact: item.artifact, locked: isLockedLook(statusesRef.current[index]!) })),
+            RING_ITEMS.map((_, index) => ({ locked: isLockedLook(statusesRef.current[index]!) })),
             selected,
             reducedMotion(),
         );
         stage.foreground = ring;
         stageRef.current = stage;
         ringRef.current = ring;
+
+        // Each game's own object when the server has one, else the ring's own.
+        let disposed = false;
+        void loadRingModels().then((models) =>
+            Promise.all(
+                RING_ITEMS.map(async (item, index) => {
+                    const file = models.get(item.key);
+                    let artifact: Artifact | null = null;
+                    if (file !== undefined) {
+                        artifact = await createGameArtifact(file, item.look).catch((error: unknown) => {
+                            console.warn(`[ring] ${item.key}:`, error);
+                            return null;
+                        });
+                    }
+                    artifact ??= createArtifact(item.artifact);
+                    if (disposed) artifact.dispose();
+                    else ring.setArtifact(index, artifact);
+                }),
+            ),
+        );
 
         // Badges ride along with the artifacts they belong to.
         stage.onFrame = (viewport) => {
@@ -124,6 +147,7 @@ export function HomeScreen() {
         const onVisibility = () => (document.hidden ? stage.stop() : stage.start());
         document.addEventListener('visibilitychange', onVisibility);
         return () => {
+            disposed = true;
             document.removeEventListener('visibilitychange', onVisibility);
             stage.dispose();
             stageRef.current = null;

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Level objects</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #15171a; overflow: hidden; }
+      canvas { display: block; width: 100%; height: 100%; }
+      #labels { position: fixed; inset: 0; pointer-events: none; }
+      #labels div { position: absolute; color: #e8d9a8; font: 13px/1.2 monospace; padding: 4px 6px; text-shadow: 0 1px 2px #000; }
+      #info { position: fixed; left: 8px; bottom: 8px; color: #ccc; font: 12px monospace; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="labels"></div>
+    <div id="info"></div>
+    <script type="module" src="./objects.ts"></script>
+  </body>
+</html>

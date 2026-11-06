@@ -5,6 +5,7 @@ import type { CatalogEntry } from '../../shared/api.ts';
 import type { ImportProgress } from '../gamedata/imports';
 import type { GameDataRecord } from '../gamedata/types';
 import type { ArtifactKind } from './models';
+import type { Look } from './models/game';
 
 export interface RingItem {
     key: string;
@@ -13,25 +14,28 @@ export interface RingItem {
     title: string;
     /** A line under the title. */
     tagline: string;
+    /** Drawn when the server has no object from the game for the ring. */
     artifact: ArtifactKind;
+    /** How the game's own object (shared/ring/sources.ts) stands and shines. */
+    look: Look;
 }
 
-function official(mod: string, artifact: ArtifactKind, tagline: string): RingItem {
+function official(mod: string, artifact: ArtifactKind, tagline: string, look: Look): RingItem {
     const game = findOfficialGame(mod);
     if (game === undefined) throw new Error(`Unknown game ${mod}`);
-    return { key: mod, game, title: game.title, tagline, artifact };
+    return { key: mod, game, title: game.title, tagline, artifact, look };
 }
 
 /** In the order the owner asked for: the four games, their expansions, then custom levels. */
 export const RING_ITEMS: readonly RingItem[] = [
-    official('tr1', 'scion', '1996'),
-    official('tr2', 'dagger', '1997'),
-    official('tr3', 'meteorite', '1998'),
-    official('tr4', 'eye', 'Tomb Raider IV · 1999'),
-    official('tr1-ub', 'cat', 'Tomb Raider Gold · 1998'),
-    official('tr2-gm', 'mask', 'Tomb Raider II Gold · 1999'),
-    official('tr3-la', 'hand', 'Tomb Raider III Gold · 2000'),
-    { key: 'custom', game: null, title: 'Custom Levels', tagline: 'Levels made by the community', artifact: 'compass' },
+    official('tr1', 'scion', '1996', { turn: [90, 0, 0], metalness: 0.35, roughness: 0.5 }),
+    official('tr2', 'dagger', '1997', { turn: [0, 0, 90], metalness: 0.3, roughness: 0.45 }),
+    official('tr3', 'meteorite', '1998', { glow: 0.55, roughness: 0.35 }),
+    official('tr4', 'eye', 'Tomb Raider IV · 1999', { turn: [-90, 0, 0], metalness: 0.4, roughness: 0.45 }),
+    official('tr1-ub', 'cat', 'Tomb Raider Gold · 1998', { roughness: 0.55, scale: 0.92 }),
+    official('tr2-gm', 'mask', 'Tomb Raider II Gold · 1999', { metalness: 0.45, roughness: 0.4 }),
+    official('tr3-la', 'hand', 'Tomb Raider III Gold · 2000', { glow: 0.55, roughness: 0.35 }),
+    { key: 'custom', game: null, title: 'Custom Levels', tagline: 'Levels made by the community', artifact: 'compass', look: { turn: [18, 0, 0], metalness: 0.35, roughness: 0.5 } },
 ];
 
 export type ItemStatus =

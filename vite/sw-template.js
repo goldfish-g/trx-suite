@@ -3,7 +3,8 @@
 //
 // - The app itself (page, scripts, styles, fonts, icons) is cached on
 //   install, so the app opens with no connection.
-// - The background levels every player gets are cached on install too.
+// - The background levels every player gets, and the objects on the
+//   menu's ring, are cached on install too.
 // - Engines and game data are stored by the app itself (Cache Storage and
 //   IndexedDB), with resumable downloads; the worker stays out of their way.
 // - Every page it serves carries the cross-origin isolation headers, which
@@ -26,6 +27,7 @@ self.addEventListener('install', (event) => {
             const cache = await caches.open(SHELL);
             await cache.addAll(PRECACHE.map((url) => new Request(url, { cache: 'reload' })));
             await cacheFlybyLevels().catch((error) => console.warn('[sw] background levels not cached:', error));
+            await cacheRingModels().catch((error) => console.warn('[sw] ring models not cached:', error));
         })(),
     );
 });
@@ -55,6 +57,19 @@ async function cacheFlybyLevels() {
         if (typeof level.url !== 'string' || (await cache.match(level.url))) continue;
         const file = await fetch(level.url);
         if (file.ok) await cache.put(level.url, file);
+    }
+}
+
+async function cacheRingModels() {
+    const cache = await caches.open(RUNTIME);
+    const response = await fetch('/ring/manifest.json', { cache: 'no-store' });
+    if (!response.ok) return;
+    await cache.put('/ring/manifest.json', response.clone());
+    const manifest = await response.json();
+    for (const model of Object.values(manifest.models ?? {})) {
+        if (typeof model?.url !== 'string' || (await cache.match(model.url))) continue;
+        const file = await fetch(model.url);
+        if (file.ok) await cache.put(model.url, file);
     }
 }
 
@@ -122,13 +137,14 @@ self.addEventListener('fetch', (event) => {
     // Sign-in, the catalog and game downloads need the server, and the app
     // keeps its own copies of what it must know offline.
     if (path.startsWith('/api/') || path.startsWith('/auth/')) return;
-    if (path === '/engines/manifest.json' || path === '/flyby/manifest.json') {
+    if (path === '/engines/manifest.json' || path === '/flyby/manifest.json' || path === '/ring/manifest.json') {
         event.respondWith(networkFirst(request));
         return;
     }
     // Engine builds are large; the app stores them itself, resumably.
     if (path.startsWith('/engines/')) return;
-    if (path.startsWith('/flyby/')) {
+    // Flyby levels and ring models: their names change when they do.
+    if (path.startsWith('/flyby/') || path.startsWith('/ring/')) {
         event.respondWith(cacheFirst(request, RUNTIME));
         return;
     }

@@ -1,5 +1,5 @@
 // What players download: the catalog and its archives, engine builds, and
-// the flyby levels behind the menus.
+// the flyby levels behind the menus and the objects on their ring.
 
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -67,6 +67,26 @@ export function registerContentRoutes(app: FastifyInstance, context: Context): v
     });
 
     app.get('/flyby/manifest.json', async () => flybyManifest(await loadCatalog()));
+
+    // Build the ring's models while the server starts, not when the first
+    // player asks.
+    app.addHook('onReady', async () => {
+        void loadCatalog()
+            .then((catalog) => context.ringModels(catalog))
+            .catch((error: unknown) => app.log.warn(`ring models: ${(error as Error).message}`));
+    });
+
+    app.get('/ring/manifest.json', async (_request, reply) => {
+        reply.header('cache-control', NO_CACHE);
+        return (await context.ringModels(await loadCatalog())).manifest;
+    });
+
+    // Each file's name carries a hash of its contents, so it never changes.
+    app.get<{ Params: { file: string } }>('/ring/:file', async (request, reply) => {
+        const json = (await context.ringModels(await loadCatalog())).files.get(request.params.file);
+        if (json === undefined) throw notFound();
+        return reply.header('cache-control', 'public, max-age=31536000, immutable').type('application/json').send(json);
+    });
 
     app.get<{ Params: { mod: string; file: string } }>('/flyby/:mod/:file', async (request, reply) => {
         const level = findFlyby(await loadCatalog(), request.params.mod, request.params.file);

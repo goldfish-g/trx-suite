@@ -14,16 +14,23 @@ menu, store sign-in and offline support.
 - **A level flies by behind the menu.** On every visit the app picks a level
   from the games in the player's library (the official games and their
   expansions) and flies a camera through it. TR4 levels follow their own
-  scripted flyby cameras, as the game's title screen does; for TR1–3 a route
-  is made up through the rooms. Players without a game get the levels the
+  scripted flyby cameras, timed by their speeds as the game times them and
+  cut where the game cuts; other routes are made up through the rooms.
+  Players without a game get the levels the
   server offers everyone (Croft Manor from Tomb Raider III by default). The
   level files are read in the browser and drawn with three.js, the approach
-  of Evgeny Popov's [TRN](https://github.com/Popov72/TRN2) viewer.
-- **A ring of artifacts** stands for the games: Tomb Raider (the Scion),
-  Tomb Raider II (the Dagger of Xian), III (a meteorite artifact), The Last
-  Revelation (the Eye of Horus), Unfinished Business (a Bastet idol), The
-  Golden Mask, The Lost Artifact (the Hand of Rathmore) and custom levels (a
-  compass). They are modelled in code, not taken from the games.
+  of Evgeny Popov's [TRN](https://github.com/Popov72/TRN2) viewer. Made-up
+  routes are smoothed like a pulled string and slow down through bends;
+  `src/flyby/route/smoothness.test.ts` measures every route of every level
+  for jolts.
+- **A ring of artifacts** stands for the games, each an object from the game
+  itself, cut out of its level files by the server: Tomb Raider's Scion, the
+  Dagger of Xian, the Infada Stone, an ankh from The Last Revelation, a
+  statue of Bastet from Unfinished Business, the Golden Mask, and The Last
+  Revelation's compass for custom levels. The Lost Artifact's Hand of
+  Rathmore is still drawn by the page. Games the player has not unlocked
+  show theirs turned to stone. Without the games on the server, the ring
+  draws artifacts of its own.
 - **Touch, mouse, keyboard and gamepad** all drive the menus: swipe, scroll,
   click, arrows or a d-pad to turn the ring; tap, Enter or A to open a game.
   Hints follow the device used last.
@@ -74,7 +81,9 @@ docker run -p 8080:8080 -v /path/to/data:/data \
   held at a moment of a route when `route` and `t` are given.
 - `/dev/cullcheck.html?level=<url>` renders moments of every route with and
   without room culling and reports how many pixels differ.
-- `/dev/models.html` shows the ring's artifacts.
+- `/dev/objects.html?level=<url>&maxr=400` lays out every object of a level
+  with its number, for choosing the ring's objects (`shared/ring/sources.ts`).
+- `/dev/models.html` shows the ring's own drawn artifacts, the fallback.
 
 `TRX_LEVELS_DIR=<dir with level files> pnpm test` also reads every level it
 finds there. Browser tests of whole flows are in [e2e/](e2e/README.md).
@@ -97,10 +106,11 @@ refreshes it. The server checks it on every download request.
 ## Layout
 
 ```
-shared/        what the page and the server agree on: games, store ids, API shapes
+shared/        what the page and the server agree on: games, store ids, API shapes;
+               the level file reader and the ring's objects
 server/        the API server: catalog, sign-in, downloads, static files
 src/
-  flyby/       level files read in the browser, culled rendering, camera routes
+  flyby/       culled rendering of levels, smooth camera routes
   menu/        the home screen, the ring and its artifacts, the panels
   stage/       the WebGL canvas behind the menus
   input/       keyboard, gamepad, mouse and touch as one stream of actions
@@ -119,6 +129,8 @@ dev/           preview pages
 ## Legal
 
 Tomb Raider is a trademark of its owners; this project is not affiliated with
-them. The repository contains no game data. Gating downloads on store
-ownership is a good-faith measure, not a licence: hosting the games still
-needs their rights holders' permission.
+them. The repository contains no game data. The server sends every visitor the
+background levels and the ring's objects, which come from the games. Gating
+downloads on store ownership is a good-faith measure, not a licence: hosting
+the games, and those parts of them, still needs their rights holders'
+permission.

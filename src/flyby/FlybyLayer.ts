@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import type { SceneChunk } from './build/geometry';
 import type { PreparedLevel, RouteData } from './prepare';
+import { CameraAim, createPlayer, type RoutePlayer } from './route/player';
 import { RoomCuller } from './visibility';
 
 const VERTEX = /* glsl */ `
@@ -57,75 +58,9 @@ export interface FlybyOptions {
     reducedMotion: boolean;
 }
 
-/** Plays one route: where the camera is and where it looks, over time. */
-interface RoutePlayer {
-    duration: number;
-    sample(time: number, position: THREE.Vector3, target: THREE.Vector3): { fov: number | null; roll: number };
-}
-
 const SPEED = 1.15; // squares a second
-const LOOK_AHEAD = 2.6; // squares
 const FADE_SECONDS = 1.4;
 const BASE_FOV = 78; // horizontal, degrees
-
-function vectors(data: number[]): THREE.Vector3[] {
-    const out: THREE.Vector3[] = [];
-    for (let i = 0; i + 2 < data.length; i += 3) out.push(new THREE.Vector3(data[i], data[i + 1], data[i + 2]));
-    return out;
-}
-
-function lerpList(values: number[], u: number): number {
-    const position = u * (values.length - 1);
-    const i = Math.min(Math.floor(position), values.length - 2);
-    const t = position - i;
-    return (values[i] ?? 0) * (1 - t) + (values[i + 1] ?? values[i] ?? 0) * t;
-}
-
-function generatedPlayer(route: RouteData, speed: number): RoutePlayer {
-    const curve = new THREE.CatmullRomCurve3(vectors(route.points), false, 'centripetal');
-    const length = curve.getLength();
-    const duration = Math.max(length / speed, 6);
-    const ahead = new THREE.Vector3();
-    const tangent = new THREE.Vector3();
-    return {
-        duration,
-        sample(time, position, target) {
-            const s = Math.min(Math.max(time / duration, 0), 1);
-            curve.getPointAt(s, position);
-            const aheadS = s + LOOK_AHEAD / length;
-            if (aheadS <= 1) {
-                curve.getPointAt(aheadS, target);
-            } else {
-                // Past the end, keep looking the way the route was heading.
-                curve.getTangentAt(1, tangent);
-                curve.getPointAt(1, ahead);
-                target.copy(ahead).addScaledVector(tangent, (aheadS - 1) * length);
-            }
-            target.y -= 0.12; // a touch downward, to take in the floor
-            return { fov: null, roll: 0 };
-        },
-    };
-}
-
-function scriptedPlayer(route: RouteData, speed: number): RoutePlayer {
-    const points = vectors(route.points);
-    const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal');
-    const targets = new THREE.CatmullRomCurve3(vectors(route.targets ?? route.points), false, 'centripetal');
-    const duration = Math.max(curve.getLength() / speed, (points.length - 1) * 1.6, 8);
-    return {
-        duration,
-        sample(time, position, target) {
-            const u = Math.min(Math.max(time / duration, 0), 1);
-            curve.getPoint(u, position);
-            targets.getPoint(u, target);
-            return {
-                fov: route.fov === null ? null : lerpList(route.fov, u),
-                // Some flybys bank hard; a background should not.
-                roll: route.roll === null ? 0 : Math.max(-0.2, Math.min(0.2, lerpList(route.roll, u))),
-            };
-        },
-    };
-}
 
 function chunkGeometry(chunk: SceneChunk): THREE.BufferGeometry {
     const geometry = new THREE.BufferGeometry();
@@ -160,11 +95,7 @@ export class FlybyLayer {
     private orbitCentre = new THREE.Vector3();
     private readonly position = new THREE.Vector3();
     private readonly target = new THREE.Vector3();
-    private readonly look = new THREE.Matrix4();
-    private readonly wanted = new THREE.Quaternion();
-    private readonly rollQuaternion = new THREE.Quaternion();
-    private readonly forward = new THREE.Vector3(0, 0, -1);
-    private started = false;
+    private readonly aim = new CameraAim();
     private readonly roomMeshes = new Map<number, THREE.Mesh>();
     private readonly culler: RoomCuller;
     /** How many rooms the last frame drew, for diagnostics. */
@@ -250,7 +181,7 @@ export class FlybyLayer {
         this.nextRoute();
         this.time = Math.min(time, (this.player?.duration ?? 0) / 2);
         this.update(0, 1);
-        this.started = false;
+        this.aim.reset();
     }
 
     get routeCount(): number {
@@ -267,9 +198,9 @@ export class FlybyLayer {
         }
         const route = this.routes[this.routeOrder.pop()!]!;
         this.currentRooms = route.rooms;
-        this.player = route.kind === 'scripted' ? scriptedPlayer(route, this.speed) : generatedPlayer(route, this.speed);
+        this.player = createPlayer(route, this.speed);
         this.time = 0;
-        this.started = false;
+        this.aim.reset();
     }
 
     update(dt: number, aspect: number): void {
@@ -297,16 +228,7 @@ export class FlybyLayer {
 
         const camera = this.camera;
         camera.position.copy(this.position);
-        this.look.lookAt(this.position, this.target, camera.up);
-        this.wanted.setFromRotationMatrix(this.look);
-        if (roll !== 0) this.wanted.multiply(this.rollQuaternion.setFromAxisAngle(this.forward, roll));
-        if (!this.started) {
-            camera.quaternion.copy(this.wanted);
-            this.started = true;
-        } else {
-            // Ease the turn so the generated routes' corners stay smooth.
-            camera.quaternion.slerp(this.wanted, 1 - Math.exp(-dt * 2.2));
-        }
+        camera.quaternion.copy(this.aim.update(dt, this.position, this.target, roll, this.player?.turnRate));
 
         const horizontal = fov ?? BASE_FOV;
         const vertical = (2 * Math.atan(Math.tan((horizontal * Math.PI) / 360) / aspect) * 180) / Math.PI;

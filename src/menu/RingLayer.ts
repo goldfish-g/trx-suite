@@ -5,16 +5,18 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Layer, Viewport } from '../stage/Stage';
-import { createArtifact, type Artifact, type ArtifactKind } from './models';
+import type { Artifact } from './models';
 
 export interface RingEntry {
-    artifact: ArtifactKind;
     locked: boolean;
 }
 
 interface Slot {
     group: THREE.Group;
-    artifact: Artifact;
+    /** Null until its model has loaded. */
+    artifact: Artifact | null;
+    /** 0..1: fades a model in as it arrives. */
+    appear: number;
     locked: boolean;
     /** Smoothed 0..1: how much this slot is the chosen one. */
     focus: number;
@@ -46,6 +48,8 @@ export class RingLayer implements Layer {
     private readonly halo: THREE.Mesh;
     private readonly haloTex: THREE.CanvasTexture;
     private environment: THREE.Texture | null = null;
+    /** Whether every model's shaders are built. */
+    private compiled = false;
     /** Where the ring is turned to, in slots; not wrapped, so turns stay smooth. */
     private position = 0;
     private target = 0;
@@ -58,11 +62,9 @@ export class RingLayer implements Layer {
         this.reducedMotion = reducedMotion;
         this.position = this.target = selected;
         for (const entry of entries) {
-            const artifact = createArtifact(entry.artifact);
             const group = new THREE.Group();
-            group.add(artifact.object);
             this.scene.add(group);
-            this.slots.push({ group, artifact, locked: entry.locked, focus: 0, spin: 0 });
+            this.slots.push({ group, artifact: null, appear: 0, locked: entry.locked, focus: 0, spin: 0 });
         }
 
         const key = new THREE.DirectionalLight(0xffe0b4, 2.4);
@@ -112,6 +114,23 @@ export class RingLayer implements Layer {
         this.target = Math.round(this.target) + direction;
         const n = this.slots.length;
         return ((this.target % n) + n) % n;
+    }
+
+    /** Puts a slot's model in place, fading it in. */
+    setArtifact(index: number, artifact: Artifact): void {
+        const slot = this.slots[index];
+        if (slot === undefined) {
+            artifact.dispose();
+            return;
+        }
+        if (slot.artifact !== null) {
+            slot.group.remove(slot.artifact.object);
+            slot.artifact.dispose();
+        }
+        slot.artifact = artifact;
+        slot.appear = 0;
+        slot.group.add(artifact.object);
+        this.compiled = false;
     }
 
     setLocked(index: number, locked: boolean): void {
@@ -165,7 +184,9 @@ export class RingLayer implements Layer {
             const wanted = index === front && this.dragOffset === 0 ? 1 : 0;
             slot.focus += (wanted - slot.focus) * (1 - Math.exp(-dt * 6));
             const fade = Math.min(1, Math.max(0, (3 - distance) / 0.8));
-            const scale = 1.3 * Math.exp(-0.62 * distance) * fade * (1 + slot.focus * 0.08);
+            if (slot.artifact !== null) slot.appear = Math.min(1, slot.appear + dt * (this.reducedMotion ? 6 : 2.5));
+            const appear = 1 - (1 - slot.appear) ** 3;
+            const scale = 1.3 * Math.exp(-0.62 * distance) * fade * (1 + slot.focus * 0.08) * appear;
             slot.group.visible = scale > 0.01;
             const bob = this.reducedMotion ? 0 : Math.sin(this.time * 1.2) * 0.06 * slot.focus;
             slot.group.position.set(Math.sin(angle) * radius, bob, (Math.cos(angle) - 1) * radius);
@@ -173,7 +194,7 @@ export class RingLayer implements Layer {
             // The chosen artifact turns slowly; the others lean towards it.
             slot.spin += dt * (this.reducedMotion ? 0.12 : 0.45) * slot.focus;
             slot.group.rotation.y = -angle * 0.6 + slot.spin;
-            slot.artifact.update(dt, { selected: slot.focus > 0.5, locked: slot.locked, time: this.time });
+            slot.artifact?.update(dt, { selected: slot.focus > 0.5, locked: slot.locked, time: this.time });
         });
 
         const chosen = this.slots[front];
@@ -193,6 +214,9 @@ export class RingLayer implements Layer {
             this.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
             pmrem.dispose();
             this.scene.environment = this.environment;
+        }
+        if (!this.compiled) {
+            this.compiled = true;
             // Build every artifact's shaders now, hidden ones too, so turning
             // the ring never stalls on one appearing for the first time.
             const hidden = this.slots.filter((slot) => !slot.group.visible);
@@ -239,7 +263,7 @@ export class RingLayer implements Layer {
     }
 
     dispose(): void {
-        for (const slot of this.slots) slot.artifact.dispose();
+        for (const slot of this.slots) slot.artifact?.dispose();
         this.halo.geometry.dispose();
         (this.halo.material as THREE.Material).dispose();
         this.haloTex.dispose();

@@ -4,8 +4,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { levelEngine, parseLevel } from './parse';
-import { LevelFormatError } from './reader';
+import { levelEngine, parseLevel } from './parse.ts';
+import { LevelFormatError } from './reader.ts';
 
 const LEVELS_DIR = process.env.TRX_LEVELS_DIR;
 

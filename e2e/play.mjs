@@ -55,6 +55,8 @@ await shot('7-account');
 await page.keyboard.press('Escape');
 await page.waitForTimeout(800);
 note('ring status: ' + await page.locator('.spotlight__title').innerText() + ' / ' + await page.locator('.spotlight__status').innerText());
+// Closing the sheet hands focus back to the account button; Down leaves the top bar.
+await page.keyboard.press('ArrowDown'); await page.waitForTimeout(300);
 await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(400);
 await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(400);
 await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(400);

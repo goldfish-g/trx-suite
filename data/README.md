@@ -46,6 +46,23 @@ Copy `catalog.example.json` to `catalog.json` and list what you have:
 The server re-reads the file when it changes, so games can be added without a
 restart. Problems with it are logged as warnings.
 
+## The ring's objects
+
+The menu shows each game as an object from the game itself: the Scion, the
+Dagger of Xian, the Infada Stone, an ankh, a statue of Bastet, the Golden
+Mask, and a compass for custom levels. When it starts, and again whenever a
+listed archive changes, the server opens the archives in `games`, reads the
+level each object is in, and cuts the object out (its meshes and just the
+texels it uses), serving the result at `/ring/manifest.json` and
+`/ring/<entry>.<hash>.json`. Which object of which level stands for each
+entry is set in `shared/ring/sources.ts`; `/dev/objects.html?level=<url>`
+lays out every object of a level with its number, for choosing others.
+
+An entry whose game is not here falls back to the next source listed, then
+to a drawn artifact of the page's own. The Lost Artifact has no entry yet:
+its Hand of Rathmore is only in its own levels, and the ring draws a hand
+until the object's number is read from them and added.
+
 ## Who may download what
 
 `GET /api/catalog` lists every game whose archive is here. Downloads from
@@ -61,7 +78,7 @@ The server checks on every request, each Range request of a download
 included. What an account owns is checked with the store when the player
 signs in and kept in the signed session cookie; signing in again refreshes it.
 
-Engine builds and flyby levels go to everyone.
+Engine builds, flyby levels and the ring's objects go to everyone.
 
 ## Environment
 
@@ -113,5 +130,6 @@ The server sends a game's files only to players who have shown, through Steam
 or GOG, that they own that game, and the free expansions to everyone. That
 limits who receives them; it does not give you the right to distribute them.
 Hosting the games' files for others still needs permission from their rights
-holders. Make sure you have it before putting a server where others can reach
+holders. The same goes for the background levels and the ring's objects,
+which every visitor receives, whether or not they own the game. Make sure you have it before putting a server where others can reach
 it.

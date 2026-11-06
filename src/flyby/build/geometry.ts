@@ -8,9 +8,10 @@
 // (x, y, z) → (x, -y, -z) / 1024. That flip is a half turn about x, so it
 // keeps the faces' winding.
 
-import { Euler, Matrix4, Quaternion, Vector3 } from 'three';
-import type { Face, Level, Mesh, MoveableDef, ObjectTexture, Room, Shade } from '../level/types';
-import { ROOM_WATER } from '../level/types';
+import { Matrix4, Vector3 } from 'three';
+import { poseMoveable as pose } from '../../../shared/level/pose.ts';
+import type { Face, Level, Mesh, MoveableDef, ObjectTexture, Room, Shade } from '../../../shared/level/types.ts';
+import { ROOM_WATER } from '../../../shared/level/types.ts';
 
 export const UNIT = 1 / 1024;
 
@@ -171,65 +172,9 @@ function addMesh(builder: ChunkBuilder, mesh: Mesh, matrix: Matrix4, shade: Shad
     }
 }
 
-const ANGLE = (Math.PI * 2) / 1024;
-
-/** The rotation of each part of an object in a frame, three.js space. */
-function frameRotations(level: Level, frame: number, parts: number): { offset: Vector3; rotations: Quaternion[] } {
-    const words = level.frames;
-    let p = frame;
-    const at = (i: number) => (words[i] ?? 0) & 0xffff;
-    const offset = toThree(words[p + 6] ?? 0, words[p + 7] ?? 0, words[p + 8] ?? 0);
-    p += 9;
-    if (level.engine === 1) p += 1; // TR1 counts its rotations here
-    const rotations: Quaternion[] = [];
-    const euler = new Euler();
-    for (let part = 0; part < parts; part++) {
-        let x = 0;
-        let y = 0;
-        let z = 0;
-        let first = at(p++);
-        const axis = first & 0xc000;
-        if (level.engine !== 1 && axis !== 0) {
-            const angle = (level.engine === 4 ? (first & 0x0fff) >> 2 : first & 0x03ff) * ANGLE;
-            if (axis === 0x4000) x = angle;
-            else if (axis === 0x8000) y = angle;
-            else z = angle;
-        } else {
-            let second = at(p++);
-            // TR1 stores the two words the other way round.
-            if (level.engine === 1) [first, second] = [second, first];
-            x = ((first >> 4) & 0x03ff) * ANGLE;
-            y = (((first << 6) & 0x03c0) | ((second >> 10) & 0x003f)) * ANGLE;
-            z = (second & 0x03ff) * ANGLE;
-        }
-        // The files turn about y, then x, then z. The coordinate flip keeps x
-        // and reverses y and z.
-        rotations.push(new Quaternion().setFromEuler(euler.set(x, -y, -z, 'YXZ')));
-    }
-    return { offset, rotations };
-}
-
 /** The world matrix of each mesh of an object, as its first frame poses it. */
 function poseMoveable(level: Level, def: MoveableDef, placement: Matrix4): Matrix4[] {
-    const { offset, rotations } = frameRotations(level, def.frame, def.meshCount);
-    const matrices: Matrix4[] = [];
-    const one = new Vector3(1, 1, 1);
-    matrices.push(placement.clone().multiply(new Matrix4().compose(offset, rotations[0] ?? new Quaternion(), one)));
-    const stack: number[] = [];
-    let parent = 0;
-    for (let part = 1; part < def.meshCount; part++) {
-        const t = def.meshTree + (part - 1) * 4;
-        const flags = level.meshTree[t] ?? 0;
-        const local = toThree(level.meshTree[t + 1] ?? 0, level.meshTree[t + 2] ?? 0, level.meshTree[t + 3] ?? 0);
-        if (flags & 1) parent = stack.pop() ?? 0;
-        if (flags & 2) stack.push(parent);
-        const parentMatrix = matrices[parent] ?? matrices[0]!;
-        matrices.push(
-            parentMatrix.clone().multiply(new Matrix4().compose(local, rotations[part] ?? new Quaternion(), one)),
-        );
-        parent = part;
-    }
-    return matrices;
+    return pose(level, def, Float64Array.from(placement.elements)).map((m) => new Matrix4().fromArray(m));
 }
 
 function yawMatrix(x: number, y: number, z: number, angle: number): Matrix4 {

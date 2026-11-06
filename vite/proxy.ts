@@ -7,7 +7,7 @@
 import type { ProxyOptions } from 'vite';
 
 /** The paths the API server answers; everything else is the page's. */
-const SERVER_PATHS = '^/(?:api|auth|engines|flyby)(?:[/?]|$)';
+const SERVER_PATHS = '^/(?:api|auth|engines|flyby|ring)(?:[/?]|$)';
 
 export function apiProxy(target: string): Record<string, ProxyOptions> {
     return {

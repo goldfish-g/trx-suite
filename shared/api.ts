@@ -105,3 +105,20 @@ export interface FlybyLevel {
     /** The official game it comes from. */
     mod: string;
 }
+
+/** GET /ring/manifest.json: the game objects the server can show on the ring, by ring item. */
+export interface RingManifest {
+    models: Record<string, { url: string; name: string }>;
+}
+
+/** GET /ring/<item>.<version>.json: one object cut out of a level (shared/ring/extract.ts). */
+export interface RingModelFile {
+    name: string;
+    positions: number[];
+    normals: number[];
+    uvs: number[];
+    indices: number[];
+    blendStart: number;
+    /** The atlas as a PNG data URL; its first row is v = 0. */
+    texture: string;
+}

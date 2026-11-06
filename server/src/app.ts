@@ -14,12 +14,13 @@ import {
 } from 'fastify';
 import type { ApiError } from '../../shared/api.ts';
 import { registerAccountRoutes } from './account-routes.ts';
-import { createCatalogStore, type LoadCatalog } from './catalog.ts';
+import { createCatalogStore, type Catalog, type LoadCatalog } from './catalog.ts';
 import type { Config } from './config.ts';
 import { registerContentRoutes } from './content-routes.ts';
 import { HttpError, notFound } from './errors.ts';
 import { requestPath, resolveInside, sendFile, statFile } from './files.ts';
 import { createLoginStore, type LoginStore } from './logins.ts';
+import { createRingModels, type RingModelSet } from './ring.ts';
 import type { Fetch } from './upstream.ts';
 
 export interface AppDeps {
@@ -36,10 +37,11 @@ export interface Context {
     now: () => number;
     loadCatalog: LoadCatalog;
     logins: LoginStore;
+    ringModels: (catalog: Catalog) => Promise<RingModelSet>;
 }
 
 /** Paths the page's client-side routes must never shadow. */
-const SERVER_PATHS = /^\/(?:api|auth|engines|flyby)(?:\/|$)/;
+const SERVER_PATHS = /^\/(?:api|auth|engines|flyby|ring)(?:\/|$)/;
 const API_PATHS = /^\/api(?:\/|$)/;
 /** Vite fingerprints everything under /assets, so a name never changes meaning. */
 const IMMUTABLE = 'public, max-age=31536000, immutable';
@@ -127,6 +129,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
         now: deps.now ?? Date.now,
         loadCatalog: createCatalogStore(config.dataDir, app.log),
         logins: createLoginStore(deps.now),
+        ringModels: createRingModels(app.log),
     };
     registerContentRoutes(app, context);
     registerAccountRoutes(app, context);

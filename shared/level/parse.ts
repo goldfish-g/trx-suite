@@ -7,7 +7,7 @@
 // TRosettaStone) and Evgeny Popov's TRN viewer, which reads the same files in
 // the browser.
 
-import { LevelFormatError, Reader } from './reader';
+import { LevelFormatError, Reader } from './reader.ts';
 import type {
     Face,
     FlybyCamera,
@@ -24,7 +24,7 @@ import type {
     Sector,
     Shade,
     StaticDef,
-} from './types';
+} from './types.ts';
 
 const TILE_TEXELS = 256 * 256;
 const TILE_BYTES = TILE_TEXELS * 4;

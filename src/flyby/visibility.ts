@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import type { RoomVisibility } from './build/geometry';
-import { WALL } from './level/types';
+import { WALL } from '../../shared/level/types.ts';
 
 interface Rect {
     x0: number;

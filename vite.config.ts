@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
@@ -33,4 +34,6 @@ export default defineConfig({
     preview: { headers: crossOriginIsolationHeaders },
     worker: { format: 'es' },
     build: { target: 'es2022' },
+    // .work holds local scratch files, never tests of the project.
+    test: { exclude: ['**/node_modules/**', '**/dist/**', '.work/**'] },
 });
