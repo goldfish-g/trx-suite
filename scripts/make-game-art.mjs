@@ -30,7 +30,8 @@ const ICONS = [
     'controller dpad up', 'controller dpad down', 'controller dpad left', 'controller dpad right',
     'controller bumper left', 'controller bumper right', 'controller button l1', 'controller button r1',
     'controller button options', 'controller button share',
-    'keyboard return', 'keyboard escape', 'keyboard e', 'keyboard f', 'keyboard m', 'keyboard q', 'keyboard r', 'keyboard v',
+    'controller trigger left', 'controller trigger right', 'controller button l2', 'controller button r2',
+    'keyboard return', 'keyboard escape', 'keyboard e', 'keyboard f', 'keyboard m', 'keyboard q', 'keyboard r', 'keyboard v', 'keyboard z', 'keyboard c',
     'keyboard left', 'keyboard right', 'keyboard up', 'keyboard down',
 ];
 /** Latin letters, punctuation and the typographer's marks: what names and labels use. */

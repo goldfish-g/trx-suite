@@ -36,7 +36,11 @@ export type MenuAction =
     /** Left bumper, Q. */
     | 'previous'
     /** Right bumper, E. */
-    | 'next';
+    | 'next'
+    /** Left trigger, Z: the section before, such as Installed beside Browse. */
+    | 'sectionPrevious'
+    /** Right trigger, C. */
+    | 'sectionNext';
 
 export type InputDevice = 'keyboard' | 'gamepad' | 'mouse' | 'touch';
 
@@ -211,6 +215,8 @@ export const KEYS: Record<string, MenuAction> = {
     v: 'view',
     q: 'previous',
     e: 'next',
+    z: 'sectionPrevious',
+    c: 'sectionNext',
     PageUp: 'previous',
     PageDown: 'next',
 };
@@ -229,6 +235,8 @@ export const KEY_LABELS: Record<MenuAction, string> = {
     view: 'V',
     previous: 'Q',
     next: 'E',
+    sectionPrevious: 'Z',
+    sectionNext: 'C',
 };
 
 function isTyping(target: EventTarget | null): boolean {
@@ -268,6 +276,8 @@ const PAD_BUTTONS: [number, MenuAction][] = [
     [3, 'extra'], // Y / Triangle / X on Nintendo
     [4, 'previous'], // left bumper
     [5, 'next'], // right bumper
+    [6, 'sectionPrevious'], // left trigger
+    [7, 'sectionNext'], // right trigger
     [8, 'view'], // View / Create / −
     [9, 'menu'], // Start / Options / +
     [12, 'up'],
