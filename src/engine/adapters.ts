@@ -12,6 +12,8 @@ export interface AdapterHooks {
     onGateOpen(pass: () => void): void;
     /** The profile now keeps saves for this mod. */
     onStorageMod(mod: string): void;
+    /** The engine is about to play this mod, and reads its files next. */
+    prepareMod(mod: string): Promise<void>;
 }
 
 export interface SessionAdapters {
@@ -20,9 +22,28 @@ export interface SessionAdapters {
     flushNow(): Promise<void>;
 }
 
-function syncfs(engine: TrxEngine, populate: boolean): Promise<void> {
+/** A profile's storage for one mod: a directory backed by a database of its own. */
+interface Storage {
+    path: string;
+    /** The mounted file system, as IDBFS knows it. */
+    mount: unknown;
+    /** Whether the database's files have been read in yet. */
+    loaded: boolean;
+}
+
+interface Idbfs {
+    syncfs(mount: unknown, populate: boolean, callback: (error: unknown) => void): void;
+}
+
+/**
+ * Copies one storage's files between the engine and its database. Writing
+ * out makes the database match the directory, deleting what the directory
+ * lacks, so a storage must be read in before it is ever written out: FS.syncfs,
+ * which does every mount at once, would wipe a storage mounted but not read.
+ */
+function syncStorage(engine: TrxEngine, storage: Storage, populate: boolean): Promise<void> {
     return new Promise((resolve, reject) =>
-        engine.fs.syncfs(populate, (error) => (error ? reject(error) : resolve())),
+        (engine.idbfs as Idbfs).syncfs(storage.mount, populate, (error) => (error ? reject(error) : resolve())),
     );
 }
 
@@ -31,7 +52,7 @@ function parentOf(path: string): string {
 }
 
 export function createAdapters(hooks: AdapterHooks): SessionAdapters {
-    const mounted = new Set<string>();
+    const storages = new Map<string, Storage>();
     let flushTimer: ReturnType<typeof setTimeout> | null = null;
     let flushing: Promise<void> = Promise.resolve();
 
@@ -40,9 +61,13 @@ export function createAdapters(hooks: AdapterHooks): SessionAdapters {
             clearTimeout(flushTimer);
             flushTimer = null;
         }
-        if (mounted.size === 0) return flushing;
+        const loaded = [...storages.values()].filter((storage) => storage.loaded);
+        if (loaded.length === 0) return flushing;
         flushing = flushing
-            .then(() => syncfs(hooks.getEngine(), false))
+            .then(async () => {
+                const engine = hooks.getEngine();
+                for (const storage of loaded) await syncStorage(engine, storage, false);
+            })
             .catch((error: unknown) => console.error('[storage] saving failed:', error));
         return flushing;
     };
@@ -55,28 +80,32 @@ export function createAdapters(hooks: AdapterHooks): SessionAdapters {
         mountPersistence: async (mountPath) => {
             const engine = hooks.getEngine();
             const mod = mountPath.slice(mountPath.lastIndexOf('/') + 1);
-            const storage = profileStoragePath(hooks.profileId, mod);
-            if (!mounted.has(storage)) {
-                engine.fs.mkdirTree(storage);
-                engine.fs.mount(engine.idbfs, {}, storage);
-                mounted.add(storage);
+            const path = profileStoragePath(hooks.profileId, mod);
+            if (!storages.has(path)) {
+                engine.fs.mkdirTree(path);
+                const root = engine.fs.mount(engine.idbfs, {}, path);
+                storages.set(path, { path, mount: root.mount, loaded: false });
             }
             engine.fs.mkdirTree(parentOf(mountPath));
             if (!engine.fs.analyzePath(mountPath).exists) {
-                engine.fs.symlink(storage, mountPath);
+                engine.fs.symlink(path, mountPath);
             }
             hooks.onStorageMod(mod);
+            await hooks.prepareMod(mod);
         },
 
         syncPersistenceIn: async () => {
             const engine = hooks.getEngine();
+            // What the game wrote to storages already read in goes out first.
             await flushNow();
-            await syncfs(engine, true);
-            // Loading replaces what each mount holds, so the directories the
-            // engine writes into come after it.
-            for (const storage of mounted) {
-                engine.fs.mkdirTree(`${storage}/saves`);
-                engine.fs.mkdirTree(`${storage}/cfg`);
+            for (const storage of storages.values()) {
+                if (storage.loaded) continue;
+                await syncStorage(engine, storage, true);
+                storage.loaded = true;
+                // Reading in replaces what the directory holds, so the
+                // directories the engine writes into come after it.
+                engine.fs.mkdirTree(`${storage.path}/saves`);
+                engine.fs.mkdirTree(`${storage.path}/cfg`);
             }
         },
 

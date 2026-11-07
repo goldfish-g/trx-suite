@@ -29,7 +29,8 @@ export interface EngineFs {
     writeFile(path: string, data: Uint8Array): void;
     symlink(target: string, path: string): void;
     analyzePath(path: string): { exists: boolean };
-    mount(type: unknown, options: Record<string, unknown>, mountpoint: string): void;
+    /** Returns the root of the mounted file system, which holds the mount. */
+    mount(type: unknown, options: Record<string, unknown>, mountpoint: string): { mount: unknown };
     syncfs(populate: boolean, callback: (error: unknown) => void): void;
 }
 

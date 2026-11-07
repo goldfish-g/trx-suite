@@ -44,6 +44,10 @@ menu, store sign-in and offline support.
   IndexedDB). Downloads resume after a reload or a dropped connection.
 - **Custom levels** open their own list of profiles; TRX packages and lone
   level files play directly, older ones link to the TRX Level Converter.
+- **Playing.** Each profile keeps its saves and settings in IndexedDB. The
+  engine's game switcher offers every installed game; picking one starts the
+  play page afresh for it, so only one game's files take up memory. The
+  screen stays on while the app is open, so FMVs play without a touch.
 
 ## Running
 
@@ -115,7 +119,7 @@ src/
   stage/       the WebGL canvas behind the menus
   input/       keyboard, gamepad, mouse and touch as one stream of actions
   account/     sign-in and the catalog, remembered for offline use
-  pwa/         installing, updating, the service worker's registration
+  pwa/         installing, updating, the service worker's registration, keeping the screen on
   gamedata/    the library: imports, layout, storage   (from the shell)
   games/       recognising games and custom levels     (from the shell)
   engine/      loading and running the engine          (from the shell)

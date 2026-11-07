@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { checkBrowserSupport, runSession, type SessionStage } from '../engine/session';
 import { getProfile } from '../profiles/store';
 import { formatBytes } from '../ui/format';
@@ -25,6 +25,8 @@ function leave(): void {
 
 export function PlayScreen() {
     const { profileId } = useParams<{ profileId: string }>();
+    // Another game the player switched to in the engine, which this page plays instead of the profile's own.
+    const mod = useSearchParams()[0].get('mod') ?? undefined;
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [state, setState] = useState<ScreenState>({ kind: 'loading' });
     const [notice, setNotice] = useState<string | null>(null);
@@ -42,12 +44,16 @@ export function PlayScreen() {
             document.title = `${profile.name} · TRX`;
             await runSession({
                 profile,
+                mod,
                 canvas: canvasRef.current!,
                 signal: controller.signal,
                 onStage: (stage) => {
                     setNotice(null);
                     setState(stage);
                 },
+                // A page of its own for each game, as for each session.
+                onSwitchMod: (next) =>
+                    location.replace(next === profile.mod ? `/play/${profile.id}` : `/play/${profile.id}?mod=${encodeURIComponent(next)}`),
                 onRetry: ({ waitMs, reason }) =>
                     setNotice(`Connection lost (${reason}). Trying again in ${Math.ceil(waitMs / 1000)} s…`),
             });
@@ -58,7 +64,26 @@ export function PlayScreen() {
             fail(error instanceof Error ? error.message : String(error));
         });
         return () => controller.abort();
-    }, [profileId]);
+    }, [profileId, mod]);
+
+    // The engine hears keys only while the canvas has focus, which nothing
+    // gives it once the start button goes. Focus it whenever the game runs,
+    // and take it back if a key lands anywhere else.
+    const running = state.kind === 'running';
+    useEffect(() => {
+        if (!running) return;
+        const canvas = canvasRef.current!;
+        const focus = () => {
+            if (document.activeElement !== canvas) canvas.focus({ preventScroll: true });
+        };
+        focus();
+        window.addEventListener('keydown', focus, true);
+        window.addEventListener('focus', focus);
+        return () => {
+            window.removeEventListener('keydown', focus, true);
+            window.removeEventListener('focus', focus);
+        };
+    }, [running]);
 
     // Any key or gamepad button starts the game, as a tap does.
     const pass = state.kind === 'gate' ? state.pass : null;

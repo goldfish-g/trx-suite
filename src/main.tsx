@@ -6,6 +6,7 @@ import '@fontsource/cinzel/700.css';
 import '@fontsource-variable/inter';
 import { installInput } from './input/controller';
 import { registerServiceWorker } from './pwa/install';
+import { keepScreenOn } from './pwa/wakeLock';
 import './styles.css';
 
 // The menu draws with three.js; the play page leaves all of it out, so the
@@ -15,6 +16,7 @@ const PlayScreen = lazy(() => import('./play/PlayScreen').then((module) => ({ de
 
 installInput();
 registerServiceWorker();
+keepScreenOn();
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
