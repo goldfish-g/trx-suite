@@ -44,7 +44,7 @@ export function registerContentRoutes(app: FastifyInstance, context: Context): v
             throw new HttpError(
                 403,
                 'locked',
-                `Sign in with Steam or GOG with an account that owns ${archive.game.title} to download it.`,
+                `Sign in with a Steam account that owns ${archive.game.title} to download it.`,
             );
         }
         // private: the answer depends on who asks, so shared caches must not

@@ -135,7 +135,7 @@ export function GameSheet({ item, status, onClose, onSignIn }: Props) {
                         <p className="notice">
                             <LockIcon />
                             <span>
-                                Sign in with Steam or GOG with an account that owns {game.title}
+                                Sign in with a Steam account that owns {game.title}
                                 {game.mod === 'tr3-la' ? ' (it comes with Tomb Raider I–III Remastered)' : ' or its remaster'} to
                                 download it here.
                             </span>

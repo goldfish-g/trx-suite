@@ -1,4 +1,4 @@
-// Calls to Steam and GOG. Their failures become HttpErrors the player can
+// Calls to Steam. Their failures become HttpErrors the player can
 // read; the request URL is never part of one, because Steam's carries our
 // API key.
 
@@ -9,7 +9,7 @@ export type Fetch = typeof globalThis.fetch;
 const TIMEOUT_MS = 15_000;
 
 export interface Upstream {
-    /** Who answered, for messages: "Steam", "GOG". */
+    /** Who answered, for messages: "Steam". */
     service: string;
     /** The ApiError code for "could not reach them". */
     code: string;

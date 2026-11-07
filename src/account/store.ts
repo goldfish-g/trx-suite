@@ -7,7 +7,6 @@ import type {
     ApiError,
     CatalogEntry,
     CatalogResponse,
-    GogStartResponse,
     MeResponse,
     PollResponse,
     Provider,
@@ -167,16 +166,6 @@ export async function startSteamSignIn(): Promise<SignInHandle> {
             popup?.close();
         },
     };
-}
-
-/** The GOG page to sign in on; GOG then shows a page whose address the player pastes back. */
-export async function gogSignInUrl(): Promise<string> {
-    return (await api<GogStartResponse>('/api/auth/gog/start')).url;
-}
-
-export async function completeGogSignIn(input: string): Promise<MeResponse> {
-    const me = await api<MeResponse>('/api/auth/gog/complete', { method: 'POST', body: JSON.stringify({ input }) });
-    return signedIn(me);
 }
 
 export async function unlinkAccount(provider: Provider): Promise<void> {

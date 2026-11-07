@@ -70,8 +70,8 @@ Lost Artifact's last level, so without `tr3-la` the ring draws a hand.
 
 - everyone, for Unfinished Business (`tr1-ub`) and The Golden Mask
   (`tr2-gm`), which their publisher gave away;
-- players signed in with a Steam or GOG account that owns the game, for the
-  rest. Which store products unlock which game is set in `shared/games.ts`:
+- players signed in with a Steam account that owns the game, for the
+  rest. Which Steam apps unlock which game is set in `shared/games.ts`:
   The Lost Artifact, for example, comes only with the remastered I–III.
 
 The server checks on every request, each Range request of a download
@@ -91,7 +91,6 @@ Engine builds, flyby levels and the ring's objects go to everyone.
 | `SESSION_SECRET_FILE` | none | A file holding the session secret instead. |
 | `STEAM_API_KEY` | none | A Steam Web API key (<https://steamcommunity.com/dev/apikey>). Steam sign-in is off without it. |
 | `STEAM_API_KEY_FILE` | none | A file holding the key instead, such as a mounted Docker secret, which keeps it out of the container's environment. |
-| `GOG_CLIENT_ID`, `GOG_CLIENT_SECRET` | GOG Galaxy's | The OAuth client GOG sign-in uses. GOG offers none to third parties, so the default is GOG Galaxy's public one, as Heroic, Lutris and lgogdownloader use. |
 | `DATA_DIR` | `./data` | This directory. |
 | `ENGINES_DIR` | `$DATA_DIR/engines` | The engine builds. Without `manifest.json` in it, its subdirectories are the versions. |
 | `STATIC_DIR` | `./dist` | The built page (`pnpm build`). |
@@ -109,12 +108,6 @@ polling. Steam only tells the server what an account owns when the profile's
 *Game details* are public (Steam → Edit Profile → Privacy Settings); otherwise
 the account signs in owning nothing, and the app can say why.
 
-**GOG** has no sign-in for other sites. The app opens GOG Galaxy's sign-in
-page; after signing in, GOG shows a mostly blank page whose address carries a
-one-time code, and the player pastes that address into the app. The server
-trades the code for a token, reads the account's name and games, and forgets
-the token.
-
 ## Running
 
 ```bash
@@ -128,8 +121,8 @@ leave the `Cross-Origin-*` headers alone, and do not compress or buffer
 
 ## Legal
 
-The server sends a game's files only to players who have shown, through Steam
-or GOG, that they own that game, and the free expansions to everyone. That
+The server sends a game's files only to players who have shown, through
+Steam, that they own that game, and the free expansions to everyone. That
 limits who receives them; it does not give you the right to distribute them.
 Hosting the games' files for others still needs permission from their rights
 holders. The same goes for the background levels and the ring's objects,

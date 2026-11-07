@@ -4,14 +4,6 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-/**
- * GOG offers no OAuth to third parties, so sign-in borrows the GOG Galaxy
- * client's public credentials, as Heroic, Lutris and lgogdownloader do.
- * They ship inside every Galaxy install and are not a secret of ours.
- */
-export const GOG_GALAXY_CLIENT_ID = '46899977096215655';
-export const GOG_GALAXY_CLIENT_SECRET = '9d85c43b1482497dbbce61f6e4aa173a433796eeae2ca8c5f6129f2dc4de46d9';
-
 export interface Config {
     port: number;
     host: string;
@@ -21,8 +13,6 @@ export interface Config {
     sessionSecret: string;
     /** Steam sign-in needs a Web API key to ask what an account owns. */
     steamApiKey: string | undefined;
-    gogClientId: string;
-    gogClientSecret: string;
     /** Holds catalog.json; paths inside it resolve against this. */
     dataDir: string;
     enginesDir: string;
@@ -136,8 +126,6 @@ export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): LoadedC
             publicUrl,
             sessionSecret,
             steamApiKey,
-            gogClientId: nonEmpty(env.GOG_CLIENT_ID) ?? GOG_GALAXY_CLIENT_ID,
-            gogClientSecret: nonEmpty(env.GOG_CLIENT_SECRET) ?? GOG_GALAXY_CLIENT_SECRET,
             dataDir,
             enginesDir: resolve(cwd, nonEmpty(env.ENGINES_DIR) ?? resolve(dataDir, 'engines')),
             staticDir: resolve(cwd, nonEmpty(env.STATIC_DIR) ?? 'dist'),

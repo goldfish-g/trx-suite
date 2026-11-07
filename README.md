@@ -39,9 +39,9 @@ menu, store sign-in and offline support.
   turns with a swipe, the wheel or its arrows.
 - **Who may download what.** The server holds every game but sends only
   Unfinished Business and The Golden Mask, which their publisher gave away,
-  to everyone. The others unlock when the player signs in with a Steam or GOG
+  to everyone. The others unlock when the player signs in with a Steam
   account that owns them, or their remaster. Anyone can add the files of
-  their own copy instead, which never leave the device.
+  their own copy instead, bought anywhere, which never leave the device.
 - **Offline.** A service worker keeps the app and the background levels;
   engine builds and game files stay in the browser (Cache Storage and
   IndexedDB). Downloads resume after a reload or a dropped connection.
@@ -97,15 +97,16 @@ finds there. Browser tests of whole flows are in [e2e/](e2e/README.md).
 
 ## Sign-in
 
-- **Steam** uses OpenID to learn the account, then the Web API
-  (`IPlayerService/GetOwnedGames`, which needs `STEAM_API_KEY`) for what it
-  owns. Steam only answers for profiles whose game details are public; the
-  app tells the player when that is the problem. The app polls the server
-  while the player signs in on Steam's page, so it also works where that
-  page opens outside an installed app.
-- **GOG** has no sign-in for other sites. The app opens GOG's own login (the
-  one GOG Galaxy and Heroic use); GOG then shows a blank page whose address
-  the player pastes back into the app.
+Steam uses OpenID to learn the account, then the Web API
+(`IPlayerService/GetOwnedGames`, which needs `STEAM_API_KEY`) for what it
+owns. Steam only answers for profiles whose game details are public; the app
+tells the player when that is the problem. The app polls the server while
+the player signs in on Steam's page, so it also works where that page opens
+outside an installed app.
+
+GOG has no sign-in that sends players back to another site, only to its own
+pages, which a web page cannot read; GOG owners bring the files of their own
+copy instead.
 
 What an account owns is kept in a signed session cookie; signing in again
 refreshes it. The server checks it on every download request.

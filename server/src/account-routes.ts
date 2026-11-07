@@ -1,9 +1,8 @@
-// Who the player is: the session, and signing in with Steam, GOG or (in
-// tests) a made-up account.
+// Who the player is: the session, and signing in with Steam or (in tests)
+// a made-up account.
 
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type {
-    GogStartResponse,
     LinkedAccount,
     MeResponse,
     MockLoginRequest,
@@ -13,13 +12,12 @@ import type {
 } from '../../shared/api.ts';
 import type { Context } from './app.ts';
 import { HttpError, badRequest } from './errors.ts';
-import { extractGogCode, fetchGogAccount, gogLoginUrl } from './gog.ts';
 import { authResultPage } from './pages.ts';
 import { buildMe, mergeAccount, readAccounts, writeAccounts } from './session.ts';
 import { fetchSteamAccount, steamLoginUrl, verifySteamAssertion } from './steam.ts';
 
 function isProvider(value: unknown): value is Provider {
-    return value === 'steam' || value === 'gog';
+    return value === 'steam';
 }
 
 function bodyObject(request: FastifyRequest): Record<string, unknown> {
@@ -120,30 +118,12 @@ export function registerAccountRoutes(app: FastifyInstance, context: Context): v
         return { status: 'done', me: buildMe(accounts, config) };
     });
 
-    // --- GOG ---------------------------------------------------------------
-
-    app.get('/api/auth/gog/start', async (): Promise<GogStartResponse> => ({ url: gogLoginUrl(config.gogClientId) }));
-
-    app.post('/api/auth/gog/complete', async (request, reply): Promise<MeResponse> => {
-        const code = extractGogCode(bodyObject(request).input);
-        let account: LinkedAccount;
-        try {
-            account = await fetchGogAccount(code, config.gogClientId, config.gogClientSecret, context.fetch, context.now());
-        } catch (error) {
-            if (error instanceof HttpError && error.statusCode >= 500) request.log.warn({ err: error }, 'GOG sign-in failed');
-            throw error;
-        }
-        const accounts = mergeAccount(readAccounts(request, config), account);
-        writeAccounts(request, reply, accounts, config);
-        return buildMe(accounts, config);
-    });
-
     // --- Made-up accounts, for end-to-end tests ----------------------------
 
     if (config.authMock) {
         app.post('/api/auth/mock', async (request, reply): Promise<MeResponse> => {
             const body = bodyObject(request) as Partial<Record<keyof MockLoginRequest, unknown>>;
-            if (!isProvider(body.provider)) throw badRequest('provider must be "steam" or "gog".');
+            if (!isProvider(body.provider)) throw badRequest('provider must be "steam".');
             // Capped so the session cookie stays under the browsers' 4 KB limit.
             if (!Array.isArray(body.owned) || body.owned.length > 50 || !body.owned.every((id) => Number.isSafeInteger(id))) {
                 throw badRequest('owned must be a list of store ids.');
@@ -152,7 +132,7 @@ export function registerAccountRoutes(app: FastifyInstance, context: Context): v
             const account: LinkedAccount = {
                 provider: body.provider,
                 id: `mock-${body.provider}`,
-                name: (body.name as string | undefined)?.slice(0, 64) || `Mock ${body.provider === 'steam' ? 'Steam' : 'GOG'} player`,
+                name: (body.name as string | undefined)?.slice(0, 64) || 'Mock Steam player',
                 checkedAt: new Date(context.now()).toISOString(),
                 owned: body.owned as number[],
             };

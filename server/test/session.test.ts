@@ -2,12 +2,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { MeResponse } from '../../shared/api.ts';
-import { GOG, STEAM } from '../../shared/games.ts';
+import { STEAM } from '../../shared/games.ts';
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS, mergeAccount, signSession, unlockedIds, verifySession } from '../src/session.ts';
-import { TEST_SECRET, account, makeApp, makeFixture, sessionCookies, type Fixture } from './helpers.ts';
+import { TEST_SECRET, account, makeApp, makeFixture, oldGogAccount, sessionCookies, type Fixture } from './helpers.ts';
 
 describe('session tokens', () => {
-    const accounts = [account('steam', [STEAM.remasteredI_III], { avatarUrl: 'https://example.com/a.jpg' }), account('gog', [GOG.tr4])];
+    const accounts = [account('steam', [STEAM.remasteredI_III], { avatarUrl: 'https://example.com/a.jpg' })];
 
     it('round-trips the accounts', () => {
         expect(verifySession(signSession(accounts, TEST_SECRET), TEST_SECRET)).toEqual(accounts);
@@ -46,10 +46,12 @@ describe('session tokens', () => {
 
     it('keeps one account per store', () => {
         const merged = mergeAccount(accounts, account('steam', [STEAM.tr1], { id: '76561198000000002' }));
-        expect(merged.map((a) => [a.provider, a.id])).toEqual([
-            ['gog', '48628349957132247'],
-            ['steam', '76561198000000002'],
-        ]);
+        expect(merged.map((a) => [a.provider, a.id])).toEqual([['steam', '76561198000000002']]);
+    });
+
+    it('drops the GOG account a session signed before GOG sign-in went holds', () => {
+        const token = signSession([...accounts, oldGogAccount([1207663513])], TEST_SECRET);
+        expect(verifySession(token, TEST_SECRET)).toEqual(accounts);
     });
 });
 
@@ -68,12 +70,9 @@ describe('unlocks', () => {
         expect(unlockedIds([account('steam', [STEAM.tr3])])).toEqual(['tr3', 'tr1-ub', 'tr2-gm']);
     });
 
-    it('unlocks IV for GOG Tomb Raider 4', () => {
-        expect(unlockedIds([account('gog', [GOG.tr4])])).toEqual(['tr4', 'tr1-ub', 'tr2-gm']);
-    });
-
-    it('does not let a Steam id count as a GOG product', () => {
-        expect(unlockedIds([account('gog', [STEAM.tr1])])).toEqual(['tr1-ub', 'tr2-gm']);
+    it('unlocks IV for Steam Tomb Raider IV or its remaster', () => {
+        expect(unlockedIds([account('steam', [STEAM.tr4])])).toEqual(['tr4', 'tr1-ub', 'tr2-gm']);
+        expect(unlockedIds([account('steam', [STEAM.remasteredIV_VI])])).toEqual(['tr4', 'tr1-ub', 'tr2-gm']);
     });
 });
 
@@ -100,16 +99,16 @@ describe('the session cookie over HTTP', () => {
     });
 
     it('reads a genuine cookie', async () => {
-        const response = await app.inject({ url: '/api/me', cookies: sessionCookies([account('gog', [GOG.tr4])]) });
+        const response = await app.inject({ url: '/api/me', cookies: sessionCookies([account('steam', [STEAM.tr4])]) });
         const me = response.json<MeResponse>();
         expect(me.accounts).toHaveLength(1);
         expect(me.unlocked).toContain('tr4');
-        expect(me.providers).toEqual({ steam: true, gog: true, mock: false });
+        expect(me.providers).toEqual({ steam: true, mock: false });
     });
 
     it('sets HttpOnly, SameSite=Lax, Path=/, 180 days, and Secure only over https', async () => {
         const mockApp = await makeApp(fixture, { authMock: true });
-        const body = { provider: 'gog', owned: [] };
+        const body = { provider: 'steam', owned: [] };
         const plain = await mockApp.inject({ method: 'POST', url: '/api/auth/mock', payload: body });
         const header = String(plain.headers['set-cookie']);
         expect(header).toContain(`${SESSION_COOKIE}=`);

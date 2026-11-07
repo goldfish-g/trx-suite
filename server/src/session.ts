@@ -57,7 +57,7 @@ export function verifySession(token: string | undefined, secret: string, now = D
 }
 
 function isProvider(value: unknown): value is Provider {
-    return value === 'steam' || value === 'gog';
+    return value === 'steam';
 }
 
 function sanitizeAccount(value: unknown): LinkedAccount | null {
@@ -85,7 +85,6 @@ export function mergeAccount(accounts: readonly LinkedAccount[], account: Linked
 export function ownershipOf(accounts: readonly LinkedAccount[]): Ownership {
     return {
         steamApps: accounts.filter((account) => account.provider === 'steam').flatMap((account) => account.owned),
-        gogProducts: accounts.filter((account) => account.provider === 'gog').flatMap((account) => account.owned),
     };
 }
 
@@ -99,7 +98,7 @@ export function buildMe(accounts: LinkedAccount[], config: Config): MeResponse {
     return {
         accounts,
         unlocked: unlockedIds(accounts),
-        providers: { steam: config.steamApiKey !== undefined, gog: true, mock: config.authMock },
+        providers: { steam: config.steamApiKey !== undefined, mock: config.authMock },
     };
 }
 

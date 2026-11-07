@@ -463,7 +463,7 @@ export function statusLine(status: ItemStatus): string {
                 ? `Free download · ${formatBytes(status.entry.sizeBytes)}`
                 : `Yours to download · ${formatBytes(status.entry.sizeBytes)}`;
         case 'locked':
-            return 'Sign in with Steam or GOG to unlock';
+            return 'Sign in with Steam to unlock';
         case 'own-copy':
             return 'Add the files from your own copy';
         case 'custom':

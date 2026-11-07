@@ -8,8 +8,8 @@ export type EngineNumber = 1 | 2 | 3 | 4;
 export type GameAccess =
     /** Released by its publisher for free, so anyone may download it. */
     | { kind: 'free' }
-    /** Downloadable for players who own one of these store products. */
-    | { kind: 'owned'; steamApps: readonly number[]; gogProducts: readonly number[] };
+    /** Downloadable for players whose Steam account owns one of these apps. */
+    | { kind: 'owned'; steamApps: readonly number[] };
 
 export interface OfficialGame {
     /** Catalog id and the directory the engine reads it from, games/<mod>/. */
@@ -34,19 +34,8 @@ export const STEAM = {
     remasteredIV_VI: 2525380,
 } as const;
 
-/** GOG product ids. Packs grant their games' ids too; they are listed in case one does not. */
-export const GOG = {
-    tr1: 1207663463,
-    tr2: 1207663483,
-    tr3: 1207663493,
-    tr4: 1207663513,
-    remasteredI_III: 1407750955,
-    remasteredIV_VI: 1288534304,
-    remasteredI_VI: 1446538488,
-} as const;
-
-function owned(steamApps: number[], gogProducts: number[]): GameAccess {
-    return { kind: 'owned', steamApps, gogProducts };
+function owned(steamApps: number[]): GameAccess {
+    return { kind: 'owned', steamApps };
 }
 
 /**
@@ -61,7 +50,7 @@ export const OFFICIAL_GAMES: readonly OfficialGame[] = [
         title: 'Tomb Raider',
         shortTitle: 'Tomb Raider',
         year: 1996,
-        access: owned([STEAM.tr1, STEAM.remasteredI_III], [GOG.tr1, GOG.remasteredI_III, GOG.remasteredI_VI]),
+        access: owned([STEAM.tr1, STEAM.remasteredI_III]),
     },
     {
         mod: 'tr2',
@@ -69,7 +58,7 @@ export const OFFICIAL_GAMES: readonly OfficialGame[] = [
         title: 'Tomb Raider II',
         shortTitle: 'Tomb Raider II',
         year: 1997,
-        access: owned([STEAM.tr2, STEAM.remasteredI_III], [GOG.tr2, GOG.remasteredI_III, GOG.remasteredI_VI]),
+        access: owned([STEAM.tr2, STEAM.remasteredI_III]),
     },
     {
         mod: 'tr3',
@@ -77,7 +66,7 @@ export const OFFICIAL_GAMES: readonly OfficialGame[] = [
         title: 'Tomb Raider III',
         shortTitle: 'Tomb Raider III',
         year: 1998,
-        access: owned([STEAM.tr3, STEAM.remasteredI_III], [GOG.tr3, GOG.remasteredI_III, GOG.remasteredI_VI]),
+        access: owned([STEAM.tr3, STEAM.remasteredI_III]),
     },
     {
         mod: 'tr4',
@@ -85,7 +74,7 @@ export const OFFICIAL_GAMES: readonly OfficialGame[] = [
         title: 'The Last Revelation',
         shortTitle: 'Tomb Raider IV',
         year: 1999,
-        access: owned([STEAM.tr4, STEAM.remasteredIV_VI], [GOG.tr4, GOG.remasteredIV_VI, GOG.remasteredI_VI]),
+        access: owned([STEAM.tr4, STEAM.remasteredIV_VI]),
     },
     {
         mod: 'tr1-ub',
@@ -112,7 +101,7 @@ export const OFFICIAL_GAMES: readonly OfficialGame[] = [
         shortTitle: 'Lost Artifact',
         year: 2000,
         expansionOf: 'tr3',
-        access: owned([STEAM.remasteredI_III], [GOG.remasteredI_III, GOG.remasteredI_VI]),
+        access: owned([STEAM.remasteredI_III]),
     },
 ];
 
@@ -123,24 +112,15 @@ export function findOfficialGame(mod: string): OfficialGame | undefined {
 /** What a player has proven to own, as the server checked it. */
 export interface Ownership {
     steamApps: readonly number[];
-    gogProducts: readonly number[];
 }
 
 /** Whether a player may download a game from the server. */
 export function isUnlocked(game: OfficialGame, ownership: Ownership): boolean {
     if (game.access.kind === 'free') return true;
-    const { steamApps, gogProducts } = game.access;
-    return (
-        steamApps.some((app) => ownership.steamApps.includes(app)) ||
-        gogProducts.some((product) => ownership.gogProducts.includes(product))
-    );
+    return game.access.steamApps.some((app) => ownership.steamApps.includes(app));
 }
 
 /** Every Steam app that unlocks something, to ask Steam about just those. */
 export const RELEVANT_STEAM_APPS: readonly number[] = [
     ...new Set(OFFICIAL_GAMES.flatMap((game) => (game.access.kind === 'owned' ? game.access.steamApps : []))),
-];
-
-export const RELEVANT_GOG_PRODUCTS: readonly number[] = [
-    ...new Set(OFFICIAL_GAMES.flatMap((game) => (game.access.kind === 'owned' ? game.access.gogProducts : []))),
 ];

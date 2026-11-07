@@ -106,6 +106,6 @@ export const ExternalIcon = () => (
 );
 
 /** A neutral mark for a store, in its initials: logos are their owners' to use. */
-export function StoreMark({ provider }: { provider: 'steam' | 'gog' }) {
-    return <span className={`store-mark store-mark--${provider}`}>{provider === 'steam' ? 'S' : 'G'}</span>;
+export function StoreMark({ provider }: { provider: 'steam' }) {
+    return <span className={`store-mark store-mark--${provider}`}>S</span>;
 }

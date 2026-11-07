@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { ApiError, CatalogResponse, FlybyManifest } from '../../shared/api.ts';
-import { GOG, STEAM } from '../../shared/games.ts';
+import { STEAM } from '../../shared/games.ts';
 import { parseRange } from '../src/files.ts';
-import { ARCHIVE, LEVEL, account, makeApp, makeFixture, sessionCookies, type Fixture } from './helpers.ts';
+import { ARCHIVE, LEVEL, account, makeApp, makeFixture, oldGogAccount, sessionCookies, type Fixture } from './helpers.ts';
 
 let fixture: Fixture;
 let app: FastifyInstance;
@@ -21,7 +21,6 @@ afterAll(async () => {
 });
 
 const remastered = sessionCookies([account('steam', [STEAM.remasteredI_III])]);
-const gogTr4 = sessionCookies([account('gog', [GOG.tr4])]);
 
 async function catalog(cookies?: Record<string, string>) {
     const response = await app.inject({ url: '/api/catalog', ...(cookies ? { cookies } : {}) });
@@ -54,15 +53,15 @@ describe('GET /api/catalog', () => {
         expect(entries.tr4?.unlocked).toBe(false);
     });
 
-    it('unlocks tr4 for GOG Tomb Raider 4', async () => {
-        const entries = await catalog(gogTr4);
-        expect(entries.tr4?.unlocked).toBe(true);
-        expect(entries.tr1?.unlocked).toBe(false);
+    it('unlocks everything for both remasters', async () => {
+        const entries = await catalog(sessionCookies([account('steam', [STEAM.remasteredI_III, STEAM.remasteredIV_VI])]));
+        expect(Object.values(entries).every((entry) => entry.unlocked)).toBe(true);
     });
 
-    it('combines Steam and GOG accounts', async () => {
-        const entries = await catalog(sessionCookies([account('steam', [STEAM.remasteredI_III]), account('gog', [GOG.tr4])]));
-        expect(Object.values(entries).every((entry) => entry.unlocked)).toBe(true);
+    it('unlocks nothing for a GOG account an old session still holds', async () => {
+        // GOG Tomb Raider 4's product id.
+        const entries = await catalog(sessionCookies([oldGogAccount([1207663513])]));
+        expect(entries.tr4?.unlocked).toBe(false);
     });
 });
 
@@ -72,7 +71,7 @@ describe('GET /api/gamedata/:id', () => {
         expect(response.statusCode).toBe(403);
         expect(response.json<ApiError>()).toEqual({
             error: 'locked',
-            message: 'Sign in with Steam or GOG with an account that owns Tomb Raider to download it.',
+            message: 'Sign in with a Steam account that owns Tomb Raider to download it.',
         });
         expect(response.headers['cross-origin-embedder-policy']).toBe('require-corp');
     });
@@ -194,7 +193,7 @@ describe('GET /api/me', () => {
         expect(response.json()).toEqual({
             accounts: [],
             unlocked: ['tr1-ub', 'tr2-gm'],
-            providers: { steam: true, gog: true, mock: false },
+            providers: { steam: true, mock: false },
         });
         expect(response.headers['cache-control']).toBe('private, no-cache');
     });

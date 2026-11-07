@@ -24,7 +24,7 @@ import { createRingModels, type RingModelSet } from './ring.ts';
 import type { Fetch } from './upstream.ts';
 
 export interface AppDeps {
-    /** Reaches Steam and GOG; tests pass a fake. */
+    /** Reaches Steam; tests pass a fake. */
     fetch?: Fetch;
     now?: () => number;
     logger?: FastifyServerOptions['logger'];

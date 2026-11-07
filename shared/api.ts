@@ -22,7 +22,7 @@ export interface CatalogEntry {
     unlocked: boolean;
 }
 
-export type Provider = 'steam' | 'gog';
+export type Provider = 'steam';
 
 /** A store account the player signed in with. */
 export interface LinkedAccount {
@@ -49,7 +49,7 @@ export interface MeResponse {
     /** The catalog ids this player may download. */
     unlocked: string[];
     /** Which sign-in methods the server offers. */
-    providers: { steam: boolean; gog: boolean; mock: boolean };
+    providers: { steam: boolean; mock: boolean };
 }
 
 /** POST /api/auth/steam/start */
@@ -65,17 +65,6 @@ export type PollResponse =
     | { status: 'pending' }
     | { status: 'done'; me: MeResponse }
     | { status: 'error'; message: string };
-
-/** GET /api/auth/gog/start */
-export interface GogStartResponse {
-    /** Open this page for the player to sign in on GOG. */
-    url: string;
-}
-
-/** POST /api/auth/gog/complete, with the address GOG ended on, or its code. */
-export interface GogCompleteRequest {
-    input: string;
-}
 
 /** POST /api/auth/mock, offered only when the server runs with AUTH_MOCK=1. */
 export interface MockLoginRequest {

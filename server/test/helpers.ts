@@ -1,5 +1,5 @@
 // A throwaway data directory and built page, an app over them, and a fake
-// fetch standing in for Steam and GOG.
+// fetch standing in for Steam.
 
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -83,8 +83,6 @@ export function testConfig(fixture: Fixture, overrides: Partial<Config> = {}): C
         publicUrl: 'http://localhost:3002',
         sessionSecret: TEST_SECRET,
         steamApiKey: 'STEAM-KEY',
-        gogClientId: 'gog-client',
-        gogClientSecret: 'gog-secret',
         dataDir: fixture.dataDir,
         enginesDir: fixture.enginesDir,
         staticDir: fixture.staticDir,
@@ -102,12 +100,17 @@ export function makeApp(fixture: Fixture, overrides: Partial<Config> = {}, deps:
 export function account(provider: Provider, owned: number[], extra: Partial<LinkedAccount> = {}): LinkedAccount {
     return {
         provider,
-        id: provider === 'steam' ? '76561198000000001' : '48628349957132247',
-        name: provider === 'steam' ? 'Lara' : 'Winston',
+        id: '76561198000000001',
+        name: 'Lara',
         checkedAt: '2026-11-05T12:00:00.000Z',
         owned,
         ...extra,
     };
+}
+
+/** A GOG account, as sessions signed before GOG sign-in went still hold. */
+export function oldGogAccount(owned: number[]): LinkedAccount {
+    return { ...account('steam', owned, { id: '48628349957132247', name: 'Winston' }), provider: 'gog' as LinkedAccount['provider'] };
 }
 
 /** Cookies for inject() that sign the player in with these accounts. */

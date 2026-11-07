@@ -876,10 +876,6 @@ select {
     background: linear-gradient(135deg, #1b2838, #2a475e);
 }
 
-.store-mark--gog {
-    background: linear-gradient(135deg, #5c2d91, #86328a);
-}
-
 .confirm {
     padding: 12px 14px;
     border: 1px solid rgba(232, 128, 106, 0.35);

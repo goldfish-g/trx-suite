@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { ApiError, MeResponse, PollResponse, SteamStartResponse } from '../../shared/api.ts';
-import { GOG, RELEVANT_STEAM_APPS, STEAM } from '../../shared/games.ts';
+import { RELEVANT_STEAM_APPS, STEAM } from '../../shared/games.ts';
 import { SESSION_COOKIE } from '../src/session.ts';
 import {
     account,
@@ -195,17 +195,18 @@ describe('the Steam sign-in round trip', () => {
         expect(again.json<PollResponse>().status).toBe('error');
     });
 
-    it('adds the Steam account to the session the app already has', async () => {
+    it('replaces the Steam account the session already has', async () => {
         const { app: server } = await steamApp();
         const { state, returnTo } = await start(server);
         await server.inject({ url: callbackUrl(returnTo) });
         const response = await server.inject({
             url: `/api/auth/poll?state=${state}`,
-            cookies: sessionCookies([account('gog', [GOG.tr4])]),
+            cookies: sessionCookies([account('steam', [STEAM.tr4], { id: '76561198000000099', name: 'Someone else' })]),
         });
         const me = (response.json<PollResponse>() as { me: MeResponse }).me;
-        expect(me.accounts.map((a) => a.provider).sort()).toEqual(['gog', 'steam']);
-        expect(me.unlocked).toEqual(expect.arrayContaining(['tr1', 'tr4']));
+        expect(me.accounts).toHaveLength(1);
+        expect(me.accounts[0]?.id).not.toBe('76561198000000099');
+        expect(me.unlocked).toContain('tr1');
     });
 
     it('records a private profile as owning nothing', async () => {

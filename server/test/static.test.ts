@@ -133,7 +133,6 @@ describe('loadConfig', () => {
             enginesDir: '/srv/trx/data/engines',
             staticDir: '/srv/trx/dist',
             steamApiKey: undefined,
-            gogClientId: '46899977096215655',
             authMock: false,
         });
         expect(config.sessionSecret.length).toBeGreaterThanOrEqual(32);
@@ -149,8 +148,6 @@ describe('loadConfig', () => {
                 ENGINES_DIR: 'builds',
                 SESSION_SECRET: 'x'.repeat(40),
                 STEAM_API_KEY: 'KEY',
-                GOG_CLIENT_ID: 'id',
-                GOG_CLIENT_SECRET: 'secret',
                 AUTH_MOCK: '1',
             },
             '/srv/trx',
@@ -162,8 +159,6 @@ describe('loadConfig', () => {
             enginesDir: '/srv/trx/builds',
             sessionSecret: 'x'.repeat(40),
             steamApiKey: 'KEY',
-            gogClientId: 'id',
-            gogClientSecret: 'secret',
             authMock: true,
         });
     });
