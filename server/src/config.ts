@@ -22,6 +22,9 @@ export interface Config {
     authMock: boolean;
     httpsKeyFile: string | undefined;
     httpsCertFile: string | undefined;
+    /** TRCustoms, which the custom levels browser lists, and where its images live. */
+    trcustomsUrl: string;
+    trcustomsMediaUrl: string;
 }
 
 export class ConfigError extends Error {}
@@ -132,6 +135,8 @@ export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): LoadedC
             authMock,
             httpsKeyFile: httpsKeyFile && resolve(cwd, httpsKeyFile),
             httpsCertFile: httpsCertFile && resolve(cwd, httpsCertFile),
+            trcustomsUrl: (nonEmpty(env.TRCUSTOMS_URL) ?? 'https://trcustoms.org').replace(/\/+$/, ''),
+            trcustomsMediaUrl: (nonEmpty(env.TRCUSTOMS_MEDIA_URL) ?? 'https://data.trcustoms.org/media').replace(/\/*$/, '/'),
         },
         warnings,
     };

@@ -108,8 +108,8 @@ function isMostOf(found: number, expected: number): boolean {
 /** Why files made for the original games or an older engine need converting, if they are. */
 function conversionReason(paths: readonly string[]): string | null {
     const lower = paths.map((path) => path.toLowerCase());
-    if (lower.some((path) => /(^|\/)(tr1x|tr2x|tomb1main)_gameflow[^/]*\.json5$|(^|\/)cfg\/tr[1-3][^/]*\/gameflow\.json5$/.test(path))) {
-        return 'It was made for an older engine, TR1X, TR2X or Tomb1Main, whose game flow TRX reads differently.';
+    if (lower.some((path) => /(^|\/)(tr1x|tr2x|tomb[123]main)_gameflow[^/]*\.json5$|(^|\/)cfg\/tr[1-3][^/]*\/gameflow\.json5$/.test(path))) {
+        return 'It was made for an engine before TRX, such as TR1X or TR2X, whose game flow TRX reads differently.';
     }
     if (lower.some((path) => /(^|\/)(tombpc|script)\.dat$/.test(path))) {
         return 'It is a classic custom level, scripted for the original game in a TOMBPC.DAT file.';

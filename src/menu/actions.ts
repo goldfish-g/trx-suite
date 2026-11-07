@@ -2,12 +2,12 @@
 // custom levels. The screens only call these.
 
 import type { CatalogEntry } from '../../shared/api.ts';
-import { findOfficialGame, type OfficialGame } from '../../shared/games.ts';
+import type { OfficialGame } from '../../shared/games.ts';
 import { loadEngineVersions } from '../engine/versions';
 import { importGameData } from '../gamedata/imports';
-import { LayoutError, loneLevelPath, planLayout } from '../gamedata/layout';
+import { LayoutError, planLayout } from '../gamedata/layout';
 import type { GameDataRecord } from '../gamedata/types';
-import { customMod, ENGINE_NAMES, type EngineNumber } from '../games/catalog';
+import { ENGINE_NAMES } from '../games/catalog';
 import { detectGame, type Detection } from '../games/detect';
 import { ArchiveError, readArchive, readFolder, type ArchiveEntry } from '../lib/archive';
 import { createProfile, listProfiles } from '../profiles/store';
@@ -111,7 +111,7 @@ export function describeDetection(detection: Detection): string {
                 ? `A level file for ${ENGINE_NAMES[detection.engine]}, played on its own.`
                 : `${detection.levels.length} level files for ${ENGINE_NAMES[detection.engine]}, played one at a time.`;
         case 'convert':
-            return `${detection.reason} Convert it with the TRX Level Converter first, then add what it gives you.`;
+            return `${detection.reason} The TRX Level Converter turns it into a package of the current TRX as it is added.`;
         case 'unknown':
             return detection.reason;
     }
@@ -135,53 +135,4 @@ export async function importOwnCopy(game: OfficialGame, picked: PickedFiles): Pr
         { name: game.title, ...target, source: { kind: 'upload', name: picked.name } },
         { kind: 'files', entries: picked.entries },
     );
-}
-
-/** The official game a custom level builds on, by mod or engine. */
-export function baseGameFor(engine: EngineNumber, extendsMod: string | null): OfficialGame | undefined {
-    return findOfficialGame(extendsMod ?? `tr${engine}`);
-}
-
-/** Adds a custom level and a profile to play it. */
-export async function addCustomLevel(picked: PickedFiles, level?: string): Promise<ProfileRecord> {
-    const { detection } = picked;
-    let meta: { name: string; mod: string; engine: EngineNumber; layout: 'custom' | 'level'; startLevel?: string; runMod: string };
-    if (detection.kind === 'custom') {
-        const mod = customMod(detection.name);
-        meta = { name: detection.name, mod, engine: detection.engine, layout: 'custom', runMod: mod };
-    } else if (detection.kind === 'level') {
-        const chosen = level ?? detection.levels[0]!;
-        const fileName = chosen.slice(chosen.lastIndexOf('/') + 1).toLowerCase();
-        const title = fileName.replace(/\.[^.]+$/, '');
-        const mod = customMod(title);
-        meta = {
-            name: title,
-            mod,
-            engine: detection.engine,
-            layout: 'level',
-            startLevel: loneLevelPath(mod, fileName),
-            runMod: `tr${detection.engine}-level`,
-        };
-    } else {
-        throw new LayoutError(describeDetection(detection));
-    }
-    planLayout(picked.entries, meta);
-    const record = await importGameData(
-        {
-            name: meta.name,
-            mod: meta.mod,
-            engine: meta.engine,
-            layout: meta.layout,
-            startLevel: meta.startLevel,
-            source: { kind: 'upload', name: picked.name },
-        },
-        { kind: 'files', entries: picked.entries },
-    );
-    return createProfile({
-        name: meta.name,
-        gamedataId: record.id,
-        mod: meta.runMod,
-        engine: meta.engine,
-        engineVersion: await newestEngine(),
-    });
 }

@@ -24,11 +24,11 @@ import { createGameArtifact } from './models/game';
 import { RingLayer } from './RingLayer';
 import { loadRingModels } from './ringModels';
 import { AccountSheet } from './sheets/AccountSheet';
-import { CustomSheet } from './sheets/CustomSheet';
 import { GameSheet } from './sheets/GameSheet';
 import { SettingsSheet } from './sheets/SettingsSheet';
 import { describeError, downloadGame, playGame } from './actions';
 import { reducedMotion } from './motion';
+import { CustomLevels } from '../custom/CustomLevels';
 
 type SheetState =
     | { kind: 'game'; key: string }
@@ -189,6 +189,12 @@ export function HomeScreen() {
         statuses.forEach((status, index) => ringRef.current?.setLocked(index, isLockedLook(status)));
     }, [statuses]);
 
+    // The custom levels screen shows the level flying by through it, without the ring.
+    const customOpen = sheet?.kind === 'custom';
+    useEffect(() => {
+        if (stageRef.current !== null) stageRef.current.showForeground = !customOpen;
+    }, [customOpen]);
+
     useEffect(() => {
         try {
             localStorage.setItem(SELECTED_KEY, RING_ITEMS[selected]!.key);
@@ -346,7 +352,7 @@ export function HomeScreen() {
     const status = statuses[selected]!;
 
     return (
-        <main className="home">
+        <main className={`home ${customOpen ? 'home--custom' : ''}`}>
             <canvas ref={canvasRef} className="home__stage" aria-hidden="true" />
             <div className="home__shade" aria-hidden="true" />
             {webglError ? (
@@ -440,7 +446,7 @@ export function HomeScreen() {
                     onSignIn={() => setSheet({ kind: 'account' })}
                 />
             ) : null}
-            {sheet?.kind === 'custom' ? <CustomSheet onClose={() => setSheet(null)} /> : null}
+            {customOpen ? <CustomLevels onClose={() => setSheet(null)} /> : null}
             {sheet?.kind === 'account' ? <AccountSheet onClose={() => setSheet(null)} /> : null}
             {sheet?.kind === 'settings' ? (
                 <SettingsSheet

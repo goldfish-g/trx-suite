@@ -1,0 +1,283 @@
+// A custom level up close: its screenshots, what TRCustoms says about it,
+// and what can be done with it: download it, play it, or delete it. The
+// d-pad's left and right, or the bumpers, page through the screenshots; up
+// and down scroll the description.
+
+import { useEffect, useRef, useState } from 'react';
+import type { CustomLevelDetails, CustomLevelSummary } from '../../shared/api.ts';
+import { baseModOf } from '../engine/files';
+import { retryImport, useImports } from '../gamedata/imports';
+import type { GameDataRecord } from '../gamedata/types';
+import { findGame } from '../games/catalog';
+import { pushLayer } from '../input/controller';
+import { describeProgress, describeSource } from '../library/describe';
+import { useLibrary } from '../library/store';
+import { formatBytes } from '../ui/format';
+import { GameText } from '../ui/GameText';
+import { ChevronLeft, ChevronRight, DownloadIcon, ExternalIcon, PlayIcon, TrashIcon } from '../ui/icons';
+import { ProgressBar } from '../ui/ProgressBar';
+import { Prompt, PromptBar } from '../ui/Prompt';
+import { installFromTrcustoms, playCustomLevel, removeCustomLevel } from './actions';
+import { fetchLevelDetails } from './api';
+import { Description } from './Description';
+import { Shot, useObjectUrl } from './LevelCard';
+import { authorsLine, gameTitle, keepFocus, lengthLabel, ratingTone } from './labels';
+
+interface Props {
+    /** A level from TRCustoms, as a list showed it. */
+    summary?: CustomLevelSummary;
+    /** Or a level in the library, by its game data id. */
+    recordId?: string;
+    onClose(): void;
+}
+
+/** The library's copy of a TRCustoms level, the newest when there are several. */
+export function installedCopy(gamedata: readonly GameDataRecord[], levelId: number): GameDataRecord | undefined {
+    return gamedata.filter((record) => record.source.kind === 'trcustoms' && record.source.levelId === levelId).at(-1);
+}
+
+export function LevelDetails({ summary, recordId, onClose }: Props) {
+    const panel = useRef<HTMLDivElement>(null);
+    const info = useRef<HTMLDivElement>(null);
+    const { gamedata, levelInfo } = useLibrary();
+    const progress = useImports((state) => state.progress);
+
+    const record = recordId !== undefined ? gamedata.find((candidate) => candidate.id === recordId) : summary !== undefined ? installedCopy(gamedata, summary.id) : undefined;
+    const stored = record === undefined ? undefined : levelInfo[record.id];
+    const levelId = summary?.id ?? (record?.source.kind === 'trcustoms' ? record.source.levelId : null);
+
+    const [fetched, setFetched] = useState<CustomLevelDetails | null>(null);
+    const [problem, setProblem] = useState<string | null>(null);
+    const [confirm, setConfirm] = useState(false);
+    const [shot, setShot] = useState(0);
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        if (levelId === null) return;
+        const controller = new AbortController();
+        fetchLevelDetails(levelId, controller.signal).then(setFetched, (error: unknown) => {
+            // What the library keeps is enough offline.
+            if (!controller.signal.aborted && stored === undefined) setProblem(error instanceof Error ? error.message : String(error));
+        });
+        return () => controller.abort();
+        // The stored details only matter for whether a failure is worth showing.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [levelId]);
+
+    const details: CustomLevelDetails | undefined = fetched ?? stored?.details;
+    const level: CustomLevelSummary | undefined = details ?? summary;
+    const storedCover = useObjectUrl(stored?.cover);
+    const shots = details?.screenshots.length ? details.screenshots : [level?.cover ?? storedCover].filter((url): url is string => url !== null);
+    const shotCount = Math.max(1, shots.length);
+    const turn = (step: number) => setShot((current) => (current + step + shotCount) % shotCount);
+
+    // The panel is a layer of its own over the screen: (B) comes back here.
+    const closeRef = useRef(onClose);
+    closeRef.current = onClose;
+    const confirmRef = useRef(confirm);
+    confirmRef.current = confirm;
+    useEffect(() => {
+        const pop = pushLayer({
+            root: () => panel.current,
+            keepFocus: false,
+            onAction: (action) => {
+                switch (action) {
+                    case 'left':
+                    case 'previous':
+                        turn(-1);
+                        return true;
+                    case 'right':
+                    case 'next':
+                        turn(1);
+                        return true;
+                    case 'up':
+                    case 'down':
+                        info.current?.scrollBy({ top: action === 'up' ? -160 : 160, behavior: 'smooth' });
+                        return true;
+                    case 'back':
+                        if (confirmRef.current) {
+                            setConfirm(false);
+                            return true;
+                        }
+                        return false;
+                    default:
+                        return false;
+                }
+            },
+            onBack: () => closeRef.current(),
+        });
+        return pop;
+        // turn only reads state through its setter.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [shotCount]);
+
+    const engine = record?.engine ?? level?.game ?? null;
+    const baseMod = record !== undefined ? baseModOf(record) : engine !== null ? `tr${engine}` : null;
+    const base = baseMod === null ? undefined : findGame(baseMod);
+    const hasBase = baseMod === null || gamedata.some((candidate) => candidate.layout === 'game' && candidate.mod === baseMod && candidate.status === 'ready');
+
+    const run = async (task: () => Promise<unknown>) => {
+        setBusy(true);
+        setProblem(null);
+        try {
+            await task();
+        } catch (error) {
+            setProblem(error instanceof Error ? error.message : String(error));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    let primary = null;
+    if (record?.status === 'ready') {
+        primary = <Prompt action="confirm" label="Play" variant="primary" global icon={<PlayIcon />} disabled={busy} onPress={() => void run(() => playCustomLevel(record))} />;
+    } else if (record?.status === 'failed' && record.source.kind !== 'upload') {
+        primary = <Prompt action="confirm" label="Try again" variant="primary" global disabled={busy} onPress={() => void run(() => retryImport(record.id))} />;
+    } else if (record === undefined && level?.file !== null && level?.file !== undefined && level.game !== null) {
+        const file = level.file;
+        primary = (
+            <Prompt
+                action="confirm"
+                label={`Download · ${formatBytes(file.sizeBytes)}`}
+                variant="primary"
+                global
+                icon={<DownloadIcon />}
+                disabled={busy}
+                onPress={() => void run(() => installFromTrcustoms(details ?? level))}
+            />
+        );
+    }
+
+    const described = record?.status === 'importing' && progress[record.id] !== undefined ? describeProgress(progress[record.id]!) : null;
+    const facts: [string, string][] = [];
+    if (level !== undefined) {
+        if (level.difficulty !== null) facts.push(['Difficulty', level.difficulty]);
+        const length = lengthLabel(level.duration);
+        if (length !== null) facts.push(['Length', length]);
+        if (level.genres.length > 0) facts.push(['Genres', level.genres.join(', ')]);
+        if (details !== undefined && details.tags.length > 0) facts.push(['Tags', details.tags.join(', ')]);
+        if (level.releaseDate !== '') facts.push(['Released', new Date(level.releaseDate).toLocaleDateString(undefined, { dateStyle: 'long' })]);
+        facts.push(['Downloads', level.downloads.toLocaleString()]);
+        if (level.reviews > 0) facts.push(['Reviews', level.reviews.toLocaleString()]);
+        if (details !== undefined && details.walkthroughs > 0) facts.push(['Walkthroughs', details.walkthroughs.toLocaleString()]);
+        if (level.file !== null) facts.push(['Archive', `${formatBytes(level.file.sizeBytes)}, version ${level.file.version}`]);
+    }
+    if (record !== undefined && record.status === 'ready') {
+        facts.push(['In your library', `${formatBytes(record.sizeBytes)} · ${describeSource(record.source)}`]);
+    }
+    const newer = record?.source.kind === 'trcustoms' && level?.file !== null && level?.file !== undefined && level.file.version > record.source.version;
+
+    const name = level?.name ?? record?.name ?? 'Custom level';
+    const by = level !== undefined ? authorsLine(level) : null;
+    const current = shots[Math.min(shot, shots.length - 1)] ?? null;
+
+    return (
+        <div className="details-layer">
+            <div className="details-scrim" onClick={onClose} aria-hidden="true" />
+            <div ref={panel} className="details" role="dialog" aria-modal="true" aria-label={name}>
+                <div className="details__gallery">
+                    <Shot src={current} engine={engine} className="details__shot" />
+                    {shots.length > 1 ? (
+                        <>
+                            <button type="button" className="details__turn details__turn--left" tabIndex={-1} onMouseDown={keepFocus} aria-label="Previous screenshot" onClick={() => turn(-1)}>
+                                <ChevronLeft />
+                            </button>
+                            <button type="button" className="details__turn details__turn--right" tabIndex={-1} onMouseDown={keepFocus} aria-label="Next screenshot" onClick={() => turn(1)}>
+                                <ChevronRight />
+                            </button>
+                            <div className="details__thumbs">
+                                {shots.map((url, index) => (
+                                    <button
+                                        key={url}
+                                        type="button"
+                                        tabIndex={-1}
+                                        onMouseDown={keepFocus}
+                                        className={`details__thumb ${index === shot ? 'details__thumb--on' : ''}`}
+                                        aria-label={`Screenshot ${index + 1}`}
+                                        onClick={() => setShot(index)}
+                                    >
+                                        <img src={url} alt="" loading="lazy" draggable={false} />
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    ) : null}
+                </div>
+
+                <div className="details__info" ref={info}>
+                    <p className="details__eyebrow">{engine !== null ? gameTitle(engine) : 'Custom level'}{level?.engineName && engine === null ? ` · ${level.engineName}` : ''}</p>
+                    <h2 className="details__title">
+                        <GameText text={name} />
+                    </h2>
+                    {by !== null ? <p className="details__by">{by}</p> : null}
+                    {level !== undefined ? (
+                        <p className="details__rating">
+                            {level.rating !== null ? (
+                                <span className={`rating rating--${ratingTone(level.rating.position)}`}>{level.rating.name}</span>
+                            ) : (
+                                <span className="rating rating--none">Not rated yet</span>
+                            )}
+                        </p>
+                    ) : null}
+
+                    {described !== null || record?.status === 'importing' ? (
+                        <div className="details__progress">
+                            <ProgressBar fraction={described?.fraction ?? null} label={described?.label ?? 'Waiting to continue…'} />
+                        </div>
+                    ) : null}
+                    {record?.status === 'failed' ? <p className="notice notice--error">{record.error ?? 'Adding it failed.'}</p> : null}
+                    {!hasBase && base !== undefined ? (
+                        <p className="notice">
+                            It builds on {base.title}, which isn’t in your library. TRX takes its title screen, music and sounds from there, so it may not
+                            start without it.
+                        </p>
+                    ) : null}
+                    {newer ? <p className="notice">TRCustoms has a newer version of it. Delete this one and download it again to update.</p> : null}
+                    {problem !== null ? <p className="notice notice--error">{problem}</p> : null}
+
+                    {facts.length > 0 ? (
+                        <dl className="details__facts">
+                            {facts.map(([term, value]) => (
+                                <div key={term} className="details__fact">
+                                    <dt>{term}</dt>
+                                    <dd>{value}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                    ) : null}
+                    {details !== undefined ? <Description text={details.description} /> : levelId !== null && problem === null ? <p className="details__loading">Loading the description…</p> : null}
+                </div>
+
+                <PromptBar className="details__prompts">
+                    {confirm && record !== undefined ? (
+                        <>
+                            <span className="details__ask">{record.status === 'importing' ? 'Stop adding it?' : 'Delete it with its saves?'}</span>
+                            <Prompt
+                                action="confirm"
+                                label={record.status === 'importing' ? 'Stop' : 'Delete'}
+                                variant="danger"
+                                global
+                                onPress={() => {
+                                    setConfirm(false);
+                                    void run(() => removeCustomLevel(record));
+                                }}
+                            />
+                            <Prompt action="back" label="Keep" global onPress={() => setConfirm(false)} />
+                        </>
+                    ) : (
+                        <>
+                            {primary}
+                            {details?.pageUrl !== undefined ? (
+                                <Prompt action="alternate" label="TRCustoms page" global icon={<ExternalIcon />} onPress={() => window.open(details.pageUrl, '_blank', 'noopener')} />
+                            ) : null}
+                            {record !== undefined ? (
+                                <Prompt action="extra" label={record.status === 'importing' ? 'Stop' : 'Delete'} global icon={<TrashIcon />} onPress={() => setConfirm(true)} />
+                            ) : null}
+                            <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />
+                        </>
+                    )}
+                </PromptBar>
+            </div>
+        </div>
+    );
+}

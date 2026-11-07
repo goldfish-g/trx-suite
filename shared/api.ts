@@ -80,6 +80,71 @@ export interface ApiError {
     message: string;
 }
 
+// ------------------------------------------------------------ custom levels
+
+/**
+ * The games whose custom levels the app lists from TRCustoms: the ones the
+ * TRX Level Converter turns into packages TRX plays.
+ */
+export type CustomLevelGame = 1 | 2 | 3;
+
+export type CustomLevelSort = 'newest' | 'rating' | 'downloads' | 'name';
+
+/** A level as the TRCustoms lists show it. */
+export interface CustomLevelSummary {
+    /** TRCustoms' id for the level. */
+    id: number;
+    name: string;
+    /** The game it was made for, by TRCustoms' engine: TR1, TR2 or TR3; null for the others. */
+    game: CustomLevelGame | null;
+    /** TRCustoms' name for that engine, such as TR1 or TEN. */
+    engineName: string;
+    authors: string[];
+    /** Easy, Medium, Hard or Very hard; older levels may have none. */
+    difficulty: string | null;
+    /** Short (<1 hour) up to Very long (6+ hours). */
+    duration: string | null;
+    /** The class its ratings earn it, such as Masterpiece or Mixed; position runs from negative to 5. */
+    rating: { name: string; position: number } | null;
+    genres: string[];
+    /** The cover, through this server, as TRCustoms' images send no CORP header. */
+    cover: string | null;
+    releaseDate: string;
+    downloads: number;
+    reviews: number;
+    /** The newest version of its archive; null when it has none. */
+    file: CustomLevelFile | null;
+}
+
+export interface CustomLevelFile {
+    /** TRCustoms' id for this version of the archive. */
+    id: number;
+    version: number;
+    sizeBytes: number;
+    /** Where to download it through this server; answers Range requests. */
+    url: string;
+}
+
+/** GET /api/trcustoms/levels/:id */
+export interface CustomLevelDetails extends CustomLevelSummary {
+    /** TRCustoms' own markup: Markdown with [o]…[/o] style colour tags. */
+    description: string;
+    tags: string[];
+    screenshots: string[];
+    walkthroughs: number;
+    lastUpdated: string;
+    /** The level's page on TRCustoms. */
+    pageUrl: string;
+}
+
+/** GET /api/trcustoms/levels?game=1&page=1&sort=newest&search=… */
+export interface CustomLevelPage {
+    levels: CustomLevelSummary[];
+    page: number;
+    pages: number;
+    total: number;
+}
+
 /** GET /flyby/manifest.json: the levels every player gets for the background. */
 export interface FlybyManifest {
     levels: FlybyLevel[];

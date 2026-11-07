@@ -13,6 +13,7 @@ export function describeProgress(progress: ImportProgress): { fraction: number |
             label: total !== null ? `Downloading ${formatBytes(done)} of ${formatBytes(total)}` : `Downloading ${formatBytes(done)}`,
         };
     }
+    if (phase === 'converting') return { fraction, label: `Converting for TRX: ${progress.step ?? 'starting'}…` };
     if (total === null) return { fraction: null, label: 'Reading the archive…' };
     return { fraction, label: `Unpacking ${formatBytes(done)} of ${formatBytes(total)}` };
 }
@@ -25,5 +26,7 @@ export function describeSource(source: GameDataSource): string {
             return `From ${source.name}`;
         case 'link':
             return `From ${new URL(source.url).host}`;
+        case 'trcustoms':
+            return `From TRCustoms, version ${source.version}`;
     }
 }

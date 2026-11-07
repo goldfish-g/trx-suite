@@ -1,6 +1,6 @@
 import { announceLibraryChange } from '../lib/changes';
 import { getDb } from '../lib/db';
-import type { GameDataFile, GameDataRecord } from './types';
+import type { GameDataFile, GameDataRecord, LevelInfoRecord } from './types';
 
 export async function listGameData(): Promise<GameDataRecord[]> {
     const db = await getDb();
@@ -50,6 +50,7 @@ export async function deleteGameData(id: string): Promise<void> {
     await deleteGameDataFiles(id);
     const db = await getDb();
     await db.delete('gamedata', id);
+    await db.delete('levelinfo', id);
     announceLibraryChange();
 }
 
@@ -63,4 +64,16 @@ export async function listGameDataPaths(gamedataId: string): Promise<string[]> {
 export async function getGameDataFile(gamedataId: string, path: string): Promise<Blob | undefined> {
     const db = await getDb();
     return (await db.get('files', [gamedataId, path]))?.blob;
+}
+
+/** What TRCustoms said about each custom level in the library. */
+export async function listLevelInfo(): Promise<LevelInfoRecord[]> {
+    const db = await getDb();
+    return db.getAll('levelinfo');
+}
+
+export async function putLevelInfo(info: LevelInfoRecord): Promise<void> {
+    const db = await getDb();
+    await db.put('levelinfo', info);
+    announceLibraryChange();
 }

@@ -1536,3 +1536,826 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
         --gs: 2;
     }
 }
+
+/* ------------------------------------------------------------ custom levels */
+
+/* src/custom: Installed and Browse, over the level flying by. Every box is
+   half see-through, so the level stays in sight; the lettering and the
+   screenshots are solid. The ring and the home screen's own text step aside. */
+
+.home--custom .home__ui {
+    visibility: hidden;
+}
+
+.home--custom .home__shade {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 30%, transparent 70%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+.custom {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.12) 190px, rgba(0, 0, 0, 0.12) calc(100% - 120px), rgba(0, 0, 0, 0.6) 100%);
+    animation: fade 180ms linear;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.custom__header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: calc(16px + var(--safe-top)) calc(20px + var(--safe-right)) 12px calc(20px + var(--safe-left));
+}
+
+.custom__tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.custom__tabs--sections .glyphs,
+.custom__tabs--games .glyphs {
+    margin: 0 6px;
+}
+
+.section-tab,
+.game-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--ink-dim);
+    font: inherit;
+    cursor: pointer;
+    opacity: 0.62;
+    transition: opacity 120ms linear;
+}
+
+.section-tab {
+    --gs: 2;
+    min-height: 54px;
+    padding: 6px 22px 8px;
+}
+
+.game-tab {
+    --gs: 1.5;
+    min-height: 42px;
+    padding: 4px 16px 6px;
+}
+
+.section-tab:hover,
+.game-tab:hover {
+    opacity: 1;
+}
+
+.section-tab--on,
+.game-tab--on {
+    background: var(--selected);
+    box-shadow: var(--frame);
+    opacity: 1;
+}
+
+.game-tab--on {
+    box-shadow: var(--frame-dim);
+}
+
+.section-tab__count,
+.game-tab__count {
+    min-width: 1.6em;
+    padding: 0 0.4em;
+    background: rgba(0, 0, 0, 0.6);
+    box-shadow: var(--frame-dim);
+    color: var(--accent-bright);
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.6;
+    text-align: center;
+    text-shadow: var(--shadow);
+}
+
+.custom__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 18px;
+    width: min(1480px, 100%);
+}
+
+.custom__tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
+.custom__search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 10px;
+    background: rgba(0, 0, 0, 0.6);
+    box-shadow:
+        inset var(--e) var(--e) 0 var(--accent-dark),
+        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--accent);
+    color: var(--accent);
+}
+
+.custom__search-input {
+    width: min(42vw, 280px);
+    min-height: 38px;
+    border: 0;
+    background: none;
+    color: var(--accent-bright);
+    font: inherit;
+    font-weight: 600;
+}
+
+.custom__search-input::placeholder {
+    color: var(--ink-faint);
+    font-weight: 400;
+}
+
+.custom__search-input:focus {
+    outline: none;
+}
+
+.custom__search:focus-within {
+    box-shadow: var(--frame-lit);
+}
+
+.custom__sorts .choice {
+    min-height: 40px;
+}
+
+.custom__body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px calc(20px + var(--safe-right)) 24px calc(20px + var(--safe-left));
+    scroll-padding: 16px;
+}
+
+.custom__count {
+    width: min(1480px, 100%);
+    margin: 0 auto 10px;
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+    text-shadow: var(--shadow);
+}
+
+.custom__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: min(560px, 100%);
+    margin: 48px auto;
+    padding: 20px 24px;
+    background: var(--box);
+    box-shadow: var(--frame-dim);
+    text-align: center;
+}
+
+.custom__prompts {
+    padding: 12px calc(20px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(20px + var(--safe-left));
+}
+
+/* ------------------------------------------------------------ level cards */
+
+.level-grid {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    gap: 16px;
+    width: min(1480px, 100%);
+    margin: 0 auto;
+    padding: 4px;
+}
+
+.level-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--box);
+    box-shadow: var(--frame-dim);
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 120ms var(--ease);
+}
+
+.level-card:hover,
+.level-card:focus-within {
+    background: var(--selected), rgba(0, 0, 0, 0.45);
+    box-shadow: var(--frame);
+}
+
+.level-card:focus-within {
+    transform: translateY(-2px);
+}
+
+.level-card__face {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* The card shows the focus itself, with its frame. */
+html[data-input='gamepad'] .level-card :focus,
+html[data-input='keyboard'] .level-card :focus,
+html[data-input='gamepad'] .level-card:focus,
+html[data-input='keyboard'] .level-card:focus {
+    outline: none;
+}
+
+html[data-input='gamepad'] .level-card:focus-within,
+html[data-input='keyboard'] .level-card:focus-within {
+    box-shadow: var(--frame-lit), 0 0 0 var(--e) #000, 0 0 18px var(--glow);
+}
+
+.shot {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    margin: calc(var(--e) * 3);
+    margin-bottom: 0;
+    background: #000;
+    box-shadow: 0 0 0 var(--e) #000;
+}
+
+.shot img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.shot__placeholder {
+    --gs: 3;
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: var(--plate);
+    font-size: 0;
+    line-height: 0;
+    opacity: 0.7;
+}
+
+.level-card__text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px 12px;
+    min-width: 0;
+}
+
+.level-card__name {
+    color: var(--accent-bright);
+    font-size: 1.05rem;
+    font-weight: 700;
+    line-height: 1.2;
+    text-shadow: var(--shadow);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.level-card__by {
+    overflow: hidden;
+    color: var(--ink-dim);
+    font-size: 0.88rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: var(--shadow);
+}
+
+.level-card__facts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    margin-top: 3px;
+    font-size: 0.9rem;
+}
+
+.level-card__meta {
+    color: var(--ink);
+    text-shadow: var(--shadow);
+}
+
+.level-card__badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px 3px;
+    background: rgba(0, 0, 0, 0.82);
+    box-shadow: var(--frame-dim);
+    color: var(--accent-bright);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-shadow: var(--shadow);
+}
+
+.level-card__badge .icon {
+    width: 0.9em;
+    height: 0.9em;
+    color: var(--ok);
+}
+
+.level-card__badge--failed {
+    box-shadow: var(--frame-danger);
+    color: var(--danger);
+}
+
+.level-card__foot {
+    padding: 0 12px 10px;
+}
+
+.level-card__status {
+    color: var(--ink-faint);
+    font-size: 0.86rem;
+}
+
+.level-card__status--error {
+    color: var(--danger);
+}
+
+.level-card__prompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0 10px 10px;
+    margin-top: auto;
+}
+
+.level-card__ask {
+    flex-basis: 100%;
+    color: #ffd6cc;
+    font-weight: 700;
+    text-shadow: var(--shadow);
+}
+
+.level-card--confirm {
+    box-shadow: var(--frame-danger);
+}
+
+/* On a gamepad or keyboard a card shows its prompts only while it has the focus. */
+html[data-input='gamepad'] .level-card:not(:focus-within) .level-card__prompts,
+html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts {
+    visibility: hidden;
+}
+
+.rating {
+    font-weight: 700;
+    text-shadow: var(--shadow);
+}
+
+.rating--best {
+    color: var(--accent-bright);
+    text-shadow: 0 0 8px var(--glow), var(--shadow);
+}
+
+.rating--good {
+    color: var(--ok);
+}
+
+.rating--mixed {
+    color: var(--ink-dim);
+}
+
+.rating--bad {
+    color: var(--danger);
+}
+
+.rating--none {
+    color: var(--ink-faint);
+    font-weight: 400;
+    font-style: italic;
+}
+
+.level-grid__more {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 72px;
+    color: var(--ink-dim);
+    text-shadow: var(--shadow);
+}
+
+.level-grid__spinner {
+    width: 18px;
+    height: 18px;
+    background: conic-gradient(var(--accent) 0 12.5%, transparent 0 25%, var(--accent) 0 37.5%, transparent 0 50%, var(--accent) 0 62.5%, transparent 0 75%, var(--accent) 0 87.5%, transparent 0);
+    border-radius: 50%;
+    animation: spin 0.9s steps(8) infinite;
+}
+
+/* ------------------------------------------------------------ level details */
+
+.details-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    /* One cell the size of the window, whatever the panel holds: a long
+       description must scroll inside the panel, not stretch the cell and
+       push the panel off the screen. */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    place-items: center;
+    padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
+}
+
+.details-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    animation: fade 160ms linear;
+}
+
+.details {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+        'gallery info'
+        'prompts prompts';
+    width: min(1240px, 100%);
+    height: min(780px, 100%);
+    background: var(--box);
+    box-shadow: var(--frame), 0 0 0 var(--e) #000;
+    animation: rise 200ms var(--ease);
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.details__gallery {
+    grid-area: gallery;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    padding: 14px;
+}
+
+.details__turn {
+    position: absolute;
+    top: calc(50% - 40px);
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 56px;
+    border: 0;
+    border-radius: 0;
+    background: rgba(0, 0, 0, 0.6);
+    box-shadow: var(--frame-dim);
+    color: var(--accent);
+    cursor: pointer;
+    opacity: 0.75;
+}
+
+.details__turn:hover {
+    opacity: 1;
+    box-shadow: var(--frame);
+}
+
+.details__turn--left {
+    left: 22px;
+}
+
+.details__turn--right {
+    right: 22px;
+}
+
+.details__thumbs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 2px;
+    flex: none;
+}
+
+.details__thumb {
+    flex: none;
+    width: 92px;
+    aspect-ratio: 4 / 3;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #000;
+    box-shadow: var(--frame-dim);
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.details__thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.details__thumb--on {
+    box-shadow: var(--frame-lit);
+    opacity: 1;
+}
+
+.details__info {
+    grid-area: info;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px 22px 18px 8px;
+}
+
+.details__eyebrow {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+    font-variant: small-caps;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    text-shadow: var(--shadow);
+}
+
+.details__title {
+    --gs: 2;
+    margin: 0 0 8px;
+    font-size: 0;
+    line-height: 0;
+}
+
+.details__title .gt--plain {
+    font-size: 1.6rem;
+    line-height: 1.2;
+}
+
+.details__by {
+    margin: 0 0 6px;
+    color: var(--ink-dim);
+    text-shadow: var(--shadow);
+}
+
+.details__rating {
+    margin: 0 0 12px;
+    font-size: 1.05rem;
+}
+
+.details__progress {
+    margin: 0 0 12px;
+}
+
+.details__facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 14px;
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.35);
+    box-shadow: var(--frame-dim);
+}
+
+.details__fact {
+    display: contents;
+}
+
+.details__fact dt {
+    color: var(--ink-faint);
+    font-variant: small-caps;
+    letter-spacing: 0.06em;
+}
+
+.details__fact dd {
+    margin: 0;
+    color: var(--ink);
+    text-shadow: var(--shadow);
+}
+
+.details__loading {
+    color: var(--ink-faint);
+}
+
+.details__prompts {
+    grid-area: prompts;
+    padding: 12px 20px 14px;
+    border-top: var(--e) solid var(--accent-dark);
+    box-shadow: inset 0 var(--e) 0 var(--rule);
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.details__ask {
+    color: #ffd6cc;
+    font-weight: 700;
+    text-shadow: var(--shadow);
+}
+
+.description {
+    color: var(--ink);
+    line-height: 1.5;
+    text-shadow: var(--shadow);
+    overflow-wrap: anywhere;
+}
+
+.description p,
+.description ul {
+    margin: 0 0 0.9em;
+}
+
+.description h4 {
+    margin: 1em 0 0.4em;
+    color: var(--accent);
+}
+
+.description a {
+    color: var(--accent);
+}
+
+.description strong {
+    color: var(--accent-bright);
+}
+
+.description__empty {
+    color: var(--ink-faint);
+    font-style: italic;
+}
+
+@media (max-width: 860px) {
+    .details {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        grid-template-areas:
+            'gallery'
+            'info'
+            'prompts';
+        height: 100%;
+    }
+
+    .details__gallery {
+        padding-bottom: 0;
+    }
+
+    .details__shot img {
+        max-height: 38dvh;
+    }
+
+    .details__info {
+        padding: 12px 16px;
+    }
+}
+
+@media (max-width: 640px) {
+    .custom__header {
+        gap: 8px;
+        padding-top: calc(10px + var(--safe-top));
+    }
+
+    .section-tab {
+        --gs: 1.5;
+        min-height: 44px;
+        padding: 4px 14px 6px;
+    }
+
+    .game-tab {
+        --gs: 1;
+        min-height: 38px;
+        padding: 4px 12px;
+    }
+
+    .custom__toolbar {
+        justify-content: center;
+    }
+
+    .custom__search-input {
+        width: 100%;
+    }
+
+    .custom__search {
+        flex: 1 1 100%;
+    }
+
+    .level-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+    }
+
+    .level-card__text {
+        padding: 8px 9px 10px;
+    }
+
+    .level-card__name {
+        font-size: 0.95rem;
+    }
+
+    .details-layer {
+        padding: 0;
+    }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+    .section-tab {
+        --gs: 3;
+    }
+
+    .game-tab {
+        --gs: 2;
+    }
+
+    .custom__header,
+    .custom__prompts,
+    .details__prompts {
+        --gi: 2;
+    }
+
+    .level-grid {
+        grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    }
+
+    .details__title {
+        --gs: 3;
+    }
+}
+
+/* Under a level's details only the level flying by shows, not the cards. */
+.custom--covered > * {
+    visibility: hidden;
+}
+
+/* The screenshot takes its own shape, as large as the column allows, with
+   its strip of thumbnails right under it, the two together in the middle. */
+.details__gallery {
+    justify-content: center;
+}
+
+.details__shot {
+    margin: 0;
+    flex: 0 1 auto;
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    box-shadow: none;
+}
+
+.details__shot img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 0 0 var(--e) #000;
+}
+
+/* Until a screenshot comes, or without one, the box keeps the games' shape. */
+.details__shot:not(:has(img)) {
+    aspect-ratio: 4 / 3;
+}
+
+.description hr {
+    height: 0;
+    margin: 1.1em 0;
+    border: 0;
+    border-top: var(--e) solid var(--accent-dark);
+    box-shadow: 0 var(--e) 0 var(--rule);
+}
+
+.description blockquote {
+    margin: 0 0 0.9em;
+    padding: 0.4em 0 0.4em 0.9em;
+    border-left: calc(var(--e) * 2) solid var(--accent-dark);
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--ink-dim);
+}
+
+/* A phone orders the levels with the Order prompt, which keeps the header short. */
+@media (max-width: 640px) {
+    .custom__sorts {
+        display: none;
+    }
+}

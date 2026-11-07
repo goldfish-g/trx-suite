@@ -56,9 +56,30 @@ menu, store sign-in and offline support.
   colours of TRX's `ui.json5`), the selected one glows like the PlayStation
   games' selection bar, and progress bars are banded like one of the
   game's bars. Other text is set in Alegreya.
-- **Custom levels** open their own list of profiles; TRX packages and lone
-  level files play directly, older ones link to the TRX Level Converter.
-- **Playing.** Each profile keeps its saves and settings in IndexedDB. The
+- **Custom levels from TRCustoms.** The ring's compass opens a screen of
+  its own over the level flying by, with two sections: the custom levels
+  in the library (Installed) and the ones on
+  [TRCustoms](https://trcustoms.org) (Browse), each by the game they were
+  made for, Tomb Raider I, II or III. The triggers switch sections, the
+  bumpers games; a click or a tap on a tab does too. Levels are cards
+  with a screenshot, name, rating class, difficulty and length; one opens
+  to its screenshots, description and details, and downloads or plays
+  from there. Browse searches and orders TRCustoms' lists. The server
+  passes TRCustoms' lists, images and archives on, since TRCustoms sends
+  no CORS headers.
+- **Every level converted.** Each custom level goes through the TRX Level
+  Converter ([trx-update-tool](https://github.com/goldfish-g/trx-update-tool),
+  the `converter` submodule) as it comes in, in a worker in the browser:
+  levels made for the original games get a game flow from their script,
+  and ones made for an older TRX are brought up to date. Levels from
+  files on the device are converted the same way.
+- **Custom levels play on their own.** A custom level's session holds only
+  the level and what it borrows from the game it builds on (its title and
+  home levels, music, sounds and videos), and the engine's own copies of
+  the other games' game flows are taken away, so TRX finds nothing else
+  to start and its passport has no Switch Game.
+- **Playing.** Each profile keeps its saves and settings in IndexedDB. For
+  the official games, the
   engine's game switcher offers every installed game; picking one starts the
   play page afresh for it, so only one game's files take up memory. The
   screen stays on while the app is open, so FMVs play without a touch.
@@ -69,6 +90,7 @@ No game data is in the repository. See [data/README.md](data/README.md) for
 the server's data directory, its catalog and every environment variable.
 
 ```bash
+git submodule update --init   # the converter, in converter/
 pnpm install
 pnpm dev            # API server on :3002 and Vite on :5173, proxied together
 pnpm test           # unit tests: level reader, layout, archives, server
@@ -127,10 +149,11 @@ refreshes it. The server checks it on every download request.
 ```
 shared/        what the page and the server agree on: games, store ids, API shapes;
                the level file reader and the ring's objects
-server/        the API server: catalog, sign-in, downloads, static files
+server/        the API server: catalog, sign-in, downloads, TRCustoms, static files
 src/
   flyby/       culled rendering of levels, smooth camera routes
   menu/        the home screen, the ring and its artifacts, the panels
+  custom/      custom levels: Installed and Browse, TRCustoms, the converter's worker
   stage/       the WebGL canvas behind the menus
   input/       keyboard, gamepad, mouse and touch as one stream of actions
   account/     sign-in and the catalog, remembered for offline use
@@ -143,6 +166,7 @@ src/
 vite/          dev proxy, service worker template and its build plugin
 scripts/       dev runner, icon and level-list generators
 dev/           preview pages
+converter/     the TRX Level Converter (trx-update-tool), a submodule
 ```
 
 ## Legal

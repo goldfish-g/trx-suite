@@ -23,5 +23,7 @@
 
     "resolveJsonModule": true
   },
-  "include": ["src", "shared", "dev"]
+  "include": ["src", "shared", "dev"],
+  // Type-checked by tsconfig.converter.json, with the converter it runs.
+  "exclude": ["src/custom/convert/worker.ts"]
 }

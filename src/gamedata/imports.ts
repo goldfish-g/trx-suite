@@ -4,6 +4,7 @@
 // page: a download carries on from where it stopped.
 
 import { create } from 'zustand';
+import { convertLevel } from '../custom/convert';
 import type { EngineNumber } from '../games/catalog';
 import { DamagedArchiveError, readArchive, type ArchiveEntry } from '../lib/archive';
 import { newId } from '../lib/db';
@@ -20,7 +21,7 @@ import {
 } from './store';
 import type { GameDataLayout, GameDataRecord, GameDataSource } from './types';
 
-export type ImportPhase = 'downloading' | 'unpacking';
+export type ImportPhase = 'downloading' | 'unpacking' | 'converting';
 
 export interface ImportProgress {
     phase: ImportPhase;
@@ -28,6 +29,8 @@ export interface ImportProgress {
     total: number | null;
     /** Why the download is waiting, while it retries. */
     notice: string | null;
+    /** While converting, what the converter is doing. */
+    step?: string;
 }
 
 interface ImportsState {
@@ -56,6 +59,9 @@ export interface NewGameData {
     sizeBytes?: number;
     /** For the level layout, the level the engine starts. */
     startLevel?: string;
+    /** Turn the files into a package of the current TRX first, with the TRX Level Converter. */
+    convert?: boolean;
+    extendsMod?: string;
 }
 
 /** What to import from: files at hand, or the source's address. */
@@ -120,7 +126,26 @@ async function bringIn(record: GameDataRecord, input: ImportInput, signal: Abort
         entries = await readArchive(blob);
     }
 
-    const planned = planLayout(entries, record);
+    // Levels made for the original games or an older engine become a
+    // package of the current TRX first, which also settles their game.
+    let target = record;
+    if (record.convert === true) {
+        const converting = (step: string, done = 0, total: number | null = null) =>
+            report(id, { phase: 'converting', done, total, notice: null, step });
+        converting('Reading the files');
+        const converted = await convertLevel(entries, {
+            title: record.name,
+            modId: record.mod,
+            signal,
+            onRead: (done, total) => converting('Reading the files', done, total),
+            onStep: (step) => converting(step),
+        });
+        if (converted.notes.length > 0) console.info(`[convert] ${record.name}:\n${converted.notes.join('\n')}`);
+        entries = converted.entries;
+        target = { ...record, engine: converted.engine, extendsMod: converted.extendsMod ?? undefined };
+    }
+
+    const planned = planLayout(entries, target);
     const total = planned.reduce((sum, file) => sum + file.entry.size, 0);
     let done = 0;
     await deleteGameDataFiles(id);
@@ -138,6 +163,8 @@ async function bringIn(record: GameDataRecord, input: ImportInput, signal: Abort
         error: undefined,
         sizeBytes: total,
         fileCount: planned.length,
+        engine: target.engine,
+        extendsMod: target.extendsMod,
     });
 }
 
@@ -194,6 +221,8 @@ export async function importGameData(meta: NewGameData, input: ImportInput): Pro
         sizeBytes: meta.sizeBytes ?? 0,
         fileCount: 0,
         startLevel: meta.startLevel,
+        convert: meta.convert,
+        extendsMod: meta.extendsMod,
         createdAt: new Date().toISOString(),
     };
     await putGameData(record);

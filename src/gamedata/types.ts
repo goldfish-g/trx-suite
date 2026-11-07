@@ -1,3 +1,4 @@
+import type { CustomLevelDetails } from '../../shared/api.ts';
 import type { EngineNumber } from '../games/catalog';
 
 /** Where a set of game data came from. */
@@ -7,7 +8,9 @@ export type GameDataSource =
     /** Files the player picked on their device. */
     | { kind: 'upload'; name: string }
     /** An archive at an address the player gave. */
-    | { kind: 'link'; url: string };
+    | { kind: 'link'; url: string }
+    /** A custom level from TRCustoms: one version of its archive, through this app's server. */
+    | { kind: 'trcustoms'; levelId: number; fileId: number; version: number; url: string };
 
 /**
  * How the files map to the engine's directories. A game sorts its files by
@@ -33,7 +36,26 @@ export interface GameDataRecord {
     fileCount: number;
     /** For the level layout, the level the engine starts, such as games/x/levels/a.tr2. */
     startLevel?: string;
+    /**
+     * Whether the TRX Level Converter turns the files into a package of the
+     * current TRX first: custom levels made for the original games or an
+     * older engine, and TRCustoms downloads, which may be either.
+     */
+    convert?: boolean;
+    /** The official game a custom level builds on, from its gameflow's "extends". */
+    extendsMod?: string;
     createdAt: string;
+}
+
+/**
+ * What TRCustoms says about a level in the library, kept with it so the
+ * library shows it offline: the details as they were when it was added, and
+ * its cover.
+ */
+export interface LevelInfoRecord {
+    gamedataId: string;
+    details: CustomLevelDetails;
+    cover: Blob | null;
 }
 
 /** One file of a set of game data, at the path the engine reads it from. */

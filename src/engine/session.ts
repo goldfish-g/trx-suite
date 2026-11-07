@@ -8,7 +8,7 @@ import type { RetryNotice } from '../lib/download';
 import { markProfilePlayed, noteStorageMod } from '../profiles/store';
 import type { ProfileRecord } from '../profiles/types';
 import { createAdapters } from './adapters';
-import { GameFiles, type StagedGame } from './files';
+import { baseModOf, borrowedFiles, GameFiles, hideOtherGames, type StagedGame } from './files';
 import { loadEngine } from './load';
 import type { TrxEngine } from './types';
 
@@ -47,10 +47,12 @@ export function checkBrowserSupport(): string | null {
 }
 
 /**
- * The game data a session can play: the profile's own, then every installed
- * game, which expansions and custom levels build on and the in-game game
- * switcher offers, one per game. Other custom levels stay out, so they never
- * weigh on a session they are not part of.
+ * The game data a session can play. An official game comes with every other
+ * installed game, which expansions build on and the in-game game switcher
+ * offers, one per game. A custom level is kept apart: it comes with the game
+ * it builds on alone, and only with what it may borrow from that game, so
+ * the switcher offers nothing. Other custom levels always stay out, so they
+ * never weigh on a session they are not part of.
  */
 async function gameDataFor(profile: ProfileRecord): Promise<StagedGame[]> {
     const own = await getGameData(profile.gamedataId);
@@ -58,14 +60,23 @@ async function gameDataFor(profile: ProfileRecord): Promise<StagedGame[]> {
         throw new Error('The game data for this profile is not ready. Check the library.');
     }
     // Newest last, so a game imported twice plays its newer copy.
-    const others = new Map<string, GameDataRecord>();
+    const games = new Map<string, GameDataRecord>();
     for (const record of await listGameData()) {
         if (record.id === own.id || record.mod === own.mod) continue;
-        if (record.status === 'ready' && record.layout === 'game') others.set(record.mod, record);
+        if (record.status === 'ready' && record.layout === 'game') games.set(record.mod, record);
     }
-    return Promise.all(
-        [own, ...others.values()].map(async (record) => ({ record, files: await listGameDataFiles(record.id) })),
-    );
+    const ownFiles = { record: own, files: await listGameDataFiles(own.id) };
+    if (isolated(own)) {
+        const base = games.get(baseModOf(own));
+        if (base === undefined) return [ownFiles];
+        return [ownFiles, { record: base, files: borrowedFiles(await listGameDataFiles(base.id)) }];
+    }
+    return [ownFiles, ...(await Promise.all([...games.values()].map(async (record) => ({ record, files: await listGameDataFiles(record.id) }))))];
+}
+
+/** Custom levels play on their own, without the game switcher. */
+function isolated(record: GameDataRecord): boolean {
+    return record.layout !== 'game';
 }
 
 /** A mod's generation, TRX's engine version, from its game data or the games TRX knows. */
@@ -87,9 +98,11 @@ export async function runSession(options: SessionOptions): Promise<number> {
     const { profile, canvas, signal, onStage, onRetry, onSwitchMod } = options;
     const games = await gameDataFor(profile);
     const own = games[0]!.record;
-    const switched = options.mod !== undefined && options.mod !== profile.mod ? options.mod : null;
+    // A custom level has nothing to switch to.
+    const switched = !isolated(own) && options.mod !== undefined && options.mod !== profile.mod ? options.mod : null;
     const mod = switched ?? profile.mod;
-    const engineNumber = (switched !== null ? engineOf(switched, games) : undefined) ?? profile.engine;
+    // Converting a custom level settles its game, which may not be the one it was added as.
+    const engineNumber = (switched !== null ? engineOf(switched, games) : undefined) ?? (isolated(own) ? own.engine : profile.engine);
     // The game the engine opened storage for first; opening another means the player switched.
     let playing: string | null = null;
 
@@ -149,6 +162,9 @@ export async function runSession(options: SessionOptions): Promise<number> {
         // Every game is there for the engine to offer, but only the one
         // played, with the games it builds on, takes up memory.
         const files = new GameFiles(started.fs, games);
+        // A custom level has the engine to itself: the games the engine
+        // carries would otherwise be there to switch to.
+        if (isolated(own)) hideOtherGames(started.fs, new Set([own.mod, baseModOf(own)]));
         files.placeStandIns();
         await files.use(switched ?? own.mod, (done, total) => onStage({ kind: 'files', done, total }));
         await markProfilePlayed(profile.id);

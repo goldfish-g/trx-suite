@@ -1,6 +1,7 @@
 # Builds the page, then runs the server with only its own dependencies.
 # Mount the data (catalog.json, game archives, flyby levels, engine builds)
-# at /data; see data/README.md.
+# at /data; see data/README.md. The build needs the converter submodule
+# checked out (git submodule update --init).
 
 FROM node:24-bookworm-slim AS build
 WORKDIR /app

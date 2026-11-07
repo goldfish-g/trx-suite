@@ -89,6 +89,8 @@ export function testConfig(fixture: Fixture, overrides: Partial<Config> = {}): C
         authMock: false,
         httpsKeyFile: undefined,
         httpsCertFile: undefined,
+        trcustomsUrl: 'https://trcustoms.test',
+        trcustomsMediaUrl: 'https://data.trcustoms.test/media/',
         ...overrides,
     };
 }

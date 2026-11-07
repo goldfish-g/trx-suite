@@ -12,6 +12,8 @@ export interface StagingFs {
     mkdirTree(path: string): void;
     writeFile(path: string, data: Uint8Array): void;
     analyzePath(path: string): { exists: boolean };
+    readdir(path: string): string[];
+    unlink(path: string): void;
 }
 
 export interface StagedGame {
@@ -20,6 +22,45 @@ export interface StagedGame {
 }
 
 const EMPTY = new Uint8Array(0);
+
+const LEVEL_FILE = /\.(phd|tub|tr2|tr4|psx)$/;
+/** The levels a custom level may take from the game it builds on: TRX looks for its title and home levels there. */
+const BORROWED_LEVEL = /(?:^|\/)(?:title(?:_[a-z0-9]+)?\.(?:phd|tr2|tr4)|gym\.phd|assault\.tr2|house\.tr2)$/;
+
+/**
+ * The files of the game a custom level builds on that its session keeps:
+ * music, sound, videos and pictures, which TRX looks for in that game when
+ * the level brings none, and its title and home levels. Without its other
+ * levels the game is no longer one TRX can start, so its game switcher has
+ * nothing to offer, and the custom level plays on its own.
+ */
+export function borrowedFiles<T extends { path: string }>(files: readonly T[]): T[] {
+    return files.filter((file) => {
+        const path = file.path.toLowerCase();
+        return !LEVEL_FILE.test(path) || BORROWED_LEVEL.test(path);
+    });
+}
+
+/**
+ * Takes the game flow away from every game in the engine's file system but
+ * these, so the engine cannot start them: the ones it carries itself, such
+ * as The Golden Mask's levels and Tomb Raider's PC demo, which it would
+ * otherwise offer in its game switcher even beside a custom level. The
+ * engines' own trN-level games, which play lone level files, stay. This
+ * changes only the copy in the session's memory.
+ */
+export function hideOtherGames(fs: StagingFs, keep: ReadonlySet<string>): string[] {
+    if (!fs.analyzePath('/games').exists) return [];
+    const hidden: string[] = [];
+    for (const mod of fs.readdir('/games')) {
+        if (mod === '.' || mod === '..' || keep.has(mod) || mod.endsWith('-level')) continue;
+        const gameflow = `/games/${mod}/gameflow.json5`;
+        if (!fs.analyzePath(gameflow).exists) continue;
+        fs.unlink(gameflow);
+        hidden.push(mod);
+    }
+    return hidden;
+}
 
 function absolute(path: string): string {
     return `/${path}`;
@@ -111,4 +152,9 @@ export class GameFiles {
         }
         return pending;
     }
+}
+
+/** The official game a custom level builds on: its gameflow's "extends", else its engine's game. */
+export function baseModOf(record: GameDataRecord): string {
+    return record.extendsMod ?? `tr${record.engine}`;
 }

@@ -1,0 +1,4 @@
+[submodule "converter"]
+	path = converter
+	url = ../trx-update-tool.git
+	branch = fix/lzma-and-templates

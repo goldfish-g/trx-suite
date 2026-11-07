@@ -97,6 +97,8 @@ Engine builds, flyby levels and the ring's objects go to everyone.
 | `HTTPS_KEY`, `HTTPS_CERT` | none | PEM files to serve https directly, for testing on phones on the LAN: browsers only run the engine in secure contexts. A local CA such as mkcert works. |
 | `AUTH_MOCK` | off | `1` offers `POST /api/auth/mock`, which signs in a made-up account owning whatever it says. For end-to-end tests only: it unlocks every game for anyone, and the server refuses it when `NODE_ENV=production`. |
 | `LOG_LEVEL` | `info` | Fastify's log level. |
+| `TRCUSTOMS_URL` | `https://trcustoms.org` | The TRCustoms the custom levels browser lists. The server asks it for levels and streams their archives, since TRCustoms sends no CORS headers. |
+| `TRCUSTOMS_MEDIA_URL` | `https://data.trcustoms.org/media` | Where TRCustoms keeps its screenshots. The server passes them on, as their missing CORP header keeps a cross-origin isolated page from showing them, and keeps the latest 64 MB in memory. |
 
 Paths are relative to the directory the server starts in.
 

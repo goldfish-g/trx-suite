@@ -21,6 +21,7 @@ import { HttpError, notFound } from './errors.ts';
 import { requestPath, resolveInside, sendFile, statFile } from './files.ts';
 import { createLoginStore, type LoginStore } from './logins.ts';
 import { createRingModels, type RingModelSet } from './ring.ts';
+import { registerTrcustomsRoutes } from './trcustoms.ts';
 import type { Fetch } from './upstream.ts';
 
 export interface AppDeps {
@@ -133,6 +134,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
     };
     registerContentRoutes(app, context);
     registerAccountRoutes(app, context);
+    registerTrcustomsRoutes(app, context, { baseUrl: config.trcustomsUrl, mediaUrl: config.trcustomsMediaUrl });
     registerPageRoutes(app, config);
     return app;
 }

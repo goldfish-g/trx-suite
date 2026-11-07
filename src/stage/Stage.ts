@@ -27,6 +27,8 @@ export class Stage {
     readonly renderer: THREE.WebGLRenderer;
     background: BackgroundLayer | null = null;
     foreground: Layer | null = null;
+    /** Off while a screen covers the menu and only the level should show through it. */
+    showForeground = true;
     /** Called once per frame after drawing, e.g. to place labels over 3D items. */
     onFrame: ((viewport: Viewport) => void) | null = null;
 
@@ -121,7 +123,7 @@ export class Stage {
             this.background.render(renderer);
             renderer.clearDepth();
         }
-        if (this.foreground !== null) {
+        if (this.foreground !== null && this.showForeground) {
             this.foreground.update(dt, this.viewport);
             this.foreground.render(renderer);
         }

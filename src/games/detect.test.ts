@@ -119,7 +119,13 @@ describe('detectGame', () => {
             file('Pack/cfg/tr1/gameflow.json5', '{ "levels": [] }'),
             file('Pack/data/domain.phd', HEADERS[1]),
         ]);
-        expect(legacy).toMatchObject({ kind: 'convert', reason: expect.stringMatching(/older engine/) });
+        expect(legacy).toMatchObject({ kind: 'convert', reason: expect.stringMatching(/older engines/) });
+
+        // TR2X before its first release, and an abandoned TR3 project.
+        for (const name of ['Tomb2Main', 'Tomb3Main']) {
+            const kin = await detectGame([file(`Pack/cfg/${name}_gameflow.json5`, '{ "levels": [] }'), file('Pack/data/dig.tr2', HEADERS[2])]);
+            expect(kin, name).toMatchObject({ kind: 'convert', reason: expect.stringMatching(/before TRX/) });
+        }
 
         const outside = await detectGame([
             file('Pack/games/tr2-custom/gameflow.json5', '{ "engine": 2 }'),

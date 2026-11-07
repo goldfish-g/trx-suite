@@ -33,6 +33,9 @@ export default defineConfig({
     },
     preview: { headers: crossOriginIsolationHeaders },
     worker: { format: 'es' },
+    // The converter's worker uses fflate. Found only once a level is converted,
+    // it would make the dev server reload the page mid-import.
+    optimizeDeps: { include: ['fflate'] },
     build: { target: 'es2022' },
     // .work holds local scratch files, never tests of the project.
     test: { exclude: ['**/node_modules/**', '**/dist/**', '.work/**'] },

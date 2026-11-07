@@ -253,6 +253,22 @@ export const ExternalIcon = icon([
     '.##########.',
 ]);
 
+// prettier-ignore
+export const SearchIcon = icon([
+    '...####.....',
+    '..#....#....',
+    '.#......#...',
+    '.#......#...',
+    '.#......#...',
+    '.#......#...',
+    '..#....#....',
+    '...####.#...',
+    '.........#..',
+    '..........#.',
+    '...........#',
+    '............',
+]);
+
 /** A neutral mark for a store, in its initials: logos are their owners' to use. */
 export function StoreMark({ provider }: { provider: 'steam' }): ReactNode {
     return <span className={`store-mark store-mark--${provider}`}>S</span>;
