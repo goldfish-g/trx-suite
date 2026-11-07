@@ -1,19 +1,10 @@
-/* TRX — dressed like the games' own menus: TR1's gold lettering and button
-   icons (TRX's sprite sheets), black boxes in TR1's etched gold frames, the
-   PlayStation games' glowing selection bar, and bars banded like Lara's. */
+/* TRX — dressed like the games' own menus: their in-game lettering and
+   button icons (TRX's sprite sheets), boxes in their etched frames, the
+   PlayStation games' glowing selection bar, and bars banded like Lara's.
+   The player picks the game: Tomb Raider, II or III (see the themes). */
 
 :root {
     --bg: #000;
-    --ink: #efe2c2;
-    --ink-dim: #c6b28c;
-    --ink-faint: #918060;
-    /* TR1's frame colours, as TRX's ui.json5 gives them. */
-    --gold: #e8c070;
-    --gold-dark: #8c7038;
-    --gold-bright: #fff0c4;
-    --gold-deep: #4a3814;
-    --box: rgba(0, 0, 0, 0.55);
-    --box-heavy: rgba(0, 0, 0, 0.88);
     --danger: #e8806a;
     --ok: #b4d48c;
     --text: 'Alegreya Variable', 'Alegreya', 'Book Antiqua', Palatino, Georgia, serif;
@@ -22,23 +13,22 @@
     --dpr: 1;
     /* One line of a frame, a whole number of screen pixels thick. */
     --e: calc(max(1, round(nearest, var(--dpr) * 1.25, 1)) / var(--dpr) * 1px);
-    /* TR1's etched frame: light outside and dark inside along the top and
-       left, the other way round along the bottom and right. */
+    /* The games' etched frames: light outside and dark inside along the top
+       and left, the other way round along the bottom and right. */
     --frame:
-        inset var(--e) var(--e) 0 var(--gold), inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--gold-dark),
-        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 var(--gold-dark), inset calc(var(--e) * -2) calc(var(--e) * -2) 0 var(--gold);
+        inset var(--e) var(--e) 0 var(--edge-light), inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--edge-dark),
+        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 var(--edge-dark), inset calc(var(--e) * -2) calc(var(--e) * -2) 0 var(--edge-light);
     --frame-dim:
-        inset var(--e) var(--e) 0 #6e5a30, inset calc(var(--e) * -1) calc(var(--e) * -1) 0 #3a2c12,
-        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 #3a2c12, inset calc(var(--e) * -2) calc(var(--e) * -2) 0 #6e5a30;
+        inset var(--e) var(--e) 0 var(--edge-dim-light), inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--edge-dim-dark),
+        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 var(--edge-dim-dark), inset calc(var(--e) * -2) calc(var(--e) * -2) 0 var(--edge-dim-light);
     --frame-lit:
-        inset var(--e) var(--e) 0 var(--gold-bright), inset calc(var(--e) * -1) calc(var(--e) * -1) 0 #a8843c,
-        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 #a8843c, inset calc(var(--e) * -2) calc(var(--e) * -2) 0 var(--gold-bright);
+        inset var(--e) var(--e) 0 var(--edge-lit-light), inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--edge-lit-dark),
+        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 var(--edge-lit-dark), inset calc(var(--e) * -2) calc(var(--e) * -2) 0 var(--edge-lit-light);
     --frame-danger:
         inset var(--e) var(--e) 0 #e07a62, inset calc(var(--e) * -1) calc(var(--e) * -1) 0 #6c1c14,
         inset calc(var(--e) * 2) calc(var(--e) * 2) 0 #6c1c14, inset calc(var(--e) * -2) calc(var(--e) * -2) 0 #e07a62;
     /* The PlayStation games' selection: a bar that glows in its middle. */
-    --selected: linear-gradient(90deg, rgba(0, 0, 0, 0.7) 0%, rgba(232, 192, 112, 0.34) 50%, rgba(0, 0, 0, 0.7) 100%);
-    --plate: linear-gradient(180deg, #4a3412 0%, #2a1c08 55%, #160e04 100%);
+    --selected: linear-gradient(90deg, rgba(0, 0, 0, 0.7) 0%, var(--glow) 50%, rgba(0, 0, 0, 0.7) 100%);
     --gs: 1;
     /* The button icons, half again as big as the lettering beside them. */
     --gi: 1.5;
@@ -48,6 +38,86 @@
     --safe-right: env(safe-area-inset-right, 0px);
     --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     color-scheme: dark;
+}
+
+/* ------------------------------------------------------------ themes */
+
+/* Each game's menus, as TRX draws them: its font and prompt icons (one
+   sheet, src/ui/gameArt), the frame colours of its PC menus in TRX's
+   ui.json5, its selection glow, and the bands of one of its bars. */
+
+/* Tomb Raider: gold lettering, gold frames, black boxes. */
+:root {
+    --art: url('./ui/gameArt/tr1.png');
+    --ink: #efe2c2;
+    --ink-dim: #c6b28c;
+    --ink-faint: #918060;
+    --accent: #e8c070;
+    --accent-dark: #8c7038;
+    --accent-bright: #fff0c4;
+    --edge-light: #e8c070;
+    --edge-dark: #8c7038;
+    --edge-dim-light: #6e5a30;
+    --edge-dim-dark: #3a2c12;
+    --edge-lit-light: #fff0c4;
+    --edge-lit-dark: #a8843c;
+    --glow: rgba(232, 192, 112, 0.34);
+    --rule: var(--rule);
+    --notice: rgba(128, 56, 16, 0.32);
+    --box: rgba(0, 0, 0, 0.55);
+    --box-heavy: rgba(0, 0, 0, 0.88);
+    --plate: linear-gradient(180deg, #4a3412 0%, #2a1c08 55%, #160e04 100%);
+    --bands: #9a6a22 0 20%, #e8c070 20% 40%, #b8863a 40% 60%, #8c6430 60% 80%, #5a3c14 80% 100%;
+}
+
+/* Tomb Raider II: green lettering in white frames; its PlayStation menus'
+   green selection; the bands of its green bar. */
+html[data-theme='tr2'] {
+    --art: url('./ui/gameArt/tr2.png');
+    --ink: #eef0ea;
+    --ink-dim: #b9c1b4;
+    --ink-faint: #858d80;
+    --accent: #a6dc8a;
+    --accent-dark: #3c7a2c;
+    --accent-bright: #e6ffd8;
+    --edge-light: #ffffff;
+    --edge-dark: #404040;
+    --edge-dim-light: #8c8c8c;
+    --edge-dim-dark: #262626;
+    --edge-lit-light: #ffffff;
+    --edge-lit-dark: #7a7a7a;
+    --glow: rgba(56, 240, 128, 0.3);
+    --rule: rgba(255, 255, 255, 0.22);
+    --notice: rgba(16, 128, 56, 0.32);
+    --box: rgba(0, 0, 0, 0.55);
+    --box-heavy: rgba(0, 0, 0, 0.88);
+    --plate: linear-gradient(180deg, #3c403c 0%, #1e211e 55%, #0c0d0c 100%);
+    --bands: #37aa0b 0 20%, #08e713 20% 40%, #37aa0b 40% 60%, #2a8a08 60% 80%, #1c6206 80% 100%;
+}
+
+/* Tomb Raider III: white lettering, blue frames around boxes tinted from
+   blue to green, as its PC menus draw them; the bands of its air bar. */
+html[data-theme='tr3'] {
+    --art: url('./ui/gameArt/tr3.png');
+    --ink: #f2f4f8;
+    --ink-dim: #b6c2d2;
+    --ink-faint: #808b9c;
+    --accent: #9cc8f0;
+    --accent-dark: #2a5a8c;
+    --accent-bright: #e4f2ff;
+    --edge-light: #4080c0;
+    --edge-dark: #001040;
+    --edge-dim-light: #2a5584;
+    --edge-dim-dark: #000a26;
+    --edge-lit-light: #8cc4ff;
+    --edge-lit-dark: #10306a;
+    --glow: rgba(64, 140, 230, 0.4);
+    --rule: rgba(64, 128, 192, 0.4);
+    --notice: rgba(0, 63, 255, 0.25);
+    --box: linear-gradient(180deg, rgba(0, 63, 255, 0.2), rgba(0, 63, 31, 0.2)), rgba(0, 0, 0, 0.45);
+    --box-heavy: linear-gradient(180deg, rgba(0, 16, 32, 0.9), rgba(0, 0, 0, 0.9));
+    --plate: linear-gradient(180deg, #16386a 0%, #0a1e3c 55%, #040c1c 100%);
+    --bands: #00004f 0 20%, #0000ff 20% 40%, #00007f 40% 60%, #00007f 60% 80%, #00004f 80% 100%;
 }
 
 *,
@@ -82,12 +152,12 @@ select {
 }
 
 ::selection {
-    background: var(--gold-dark);
+    background: var(--accent-dark);
     color: #fff;
 }
 
 * {
-    scrollbar-color: var(--gold-dark) #000;
+    scrollbar-color: var(--accent-dark) #000;
 }
 
 .sr-only {
@@ -129,6 +199,7 @@ select {
 .gt__word {
     display: inline-flex;
     align-items: flex-start;
+    height: calc(var(--gu) * 18);
     vertical-align: top;
 }
 
@@ -136,16 +207,18 @@ select {
     flex: none;
     width: calc(var(--w) * var(--gu));
     height: calc(var(--h) * var(--gu));
-    margin-left: calc(var(--d) * var(--gu));
-    margin-right: calc((var(--a) - var(--w) - var(--d)) * var(--gu) + var(--gl));
-    background: url('./ui/gameArt/font.png') no-repeat;
+    /* From the top of the line to the baseline, TRX's line height of 15. */
+    margin-top: calc((15 + var(--t)) * var(--gu));
+    margin-left: calc(var(--l) * var(--gu));
+    margin-right: calc((var(--a) - var(--w) - var(--l)) * var(--gu) + var(--gl));
+    background: var(--art) no-repeat;
     background-size: calc(256 * var(--gu)) auto;
     background-position: calc(var(--x) * var(--gu) * -1) calc(var(--y) * var(--gu) * -1);
     image-rendering: pixelated;
 }
 
 .gt__g:last-child {
-    margin-right: calc((var(--a) - var(--w) - var(--d)) * var(--gu));
+    margin-right: calc((var(--a) - var(--w) - var(--l)) * var(--gu));
 }
 
 .gt__space {
@@ -155,12 +228,12 @@ select {
 
 /* Text the font cannot draw, such as a name in another script. */
 .gt--plain {
-    color: var(--gold);
+    color: var(--accent);
     font-family: var(--text);
     font-size: calc(var(--gu) * 14);
     font-weight: 700;
     filter: none;
-    text-shadow: var(--gu) var(--gu) 0 #2a1806;
+    text-shadow: var(--gu) var(--gu) 0 #000;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -169,7 +242,7 @@ select {
 /* ------------------------------------------------------------ focus */
 
 :focus-visible {
-    outline: var(--e) solid var(--gold-bright);
+    outline: var(--e) solid var(--accent-bright);
     outline-offset: calc(var(--e) * 2);
 }
 
@@ -186,7 +259,7 @@ select {
     border-radius: 0;
     background: var(--box);
     box-shadow: var(--frame-dim);
-    color: var(--gold);
+    color: var(--accent);
     text-decoration: none;
     cursor: pointer;
 }
@@ -247,7 +320,7 @@ select {
     border-radius: 0;
     background: var(--box);
     box-shadow: var(--frame-dim);
-    color: var(--gold);
+    color: var(--accent);
     cursor: pointer;
 }
 
@@ -266,7 +339,7 @@ select {
     border-radius: 0;
     background: var(--box);
     box-shadow: var(--frame-dim);
-    color: var(--gold);
+    color: var(--accent);
     cursor: pointer;
 }
 
@@ -401,7 +474,7 @@ select {
     font-size: 1rem;
     font-variant: small-caps;
     letter-spacing: 0.2em;
-    color: var(--gold);
+    color: var(--accent);
     text-shadow: var(--shadow);
 }
 
@@ -427,7 +500,7 @@ select {
 }
 
 .spotlight__status--locked .icon {
-    color: var(--gold);
+    color: var(--accent);
 }
 
 .spotlight__progress {
@@ -464,7 +537,7 @@ select {
     border-radius: 0;
     background: var(--box);
     box-shadow: var(--frame-dim);
-    color: var(--gold);
+    color: var(--accent);
     font-size: 24px;
     cursor: pointer;
     opacity: 0.8;
@@ -499,7 +572,7 @@ select {
     height: 32px;
     background: var(--box-heavy);
     box-shadow: var(--frame-dim);
-    color: var(--gold);
+    color: var(--accent);
     opacity: 0;
     transition: opacity 200ms linear;
 }
@@ -514,10 +587,10 @@ select {
     width: 14px;
     height: 14px;
     background:
-        linear-gradient(var(--gold), var(--gold)) center top / 4px 5px no-repeat,
-        linear-gradient(var(--gold-dark), var(--gold-dark)) center bottom / 4px 5px no-repeat,
-        linear-gradient(#6e5a30, #6e5a30) left center / 5px 4px no-repeat,
-        linear-gradient(#6e5a30, #6e5a30) right center / 5px 4px no-repeat;
+        linear-gradient(var(--accent), var(--accent)) center top / 4px 5px no-repeat,
+        linear-gradient(var(--accent-dark), var(--accent-dark)) center bottom / 4px 5px no-repeat,
+        linear-gradient(var(--edge-dim-light), var(--edge-dim-light)) left center / 5px 4px no-repeat,
+        linear-gradient(var(--edge-dim-light), var(--edge-dim-light)) right center / 5px 4px no-repeat;
     animation: spin 800ms steps(8) infinite;
 }
 
@@ -573,14 +646,14 @@ select {
     width: 6px;
     height: 6px;
     margin: 0 10px 2px 0;
-    background: var(--gold-dark);
+    background: var(--accent-dark);
     box-shadow: 1px 1px 0 #000;
     transform: rotate(45deg);
     vertical-align: middle;
 }
 
 .hints__caption:hover {
-    color: var(--gold);
+    color: var(--accent);
 }
 
 @media (max-width: 640px) {
@@ -677,8 +750,8 @@ select {
     justify-content: space-between;
     gap: 16px;
     padding: calc(22px + var(--safe-top)) 24px 14px;
-    border-bottom: var(--e) solid var(--gold-dark);
-    box-shadow: 0 var(--e) 0 rgba(232, 192, 112, 0.35);
+    border-bottom: var(--e) solid var(--accent-dark);
+    box-shadow: 0 var(--e) 0 var(--rule);
 }
 
 .sheet__eyebrow {
@@ -686,7 +759,7 @@ select {
     font-size: 0.95rem;
     font-variant: small-caps;
     letter-spacing: 0.18em;
-    color: var(--gold);
+    color: var(--accent);
     text-shadow: var(--shadow);
 }
 
@@ -705,7 +778,7 @@ select {
 
 .sheet__section {
     padding: 18px 0;
-    border-bottom: var(--e) dashed rgba(140, 112, 56, 0.45);
+    border-bottom: var(--e) dashed var(--rule);
 }
 
 .sheet__section:last-child {
@@ -785,7 +858,7 @@ select {
     align-items: flex-start;
     margin: 0 0 12px;
     padding: 12px 14px;
-    background: linear-gradient(90deg, rgba(128, 56, 16, 0.32), rgba(0, 0, 0, 0.5));
+    background: linear-gradient(90deg, var(--notice), rgba(0, 0, 0, 0.5));
     box-shadow: var(--frame-dim);
     color: var(--ink);
     font-size: 0.97rem;
@@ -794,7 +867,7 @@ select {
 
 .notice .icon {
     margin-top: 4px;
-    color: var(--gold);
+    color: var(--accent);
 }
 
 .notice--error {
@@ -859,7 +932,7 @@ select {
 
 .card__title {
     margin: 0 0 6px;
-    color: var(--gold);
+    color: var(--accent);
     font-weight: 700;
     text-shadow: var(--shadow);
 }
@@ -899,9 +972,9 @@ select {
     border-radius: 0;
     background: #000;
     box-shadow:
-        inset var(--e) var(--e) 0 var(--gold-dark),
-        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--gold);
-    color: var(--gold-bright);
+        inset var(--e) var(--e) 0 var(--accent-dark),
+        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--accent);
+    color: var(--accent-bright);
     font-weight: 600;
 }
 
@@ -930,13 +1003,13 @@ select {
 .account__avatar {
     width: 44px;
     height: 44px;
-    box-shadow: 0 0 0 var(--e) var(--gold-dark), 0 0 0 calc(var(--e) * 2) #000;
+    box-shadow: 0 0 0 var(--e) var(--accent-dark), 0 0 0 calc(var(--e) * 2) #000;
     image-rendering: pixelated;
 }
 
 .account__name {
     margin: 0;
-    color: var(--gold);
+    color: var(--accent);
     font-weight: 700;
     text-shadow: var(--shadow);
 }
@@ -982,14 +1055,7 @@ select {
 
 .progress__fill {
     height: 100%;
-    background: linear-gradient(
-        180deg,
-        #9a6a22 0 20%,
-        #e8c070 20% 40%,
-        #b8863a 40% 60%,
-        #8c6430 60% 80%,
-        #5a3c14 80% 100%
-    );
+    background: linear-gradient(180deg, var(--bands));
     transition: width 300ms linear;
 }
 
@@ -1107,7 +1173,7 @@ select {
 /* A gamepad or a keyboard drives the menus: the focus must be unmissable. */
 html[data-input='gamepad'] :focus:not(.play__canvas),
 html[data-input='keyboard'] :focus:not(.play__canvas) {
-    outline: var(--e) solid var(--gold-bright);
+    outline: var(--e) solid var(--accent-bright);
     outline-offset: calc(var(--e) * 2);
 }
 
@@ -1127,7 +1193,7 @@ html[data-input='touch'] :focus {
     border-radius: 0;
     background: var(--box);
     box-shadow: var(--frame-dim);
-    color: var(--gold);
+    color: var(--accent);
     font: inherit;
     white-space: nowrap;
     cursor: pointer;
@@ -1245,16 +1311,14 @@ html[data-input='touch'] .prompt--primary {
     image-rendering: pixelated;
 }
 
-.glyph--controller {
-    background-image: url('./ui/gameArt/controller.png');
-    background-size: calc(112 * var(--gu)) auto;
+.glyph--art {
+    background-image: var(--art);
+    background-size: calc(256 * var(--gu)) auto;
 }
 
 .glyph--keyboard {
     /* Keycaps are wide already: Return is fifty pixels across. */
     --gi: 1;
-    background-image: url('./ui/gameArt/keyboard.png');
-    background-size: calc(498 * var(--gu)) auto;
 }
 
 /* A button TRX has no icon for, drawn like its keycaps. */
@@ -1306,7 +1370,7 @@ html[data-input='touch'] .prompt--primary {
 }
 
 .row__title {
-    color: var(--gold-bright);
+    color: var(--accent-bright);
     font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1356,7 +1420,7 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     border-radius: 0;
     background: var(--box);
     box-shadow: var(--frame-dim);
-    color: var(--gold);
+    color: var(--accent);
     font: inherit;
     cursor: pointer;
     opacity: 0.7;
@@ -1402,8 +1466,8 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 
 .sheet__prompts {
     padding: 12px 20px calc(14px + var(--safe-bottom));
-    border-top: var(--e) solid var(--gold-dark);
-    box-shadow: inset 0 var(--e) 0 rgba(232, 192, 112, 0.35);
+    border-top: var(--e) solid var(--accent-dark);
+    box-shadow: inset 0 var(--e) 0 var(--rule);
     background: rgba(0, 0, 0, 0.6);
 }
 

@@ -6,6 +6,7 @@ import { formatBytes } from '../../ui/format';
 import { InstallIcon } from '../../ui/icons';
 import { GameText } from '../../ui/GameText';
 import { Sheet } from '../../ui/Sheet';
+import { setTheme, THEMES, useTheme } from '../../ui/theme';
 import { reducedMotionChoice, setReducedMotionChoice } from '../motion';
 
 interface Storage {
@@ -18,6 +19,7 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
     const mode = useInstall((state) => state.mode);
     const [storage, setStorage] = useState<Storage | null>(null);
     const [motion, setMotion] = useState(reducedMotionChoice);
+    const theme = useTheme((state) => state.theme);
 
     useEffect(() => {
         void (async () => {
@@ -63,6 +65,26 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                     )}
                 </section>
             ) : null}
+
+            <section className="sheet__section">
+                <h3 className="sheet__heading">
+                    <GameText text="Look" />
+                </h3>
+                <p className="sheet__text sheet__text--quiet">The menus of which game: its lettering, frames and buttons.</p>
+                <div className="choices" role="radiogroup" aria-label="Look">
+                    {THEMES.map((entry) => (
+                        <button
+                            key={entry.theme}
+                            className={`choice ${theme === entry.theme ? 'choice--on' : ''}`}
+                            role="radio"
+                            aria-checked={theme === entry.theme}
+                            onClick={() => setTheme(entry.theme)}
+                        >
+                            <GameText text={entry.label} />
+                        </button>
+                    ))}
+                </div>
+            </section>
 
             <section className="sheet__section">
                 <h3 className="sheet__heading">

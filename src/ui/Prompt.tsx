@@ -6,8 +6,9 @@
 
 import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import { KEY_LABELS, useInputDevice, type MenuAction, type PadStyle } from '../input/controller';
-import { ICONS, type IconName } from './gameArt/sheets';
+import { SHEETS, type IconName } from './gameArt/sheets';
 import { GameText } from './GameText';
+import { useTheme } from './theme';
 
 /** An action, or both horizontal directions at once, as "choose" hints show them. */
 export type GlyphName = MenuAction | 'horizontal';
@@ -58,14 +59,15 @@ const ARROW_KEYS: Record<string, string> = { '←': 'left', '→': 'right', '↑
 function keyArt(action: MenuAction): Art {
     const label = KEY_LABELS[action];
     const name = `keyboard ${ARROW_KEYS[label] ?? label.toLowerCase()}`;
-    return name in ICONS ? (name as IconName) : { cap: label };
+    return name in SHEETS.tr1.icons ? (name as IconName) : { cap: label };
 }
 
 function GlyphArt({ art }: { art: Art }) {
+    const theme = useTheme((state) => state.theme);
     if (typeof art !== 'string') return <span className="glyph glyph--cap">{art.cap}</span>;
-    const [sheet, x, y, w, h] = ICONS[art];
+    const [x, y, w, h] = SHEETS[theme].icons[art];
     const style = { '--x': x, '--y': y, '--w': w, '--h': h } as CSSProperties;
-    return <i className={`glyph glyph--${sheet}`} style={style} />;
+    return <i className={`glyph glyph--art glyph--${art.split(' ')[0]}`} style={style} />;
 }
 
 /** The glyph for an action on the device in hand; nothing for a mouse or a finger. */

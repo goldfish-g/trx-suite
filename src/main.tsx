@@ -7,6 +7,7 @@ import { installInput } from './input/controller';
 import { registerServiceWorker } from './pwa/install';
 import { keepScreenOn } from './pwa/wakeLock';
 import { trackPixelRatio } from './ui/pixels';
+import { applyTheme } from './ui/theme';
 import './styles.css';
 
 // The menu draws with three.js; the play page leaves all of it out, so the
@@ -18,6 +19,7 @@ installInput();
 registerServiceWorker();
 keepScreenOn();
 trackPixelRatio();
+applyTheme();
 
 createRoot(document.getElementById('root')!).render(
     <StrictMode>

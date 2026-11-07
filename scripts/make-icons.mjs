@@ -19,7 +19,7 @@ for (const [name, size, scale] of sizes) {
     await page.setViewportSize({ width: size, height: size });
     const inner = Math.round(size * scale);
     await page.setContent(
-        `<html><body style="margin:0;background:#050608;display:grid;place-items:center;width:${size}px;height:${size}px">` +
+        `<html><body style="margin:0;background:#000;display:grid;place-items:center;width:${size}px;height:${size}px">` +
             `<div style="width:${inner}px;height:${inner}px">${svg.replace('<svg ', `<svg width="${inner}" height="${inner}" `)}</div></body></html>`,
     );
     await page.screenshot({ path: `public/icons/${name}`, omitBackground: false });
