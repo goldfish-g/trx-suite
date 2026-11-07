@@ -26,11 +26,11 @@ menu, store sign-in and offline support.
 - **A ring of artifacts** stands for the games, each an object from the game
   itself, cut out of its level files by the server: Tomb Raider's Scion, the
   Dagger of Xian, the Infada Stone, an ankh from The Last Revelation, a
-  statue of Bastet from Unfinished Business, the Golden Mask, and The Last
-  Revelation's compass for custom levels. The Lost Artifact's Hand of
-  Rathmore is still drawn by the page. Games the player has not unlocked
-  show theirs turned to stone. Without the games on the server, the ring
-  draws artifacts of its own.
+  statue of Bastet from Unfinished Business, the Golden Mask, the Hand of
+  Rathmore from The Lost Artifact, and The Last Revelation's compass for
+  custom levels. Games the player has not unlocked show theirs turned to
+  stone. Without the games on the server, the ring draws artifacts of its
+  own.
 - **Touch, mouse, keyboard and gamepad** all drive the menus: swipe, scroll,
   click, arrows or a d-pad to turn the ring; tap, Enter or A to open a game.
   Hints follow the device used last.

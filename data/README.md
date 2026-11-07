@@ -50,18 +50,18 @@ restart. Problems with it are logged as warnings.
 
 The menu shows each game as an object from the game itself: the Scion, the
 Dagger of Xian, the Infada Stone, an ankh, a statue of Bastet, the Golden
-Mask, and a compass for custom levels. When it starts, and again whenever a
-listed archive changes, the server opens the archives in `games`, reads the
-level each object is in, and cuts the object out (its meshes and just the
-texels it uses), serving the result at `/ring/manifest.json` and
-`/ring/<entry>.<hash>.json`. Which object of which level stands for each
-entry is set in `shared/ring/sources.ts`; `/dev/objects.html?level=<url>`
-lays out every object of a level with its number, for choosing others.
+Mask, the Hand of Rathmore, and a compass for custom levels. When it starts,
+and again whenever a listed archive changes, the server opens the archives in
+`games`, reads the level each object is in, and cuts the object out (its
+meshes and just the texels it uses), serving the result at
+`/ring/manifest.json` and `/ring/<entry>.<hash>.json`. Which object of which
+level stands for each entry is set in `shared/ring/sources.ts`;
+`/dev/objects.html?level=<url>` lays out every object of a level with its
+number, for choosing others.
 
 An entry whose game is not here falls back to the next source listed, then
-to a drawn artifact of the page's own. The Lost Artifact has no entry yet:
-its Hand of Rathmore is only in its own levels, and the ring draws a hand
-until the object's number is read from them and added.
+to a drawn artifact of the page's own. The Hand of Rathmore is only in The
+Lost Artifact's last level, so without `tr3-la` the ring draws a hand.
 
 ## Who may download what
 

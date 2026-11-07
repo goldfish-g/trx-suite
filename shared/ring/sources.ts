@@ -30,10 +30,9 @@ export const RING_SOURCES: Record<string, RingSource[]> = {
     ],
     'tr1-ub': [{ mod: 'tr1-ub', level: 'cat.phd', object: s(31), name: 'A statue of Bastet' }],
     'tr2-gm': [{ mod: 'tr2-gm', level: 'level4.tr2', object: m(178), name: 'The Golden Mask' }],
-    // The Lost Artifact's is the Hand of Rathmore, which only its own levels
-    // hold. Its number is still to be read from them (dev/objects.html); until
-    // then the ring draws a hand of its own.
-    'tr3-la': [],
+    // The Hand of Rathmore takes the Infada Stone's place in Reunion, the
+    // only level that holds it.
+    'tr3-la': [{ mod: 'tr3-la', level: 'slinc.tr2', object: m(240), name: 'The Hand of Rathmore' }],
     custom: [
         { mod: 'tr4', level: 'angkor1.tr4', object: m(375), name: 'A compass' },
         { mod: 'tr4', level: 'ang_race.tr4', object: m(375), name: 'A compass' },
