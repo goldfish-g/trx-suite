@@ -12,6 +12,8 @@ import type { ProfileRecord } from '../../profiles/types';
 import { formatBytes, formatWhen } from '../../ui/format';
 import { DownloadIcon, LockIcon, PlayIcon, PlusIcon, TrashIcon } from '../../ui/icons';
 import { ProgressBar } from '../../ui/ProgressBar';
+import { Prompt } from '../../ui/Prompt';
+import { Row } from '../../ui/Row';
 import { Sheet } from '../../ui/Sheet';
 import { describeError, downloadGame, importOwnCopy, inspectPicked, newGameProfile, playGame, playProfile } from '../actions';
 import { FilePicker } from '../FilePicker';
@@ -269,10 +271,21 @@ function ProfileRow({
         if (trimmed !== '' && trimmed !== profile.name) void renameProfile(profile.id, trimmed);
         onDone();
     };
+    const cancel = () => {
+        setName(profile.name);
+        onDone();
+    };
 
     if (editing) {
         return (
-            <li className="list__row">
+            <Row
+                prompts={
+                    <>
+                        <Prompt variant="row" action="confirm" label="Save" onPress={save} />
+                        <Prompt variant="row" action="back" label="Cancel" onPress={cancel} />
+                    </>
+                }
+            >
                 <input
                     className="field__input"
                     value={name}
@@ -280,47 +293,41 @@ function ProfileRow({
                     maxLength={60}
                     aria-label="Profile name"
                     onChange={(event) => setName(event.target.value)}
-                    onKeyDown={(event) => {
-                        if (event.key === 'Enter') save();
-                    }}
                 />
-                <button className="button button--small" onClick={save}>
-                    Save
-                </button>
-            </li>
+            </Row>
         );
     }
     if (confirmDelete) {
         return (
-            <li className="list__row">
-                <span className="list__main">Delete {profile.name} and its saves?</span>
-                <button className="button button--small button--danger" onClick={() => void deleteProfile(profile.id)}>
-                    Delete
-                </button>
-                <button className="button button--small" onClick={() => setConfirmDelete(false)}>
-                    Keep
-                </button>
-            </li>
+            <Row
+                className="row--confirm"
+                prompts={
+                    <>
+                        <Prompt variant="row" action="confirm" label="Delete" className="prompt--danger" onPress={() => void deleteProfile(profile.id)} />
+                        <Prompt variant="row" action="back" label="Keep" onPress={() => setConfirmDelete(false)} />
+                    </>
+                }
+            >
+                <span className="row__title">Delete {profile.name} and its saves?</span>
+            </Row>
         );
     }
     return (
-        <li className="list__row">
-            <span className="list__main">
-                <span className="list__title">{profile.name}</span>
-                <span className="list__meta">
-                    Played {formatWhen(profile.lastPlayedAt)} · engine {profile.engineVersion}
-                </span>
+        <Row
+            label={profile.name}
+            prompts={
+                <>
+                    <Prompt variant="row" action="confirm" label="Play" icon={<PlayIcon />} onPress={() => playProfile(profile)} />
+                    <Prompt variant="row" action="alternate" label="Rename" onPress={onEdit} />
+                    <Prompt variant="row" action="extra" label="Delete" icon={<TrashIcon />} onPress={() => setConfirmDelete(true)} />
+                </>
+            }
+        >
+            <span className="row__title">{profile.name}</span>
+            <span className="row__meta">
+                Played {formatWhen(profile.lastPlayedAt)} · engine {profile.engineVersion}
             </span>
-            <button className="button button--small button--primary" onClick={() => playProfile(profile)} aria-label={`Play ${profile.name}`}>
-                <PlayIcon />
-            </button>
-            <button className="button button--small" onClick={onEdit}>
-                Rename
-            </button>
-            <button className="button button--small button--quiet" onClick={() => setConfirmDelete(true)} aria-label={`Delete ${profile.name}`}>
-                <TrashIcon />
-            </button>
-        </li>
+        </Row>
     );
 }
 

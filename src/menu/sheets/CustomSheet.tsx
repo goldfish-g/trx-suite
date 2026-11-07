@@ -12,6 +12,8 @@ import type { ProfileRecord } from '../../profiles/types';
 import { formatBytes, formatWhen } from '../../ui/format';
 import { ExternalIcon, PlayIcon, TrashIcon } from '../../ui/icons';
 import { ProgressBar } from '../../ui/ProgressBar';
+import { Prompt } from '../../ui/Prompt';
+import { Row } from '../../ui/Row';
 import { Sheet } from '../../ui/Sheet';
 import { addCustomLevel, baseGameFor, describeDetection, describeError, inspectPicked, playProfile, type PickedFiles } from '../actions';
 import { FilePicker } from '../FilePicker';
@@ -97,16 +99,22 @@ export function CustomSheet({ onClose }: { onClose(): void }) {
                         <p className="card__title">{picked.name}</p>
                         <p className="sheet__text">{describeDetection(detection)}</p>
                         {detection.kind === 'level' && detection.levels.length > 1 ? (
-                            <label className="field">
+                            <div className="field">
                                 <span className="field__label">Level to start</span>
-                                <select className="field__input" value={level} onChange={(event) => setLevel(event.target.value)}>
+                                <div className="choices" role="radiogroup" aria-label="Level to start">
                                     {detection.levels.map((path) => (
-                                        <option key={path} value={path}>
+                                        <button
+                                            key={path}
+                                            className={`choice ${path === level ? 'choice--on' : ''}`}
+                                            role="radio"
+                                            aria-checked={path === level}
+                                            onClick={() => setLevel(path)}
+                                        >
                                             {path.slice(path.lastIndexOf('/') + 1)}
-                                        </option>
+                                        </button>
                                     ))}
-                                </select>
-                            </label>
+                                </div>
+                            </div>
                         ) : null}
                         {playable && !hasBase && base !== undefined ? (
                             <p className="notice">
@@ -153,10 +161,10 @@ function CustomRow({ record, profiles }: { record: GameDataRecord; profiles: Pro
         const described = progress === undefined ? null : describeProgress(progress);
         detail = <ProgressBar fraction={described?.fraction ?? null} label={described?.label ?? 'Waiting…'} />;
     } else if (record.status === 'failed') {
-        detail = <span className="list__meta list__meta--error">{record.error ?? 'Adding it failed.'}</span>;
+        detail = <span className="row__meta row__meta--error">{record.error ?? 'Adding it failed.'}</span>;
     } else {
         detail = (
-            <span className="list__meta">
+            <span className="row__meta">
                 {ENGINE_NAMES[record.engine]} · {formatBytes(record.sizeBytes)}
                 {profile !== undefined ? ` · played ${formatWhen(profile.lastPlayedAt)}` : ''}
             </span>
@@ -165,32 +173,33 @@ function CustomRow({ record, profiles }: { record: GameDataRecord; profiles: Pro
 
     if (confirm) {
         return (
-            <li className="list__row">
-                <span className="list__main">Delete {record.name} with its saves?</span>
-                <button className="button button--small button--danger" onClick={() => void remove()}>
-                    Delete
-                </button>
-                <button className="button button--small" onClick={() => setConfirm(false)}>
-                    Keep
-                </button>
-            </li>
+            <Row
+                className="row--confirm"
+                prompts={
+                    <>
+                        <Prompt variant="row" action="confirm" label="Delete" className="prompt--danger" onPress={() => void remove()} />
+                        <Prompt variant="row" action="back" label="Keep" onPress={() => setConfirm(false)} />
+                    </>
+                }
+            >
+                <span className="row__title">Delete {record.name} with its saves?</span>
+            </Row>
         );
     }
     return (
-        <li className="list__row">
-            <span className="list__main">
-                <span className="list__title">{record.name}</span>
-                {detail}
-            </span>
-            {record.status === 'ready' && profile !== undefined ? (
-                <button className="button button--small button--primary" onClick={() => playProfile(profile)}>
-                    <PlayIcon />
-                    Play
-                </button>
-            ) : null}
-            <button className="button button--small button--quiet" onClick={() => setConfirm(true)} aria-label={`Delete ${record.name}`}>
-                <TrashIcon />
-            </button>
-        </li>
+        <Row
+            label={record.name}
+            prompts={
+                <>
+                    {record.status === 'ready' && profile !== undefined ? (
+                        <Prompt variant="row" action="confirm" label="Play" icon={<PlayIcon />} onPress={() => playProfile(profile)} />
+                    ) : null}
+                    <Prompt variant="row" action="extra" label="Delete" icon={<TrashIcon />} onPress={() => setConfirm(true)} />
+                </>
+            }
+        >
+            <span className="row__title">{record.name}</span>
+            {detail}
+        </Row>
     );
 }

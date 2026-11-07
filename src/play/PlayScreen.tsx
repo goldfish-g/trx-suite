@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { checkBrowserSupport, runSession, type SessionStage } from '../engine/session';
+import { KEYS, pushLayer } from '../input/controller';
 import { getProfile } from '../profiles/store';
 import { formatBytes } from '../ui/format';
 import { ProgressBar } from '../ui/ProgressBar';
+import { Prompt, PromptBar } from '../ui/Prompt';
 
 type ScreenState = SessionStage | { kind: 'loading' } | { kind: 'error'; message: string };
 
@@ -21,6 +23,12 @@ async function enterFullscreen(): Promise<void> {
 
 function leave(): void {
     location.assign('/');
+}
+
+/** Starts the game from the gate, full screen on a phone. */
+function start(pass: () => void): void {
+    if (isTouchDevice()) void enterFullscreen();
+    pass();
 }
 
 export function PlayScreen() {
@@ -85,23 +93,39 @@ export function PlayScreen() {
         };
     }, [running]);
 
-    // Any key or gamepad button starts the game, as a tap does.
+    // Until the game runs, the overlay is a layer of prompts: (A) starts, (B)
+    // goes back to the menu. Once it runs, every key and button is the engine's.
+    const overlayRef = useRef<HTMLDivElement>(null);
     const pass = state.kind === 'gate' ? state.pass : null;
     useEffect(() => {
-        if (pass === null) return;
-        const onKey = () => pass();
-        let frame = requestAnimationFrame(function poll() {
-            const pressed = navigator
-                .getGamepads?.()
-                .some((pad) => pad?.buttons.some((button) => button.pressed));
-            if (pressed) pass();
-            else frame = requestAnimationFrame(poll);
+        if (running) return;
+        return pushLayer({
+            root: () => overlayRef.current,
+            keepFocus: false,
+            onAction: (action) => {
+                if (action === 'back') {
+                    leave();
+                    return true;
+                }
+                // Any button starts the game, as a tap does.
+                if (pass !== null) {
+                    start(pass);
+                    return true;
+                }
+                return false;
+            },
         });
-        window.addEventListener('keydown', onKey, { once: true });
-        return () => {
-            cancelAnimationFrame(frame);
-            window.removeEventListener('keydown', onKey);
+    }, [running, pass]);
+    // Keys that are no menu action start it too.
+    useEffect(() => {
+        if (pass === null) return;
+        const onKey = (event: KeyboardEvent) => {
+            if (event.ctrlKey || event.metaKey || event.altKey) return;
+            if (KEYS[event.key.length === 1 ? event.key.toLowerCase() : event.key] !== undefined) return;
+            start(pass);
         };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
     }, [pass]);
 
     return (
@@ -113,53 +137,50 @@ export function PlayScreen() {
                 tabIndex={-1}
                 onContextMenu={(event) => event.preventDefault()}
             />
-            <Overlay state={state} notice={notice} />
+            <Overlay state={state} notice={notice} rootRef={overlayRef} />
         </div>
     );
 }
 
-function Overlay({ state, notice }: { state: ScreenState; notice: string | null }) {
+function Overlay({ state, notice, rootRef }: { state: ScreenState; notice: string | null; rootRef: RefObject<HTMLDivElement | null> }) {
     switch (state.kind) {
         case 'running':
             return null;
         case 'gate':
             return (
-                <button
-                    className="play__overlay play__gate"
-                    autoFocus
-                    onClick={() => {
-                        if (isTouchDevice()) void enterFullscreen();
-                        state.pass();
-                    }}
-                >
-                    <span className="play__gate-title">Tap to start</span>
-                    <span className="play__gate-hint">or press any key or button</span>
-                </button>
+                <div className="play__overlay play__gate" ref={rootRef} onClick={() => start(state.pass)}>
+                    <div className="play__panel">
+                        <span className="play__gate-title">Ready</span>
+                        <PromptBar className="play__prompts">
+                            <Prompt action="confirm" label="Start" variant="primary" global onPress={() => start(state.pass)} />
+                            <Prompt action="back" label="Back to the menu" global onPress={leave} />
+                        </PromptBar>
+                    </div>
+                </div>
             );
         case 'error':
             return (
-                <div className="play__overlay">
+                <div className="play__overlay" ref={rootRef}>
                     <div className="play__panel">
                         <h1 className="play__heading">The game could not start</h1>
                         <p className="play__error">{state.message}</p>
-                        <div className="play__actions">
-                            <button className="button" onClick={() => location.reload()}>
-                                Try again
-                            </button>
-                            <button className="button button--primary" onClick={leave}>
-                                Back to the menu
-                            </button>
-                        </div>
+                        <PromptBar className="play__prompts">
+                            <Prompt action="confirm" label="Try again" variant="primary" global onPress={() => location.reload()} />
+                            <Prompt action="back" label="Back to the menu" global onPress={leave} />
+                        </PromptBar>
                     </div>
                 </div>
             );
         default: {
             const { heading, fraction, detail } = describeStage(state);
             return (
-                <div className="play__overlay">
+                <div className="play__overlay" ref={rootRef}>
                     <div className="play__panel">
                         <h1 className="play__heading">{heading}</h1>
                         <ProgressBar fraction={fraction} label={notice ?? detail} />
+                        <PromptBar className="play__prompts">
+                            <Prompt action="back" label="Back to the menu" global onPress={leave} />
+                        </PromptBar>
                     </div>
                 </div>
             );

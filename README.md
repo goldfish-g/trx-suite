@@ -31,9 +31,12 @@ menu, store sign-in and offline support.
   custom levels. Games the player has not unlocked show theirs turned to
   stone. Without the games on the server, the ring draws artifacts of its
   own.
-- **Touch, mouse, keyboard and gamepad** all drive the menus: swipe, scroll,
-  click, arrows or a d-pad to turn the ring; tap, Enter or A to open a game.
-  Hints follow the device used last.
+- **Built for a gamepad.** Every action is a button prompt, such as "(A)
+  Play" or "(B) Back", showing the glyph of the device in hand: Xbox,
+  PlayStation or Nintendo buttons, or keys (Enter, Esc, F, R, M, V, Q/E). The
+  d-pad walks lists, where each row carries its own prompts. With a mouse or
+  a finger the glyphs go and the prompts are plain buttons; the ring also
+  turns with a swipe, the wheel or its arrows.
 - **Who may download what.** The server holds every game but sends only
   Unfinished Business and The Golden Mask, which their publisher gave away,
   to everyone. The others unlock when the player signs in with a Steam or GOG

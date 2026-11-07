@@ -68,22 +68,31 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                         Fly through another level
                     </button>
                 </div>
-                <label className="field field--inline">
+                <div className="field">
                     <span className="field__label">Reduce motion</span>
-                    <select
-                        className="field__input"
-                        value={motion}
-                        onChange={(event) => {
-                            const choice = event.target.value as 'system' | 'on' | 'off';
-                            setMotion(choice);
-                            setReducedMotionChoice(choice);
-                        }}
-                    >
-                        <option value="system">As the system says</option>
-                        <option value="on">On</option>
-                        <option value="off">Off</option>
-                    </select>
-                </label>
+                    <div className="choices" role="radiogroup" aria-label="Reduce motion">
+                        {(
+                            [
+                                ['system', 'As the system says'],
+                                ['on', 'On'],
+                                ['off', 'Off'],
+                            ] as const
+                        ).map(([choice, text]) => (
+                            <button
+                                key={choice}
+                                className={`choice ${motion === choice ? 'choice--on' : ''}`}
+                                role="radio"
+                                aria-checked={motion === choice}
+                                onClick={() => {
+                                    setMotion(choice);
+                                    setReducedMotionChoice(choice);
+                                }}
+                            >
+                                {text}
+                            </button>
+                        ))}
+                    </div>
+                </div>
                 <p className="sheet__text sheet__text--quiet">Takes effect the next time the menu opens.</p>
             </section>
 

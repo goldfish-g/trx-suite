@@ -1027,3 +1027,397 @@ select {
         transition-duration: 1ms !important;
     }
 }
+
+/* ------------------------------------------------------------ prompts */
+
+/* A gamepad or a keyboard drives the menus: the focus must be unmissable. */
+html[data-input='gamepad'] :focus:not(.play__canvas),
+html[data-input='keyboard'] :focus:not(.play__canvas) {
+    outline: 2px solid var(--gold-bright);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px rgba(246, 216, 155, 0.16), 0 0 24px rgba(246, 216, 155, 0.25);
+}
+
+html[data-input='mouse'] :focus:not(:focus-visible),
+html[data-input='touch'] :focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.prompt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55em;
+    min-height: 44px;
+    padding: 0.45em 1em 0.45em 0.6em;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--glass);
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition:
+        background 160ms var(--ease),
+        border-color 160ms var(--ease),
+        transform 120ms var(--ease);
+}
+
+html[data-input='mouse'] .prompt,
+html[data-input='touch'] .prompt {
+    padding-left: 1em;
+}
+
+.prompt:hover:not(:disabled) {
+    border-color: var(--line-strong);
+    background: rgba(40, 32, 24, 0.85);
+}
+
+.prompt:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.prompt:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.prompt .icon {
+    width: 1.15em;
+    height: 1.15em;
+}
+
+.prompt__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.prompt--hint {
+    border-color: transparent;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    color: var(--ink-dim);
+    font-weight: 550;
+    cursor: default;
+    padding-left: 0;
+}
+
+.prompt--primary {
+    min-height: 54px;
+    padding: 0.5em 1.9em 0.5em 0.75em;
+    border-color: transparent;
+    background: linear-gradient(180deg, #f7dca2 0%, #dcab5f 55%, #b8823d 100%);
+    color: #1d1309;
+    font-size: 1.08rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        0 6px 24px rgba(217, 168, 91, 0.25);
+}
+
+html[data-input='mouse'] .prompt--primary,
+html[data-input='touch'] .prompt--primary {
+    padding-left: 2.2em;
+    padding-right: 2.2em;
+}
+
+.prompt--primary:hover:not(:disabled) {
+    border-color: transparent;
+    background: linear-gradient(180deg, #ffe7b6 0%, #e7b86c 55%, #c48d46 100%);
+}
+
+/* The glyph sits on a dark disc, so it reads on the gold too. */
+.prompt--primary .glyph--face .glyph__disc {
+    fill: rgba(20, 14, 8, 0.9);
+}
+
+.prompt--chip {
+    max-width: min(46vw, 320px);
+}
+
+.prompt--row {
+    min-height: 36px;
+    padding: 0.25em 0.8em 0.25em 0.45em;
+    font-size: 0.88rem;
+    background: rgba(255, 244, 226, 0.05);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.prompt--danger {
+    border-color: rgba(232, 128, 106, 0.45);
+    color: #ffc2b4;
+}
+
+.prompt-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+}
+
+.prompt-bar__end {
+    margin-left: auto;
+}
+
+/* ------------------------------------------------------------ glyphs */
+
+.glyph {
+    flex: none;
+}
+
+.glyph--face {
+    width: 1.55em;
+    height: 1.55em;
+}
+
+.glyph__disc {
+    fill: rgba(8, 7, 6, 0.85);
+    stroke: currentColor;
+    stroke-width: 1.4;
+}
+
+.glyph__letter {
+    fill: currentColor;
+    font-family: var(--body);
+    font-size: 12.5px;
+    font-weight: 800;
+}
+
+.glyph__mark {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.glyph--pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.1em;
+    height: 1.45em;
+    padding: 0 0.5em;
+    border: 1.4px solid var(--ink-dim);
+    border-radius: 999px;
+    background: rgba(8, 7, 6, 0.85);
+    color: var(--ink);
+    font-size: 0.78em;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.glyph--key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.9em;
+    height: 1.55em;
+    padding: 0 0.45em;
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: rgba(8, 7, 6, 0.85);
+    color: var(--gold-bright);
+    font-family: var(--body);
+    font-size: 0.8em;
+    font-weight: 700;
+}
+
+.glyph--dpad {
+    width: 1.55em;
+    height: 1.55em;
+}
+
+.glyph--dpad path {
+    fill: rgba(243, 235, 222, 0.28);
+}
+
+.glyph--dpad path.glyph__lit {
+    fill: var(--ink);
+}
+
+/* ------------------------------------------------------------ rows */
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    padding: 10px 12px;
+    border: 1px solid rgba(217, 168, 91, 0.14);
+    border-radius: var(--radius-small);
+    background: rgba(255, 244, 226, 0.03);
+    cursor: pointer;
+    transition:
+        background 160ms var(--ease),
+        border-color 160ms var(--ease);
+}
+
+.row:hover,
+.row:focus-within {
+    border-color: var(--line-strong);
+    background: rgba(255, 244, 226, 0.07);
+}
+
+.row__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.row__title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.row__meta {
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+}
+
+.row__meta--error {
+    color: var(--danger);
+}
+
+.row__prompts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+/* On a gamepad or keyboard a row shows its prompts only while it has the focus. */
+html[data-input='gamepad'] .row:not(:focus-within) .row__prompts,
+html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
+    display: none;
+}
+
+.row--confirm {
+    border-color: rgba(232, 128, 106, 0.4);
+}
+
+/* ------------------------------------------------------------ choices */
+
+.choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.choice {
+    min-height: 40px;
+    padding: 0.35em 0.95em;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 244, 226, 0.04);
+    color: var(--ink-dim);
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.choice--on {
+    border-color: var(--gold);
+    background: rgba(217, 168, 91, 0.18);
+    color: var(--gold-bright);
+    font-weight: 600;
+}
+
+/* ------------------------------------------------------------ prompt places */
+
+.spotlight__prompts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px 14px;
+    margin-top: 4px;
+}
+
+.spotlight__problem {
+    margin: 0;
+    color: #ffd2c7;
+    font-size: 0.92rem;
+}
+
+.sheet__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+}
+
+.sheet__body {
+    padding-bottom: 20px;
+}
+
+.sheet__prompts {
+    padding: 12px 20px calc(14px + var(--safe-bottom));
+    border-top: 1px solid var(--line);
+    background: rgba(10, 8, 6, 0.6);
+}
+
+.sheet__prompts .prompt {
+    background: rgba(255, 244, 226, 0.05);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.sheet__prompts .prompt--hint {
+    background: none;
+}
+
+.play__gate {
+    cursor: pointer;
+}
+
+.play__prompts {
+    justify-content: center;
+    margin-top: 8px;
+}
+
+/* On a narrow screen a row's prompts go under its name, which keeps the width. */
+@media (max-width: 560px) {
+    .row {
+        flex-wrap: wrap;
+    }
+
+    .row__main {
+        flex-basis: 100%;
+    }
+
+    .row__prompts {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+.prompt--accent {
+    border-color: var(--gold);
+    color: var(--gold-bright);
+}
+
+.glyph__view {
+    width: 1.2em;
+    height: 0.9em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+}
+
+.glyph__view rect:last-child {
+    fill: rgba(8, 7, 6, 0.95);
+}

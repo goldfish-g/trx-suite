@@ -1,23 +1,23 @@
-// The home screen: a level flying by behind a ring of the games. Choose a
-// game with arrows, a d-pad, a swipe, the wheel or a click, then confirm to
-// open it.
+// The home screen: a level flying by behind a ring of the games. Turn the
+// ring with the d-pad, the bumpers, arrows, a swipe or the wheel; (A) does
+// the game's main thing, such as Play or Download, and (X) opens its details.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { refreshAccount, useAccount } from '../account/store';
 import { FlybyLayer } from '../flyby/FlybyLayer';
 import { loadPreparedLevel } from '../flyby/load';
 import { flybyCandidates, rememberFlyby } from '../flyby/pick';
-import { resumeInterruptedImports, useImports } from '../gamedata/imports';
-import { onMenuAction, useInputDevice } from '../input/controller';
-import { moveFocus } from '../input/spatial';
+import { resumeInterruptedImports, retryImport, useImports } from '../gamedata/imports';
+import { pushLayer } from '../input/controller';
 import { refreshLibrary, useLibrary } from '../library/store';
 import { applyUpdate, useInstall } from '../pwa/install';
 import { Stage } from '../stage/Stage';
 import { ChevronLeft, ChevronRight, GearIcon, LockIcon, UserIcon } from '../ui/icons';
+import { MoveHint, Prompt, PromptBar } from '../ui/Prompt';
 import { describeProgress } from '../library/describe';
 import { ProgressBar } from '../ui/ProgressBar';
 import { formatBytes } from '../ui/format';
-import { isLockedLook, itemStatus, RING_ITEMS, type ItemStatus, type RingItem } from './items';
+import { isLockedLook, itemStatus, RING_ITEMS, type ItemStatus } from './items';
 import { createArtifact, type Artifact } from './models';
 import { createGameArtifact } from './models/game';
 import { RingLayer } from './RingLayer';
@@ -26,6 +26,7 @@ import { AccountSheet } from './sheets/AccountSheet';
 import { CustomSheet } from './sheets/CustomSheet';
 import { GameSheet } from './sheets/GameSheet';
 import { SettingsSheet } from './sheets/SettingsSheet';
+import { describeError, downloadGame, playGame } from './actions';
 import { reducedMotion } from './motion';
 
 type SheetState =
@@ -52,7 +53,7 @@ let resumed = false;
 export function HomeScreen() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const badgesRef = useRef<HTMLDivElement>(null);
-    const topbarRef = useRef<HTMLElement>(null);
+    const uiRef = useRef<HTMLDivElement>(null);
     const ringRef = useRef<RingLayer | null>(null);
     const stageRef = useRef<Stage | null>(null);
     const [selected, setSelected] = useState(initialSelection);
@@ -60,11 +61,12 @@ export function HomeScreen() {
     const [caption, setCaption] = useState<string | null>(null);
     const [flybyNonce, setFlybyNonce] = useState(0);
     const [webglError, setWebglError] = useState(false);
+    const [problem, setProblem] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
 
     const { gamedata } = useLibrary();
     const catalog = useAccount((state) => state.catalog);
     const progress = useImports((state) => state.progress);
-    const device = useInputDevice((state) => state.device);
     const updateReady = useInstall((state) => state.updateReady);
 
     const statuses = useMemo(
@@ -205,49 +207,58 @@ export function HomeScreen() {
         setSelected(ring.step(direction));
     };
 
-    // Menu actions while no sheet is open.
-    const selectedRef = useRef(selected);
-    selectedRef.current = selected;
+    // The game's main thing, what (A) does.
+    const act = async (index: number) => {
+        const ringItem = RING_ITEMS[index]!;
+        const itemStatus = statusesRef.current[index]!;
+        setProblem(null);
+        switch (itemStatus.kind) {
+            case 'installed':
+                setBusy(true);
+                try {
+                    await playGame(itemStatus.record, ringItem.game!);
+                } catch (error) {
+                    setProblem(describeError(error));
+                    setBusy(false);
+                }
+                return;
+            case 'available':
+                await downloadGame(itemStatus.entry).catch((error: unknown) => setProblem(describeError(error)));
+                return;
+            case 'failed':
+                await retryImport(itemStatus.record.id).catch((error: unknown) => setProblem(describeError(error)));
+                return;
+            case 'locked':
+                setSheet({ kind: 'account' });
+                return;
+            default:
+                open(index);
+        }
+    };
+
+    // The ring turns on the d-pad and the bumpers; the prompts answer the rest.
     useEffect(
         () =>
-            onMenuAction((action) => {
-                const topbar = topbarRef.current;
-                const inTopbar = topbar !== null && topbar.contains(document.activeElement);
-                if (inTopbar) {
-                    if (action === 'left' || action === 'right') {
-                        moveFocus(topbar, action);
-                        return true;
+            pushLayer({
+                root: () => uiRef.current,
+                keepFocus: false,
+                onAction: (action) => {
+                    switch (action) {
+                        case 'left':
+                        case 'previous':
+                            turn(-1);
+                            return true;
+                        case 'right':
+                        case 'next':
+                            turn(1);
+                            return true;
+                        case 'up':
+                        case 'down':
+                            return true;
+                        default:
+                            return false;
                     }
-                    if (action === 'down' || action === 'back') {
-                        (document.activeElement as HTMLElement | null)?.blur();
-                        return true;
-                    }
-                    return false;
-                }
-                switch (action) {
-                    case 'left':
-                    case 'previous':
-                        turn(-1);
-                        return true;
-                    case 'right':
-                    case 'next':
-                        turn(1);
-                        return true;
-                    case 'up':
-                        topbar?.querySelector<HTMLElement>('button')?.focus();
-                        return true;
-                    case 'confirm':
-                        open(selectedRef.current);
-                        return true;
-                    case 'menu':
-                        setSheet({ kind: 'settings' });
-                        return true;
-                    case 'alternate':
-                        setSheet({ kind: 'account' });
-                        return true;
-                    default:
-                        return false;
-                }
+                },
             }),
         [],
     );
@@ -341,22 +352,18 @@ export function HomeScreen() {
                 <p className="home__webgl">This browser cannot draw 3D graphics (WebGL 2), which the games need.</p>
             ) : null}
 
-            <div className="home__ui" inert={sheet !== null}>
-            <header className="topbar" ref={topbarRef}>
+            <div className="home__ui" ref={uiRef} inert={sheet !== null}>
+            <header className="topbar">
                 <div className="brand" aria-label="TRX">
                     <span className="brand__mark">TRX</span>
                     <span className="brand__line">Tomb Raider, in your browser</span>
                 </div>
                 <div className="topbar__actions">
                     {updateReady ? (
-                        <button className="chip chip--accent" onClick={applyUpdate}>
-                            Update ready · Restart
-                        </button>
+                        <Prompt action="view" label="Update ready · Restart" variant="chip" className="prompt--accent" global onPress={applyUpdate} />
                     ) : null}
-                    <AccountChip onClick={() => setSheet({ kind: 'account' })} />
-                    <button className="icon-button" onClick={() => setSheet({ kind: 'settings' })} aria-label="Settings">
-                        <GearIcon />
-                    </button>
+                    <AccountPrompt onPress={() => setSheet({ kind: 'account' })} />
+                    <Prompt action="menu" label="Settings" variant="chip" global icon={<GearIcon />} onPress={() => setSheet({ kind: 'settings' })} />
                 </div>
             </header>
 
@@ -380,7 +387,13 @@ export function HomeScreen() {
             <section className="spotlight" aria-live="polite">
                 <p className="spotlight__eyebrow">{item.tagline}</p>
                 <h1 className="spotlight__title">{item.title}</h1>
-                <Spotlight item={item} status={status} onOpen={() => open(selected)} />
+                <Spotlight
+                    status={status}
+                    busy={busy}
+                    problem={problem}
+                    onPrimary={() => void act(selected)}
+                    onDetails={item.game !== null ? () => open(selected) : undefined}
+                />
             </section>
 
             {/* The ring for screen readers and keyboards without arrows. */}
@@ -403,7 +416,9 @@ export function HomeScreen() {
             </nav>
 
             <footer className="hints">
-                <Hints device={device} />
+                <PromptBar>
+                    <MoveHint name="horizontal" label="Choose" />
+                </PromptBar>
                 {caption !== null ? (
                     <button className="hints__caption" onClick={() => setFlybyNonce((n) => n + 1)} title="Fly through another level">
                         {caption}
@@ -463,7 +478,7 @@ function primaryLabel(status: ItemStatus): string {
         case 'importing':
             return 'Details';
         case 'failed':
-            return 'Fix';
+            return 'Try again';
         case 'available':
             return 'Download';
         case 'locked':
@@ -475,7 +490,16 @@ function primaryLabel(status: ItemStatus): string {
     }
 }
 
-function Spotlight({ item, status, onOpen }: { item: RingItem; status: ItemStatus; onOpen(): void }) {
+interface SpotlightProps {
+    status: ItemStatus;
+    busy: boolean;
+    problem: string | null;
+    onPrimary(): void;
+    /** Official games have details: profiles, files, the own-copy picker. */
+    onDetails?: () => void;
+}
+
+function Spotlight({ status, busy, problem, onPrimary, onDetails }: SpotlightProps) {
     const importing = status.kind === 'importing' && status.progress !== undefined ? describeProgress(status.progress) : null;
     return (
         <>
@@ -489,61 +513,20 @@ function Spotlight({ item, status, onOpen }: { item: RingItem; status: ItemStatu
                     {statusLine(status)}
                 </p>
             )}
-            <button className="button button--primary button--large" onClick={onOpen} aria-label={`${primaryLabel(status)}: ${item.title}`}>
-                {primaryLabel(status)}
-            </button>
+            {problem !== null ? <p className="spotlight__problem">{problem}</p> : null}
+            <div className="spotlight__prompts">
+                <Prompt action="confirm" label={primaryLabel(status)} variant="primary" global disabled={busy} onPress={onPrimary} />
+                {onDetails !== undefined && status.kind !== 'importing' && status.kind !== 'own-copy' ? (
+                    <Prompt action="alternate" label="Details" global onPress={onDetails} />
+                ) : null}
+            </div>
         </>
     );
 }
 
-function AccountChip({ onClick }: { onClick(): void }) {
+function AccountPrompt({ onPress }: { onPress(): void }) {
     const me = useAccount((state) => state.me);
     const accounts = me?.accounts ?? [];
     const label = accounts.length === 0 ? 'Sign in' : accounts.map((account) => account.name).join(' · ');
-    return (
-        <button className="chip" onClick={onClick}>
-            <UserIcon />
-            <span className="chip__label">{label}</span>
-        </button>
-    );
-}
-
-function Key({ children }: { children: string }) {
-    return <kbd className="key">{children}</kbd>;
-}
-
-function Hints({ device }: { device: string }) {
-    if (device === 'gamepad') {
-        return (
-            <p className="hints__list">
-                <span><Key>◀ ▶</Key> Choose</span>
-                <span><Key>A</Key> Open</span>
-                <span><Key>X</Key> Account</span>
-                <span><Key>Y</Key> Settings</span>
-            </p>
-        );
-    }
-    if (device === 'keyboard') {
-        return (
-            <p className="hints__list">
-                <span><Key>← →</Key> Choose</span>
-                <span><Key>Enter</Key> Open</span>
-                <span><Key>↑</Key> Menu</span>
-            </p>
-        );
-    }
-    if (device === 'touch') {
-        return (
-            <p className="hints__list">
-                <span>Swipe to choose</span>
-                <span>Tap to open</span>
-            </p>
-        );
-    }
-    return (
-        <p className="hints__list">
-            <span>Scroll or click to choose</span>
-            <span>Click the artifact to open</span>
-        </p>
-    );
+    return <Prompt action="extra" label={label} variant="chip" global icon={<UserIcon />} onPress={onPress} />;
 }
