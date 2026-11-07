@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { promptInstall, useInstall } from '../../pwa/install';
 import { formatBytes } from '../../ui/format';
 import { InstallIcon } from '../../ui/icons';
+import { GameText } from '../../ui/GameText';
 import { Sheet } from '../../ui/Sheet';
 import { reducedMotionChoice, setReducedMotionChoice } from '../motion';
 
@@ -35,7 +36,9 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
         <Sheet title="Settings" eyebrow="TRX" onClose={onClose}>
             {mode !== 'installed' ? (
                 <section className="sheet__section">
-                    <h3 className="sheet__heading">Install the app</h3>
+                    <h3 className="sheet__heading">
+                        <GameText text="Install the app" />
+                    </h3>
                     {mode === 'prompt' ? (
                         <>
                             <p className="sheet__text">
@@ -44,7 +47,7 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                             <div className="sheet__actions">
                                 <button className="button button--primary" data-autofocus onClick={() => void promptInstall()}>
                                     <InstallIcon />
-                                    Install
+                                    <GameText text="Install" />
                                 </button>
                             </div>
                         </>
@@ -62,10 +65,12 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
             ) : null}
 
             <section className="sheet__section">
-                <h3 className="sheet__heading">Background</h3>
+                <h3 className="sheet__heading">
+                    <GameText text="Background" />
+                </h3>
                 <div className="sheet__actions">
                     <button className="button" data-autofocus={mode === 'installed' ? true : undefined} onClick={onNewFlyby}>
-                        Fly through another level
+                        <GameText text="Fly through another level" />
                     </button>
                 </div>
                 <div className="field">
@@ -88,7 +93,7 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                                     setReducedMotionChoice(choice);
                                 }}
                             >
-                                {text}
+                                <GameText text={text} />
                             </button>
                         ))}
                     </div>
@@ -97,7 +102,9 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
             </section>
 
             <section className="sheet__section">
-                <h3 className="sheet__heading">Storage</h3>
+                <h3 className="sheet__heading">
+                    <GameText text="Storage" />
+                </h3>
                 {storage === null ? (
                     <p className="sheet__text sheet__text--quiet">This browser doesn’t say how much it stores.</p>
                 ) : (
@@ -111,7 +118,7 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                         ) : (
                             <div className="sheet__actions">
                                 <button className="button" onClick={() => void keepFiles()}>
-                                    Ask the browser to keep the files
+                                    <GameText text="Ask the browser to keep the files" />
                                 </button>
                             </div>
                         )}
@@ -120,7 +127,9 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
             </section>
 
             <section className="sheet__section">
-                <h3 className="sheet__heading">About</h3>
+                <h3 className="sheet__heading">
+                    <GameText text="About" />
+                </h3>
                 <p className="sheet__text sheet__text--quiet">
                     Plays the games with TRX by LostArtefacts. The flyby reads the original level files in the browser, an
                     idea from Evgeny Popov’s TRN viewer. Tomb Raider is a trademark of its owners; this app is not affiliated

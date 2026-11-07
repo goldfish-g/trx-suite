@@ -11,6 +11,7 @@ import { deleteProfile } from '../../profiles/store';
 import type { ProfileRecord } from '../../profiles/types';
 import { formatBytes, formatWhen } from '../../ui/format';
 import { ExternalIcon, PlayIcon, TrashIcon } from '../../ui/icons';
+import { GameText } from '../../ui/GameText';
 import { ProgressBar } from '../../ui/ProgressBar';
 import { Prompt } from '../../ui/Prompt';
 import { Row } from '../../ui/Row';
@@ -87,7 +88,9 @@ export function CustomSheet({ onClose }: { onClose(): void }) {
             </section>
 
             <section className="sheet__section">
-                <h3 className="sheet__heading">Add a custom level</h3>
+                <h3 className="sheet__heading">
+                    <GameText text="Add a custom level" />
+                </h3>
                 <p className="sheet__text sheet__text--quiet">
                     TRX packages and lone level files play directly. Levels made for the original games or older engines
                     need converting first.
@@ -110,7 +113,7 @@ export function CustomSheet({ onClose }: { onClose(): void }) {
                                             aria-checked={path === level}
                                             onClick={() => setLevel(path)}
                                         >
-                                            {path.slice(path.lastIndexOf('/') + 1)}
+                                            <GameText text={path.slice(path.lastIndexOf('/') + 1)} />
                                         </button>
                                     ))}
                                 </div>
@@ -125,17 +128,17 @@ export function CustomSheet({ onClose }: { onClose(): void }) {
                         <div className="sheet__actions">
                             {playable ? (
                                 <button className="button button--primary" data-autofocus disabled={busy} onClick={() => void add()}>
-                                    Add to my levels
+                                    <GameText text="Add to my levels" />
                                 </button>
                             ) : null}
                             {detection.kind === 'convert' && LEVEL_CONVERTER_URL !== null ? (
                                 <a className="button" href={LEVEL_CONVERTER_URL} target="_blank" rel="noreferrer">
                                     <ExternalIcon />
-                                    Open the Level Converter
+                                    <GameText text="Open the Level Converter" />
                                 </a>
                             ) : null}
                             <button className="button button--quiet" onClick={() => setPicked(null)}>
-                                Cancel
+                                <GameText text="Cancel" />
                             </button>
                         </div>
                     </div>

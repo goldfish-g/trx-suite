@@ -4,6 +4,7 @@ import { checkBrowserSupport, runSession, type SessionStage } from '../engine/se
 import { KEYS, pushLayer } from '../input/controller';
 import { getProfile } from '../profiles/store';
 import { formatBytes } from '../ui/format';
+import { GameText } from '../ui/GameText';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt, PromptBar } from '../ui/Prompt';
 
@@ -150,7 +151,7 @@ function Overlay({ state, notice, rootRef }: { state: ScreenState; notice: strin
             return (
                 <div className="play__overlay play__gate" ref={rootRef} onClick={() => start(state.pass)}>
                     <div className="play__panel">
-                        <span className="play__gate-title">Ready</span>
+                        <GameText text="Ready" className="play__gate-title" />
                         <PromptBar className="play__prompts">
                             <Prompt action="confirm" label="Start" variant="primary" global onPress={() => start(state.pass)} />
                             <Prompt action="back" label="Back to the menu" global onPress={leave} />
@@ -162,7 +163,9 @@ function Overlay({ state, notice, rootRef }: { state: ScreenState; notice: strin
             return (
                 <div className="play__overlay" ref={rootRef}>
                     <div className="play__panel">
-                        <h1 className="play__heading">The game could not start</h1>
+                        <h1 className="play__heading">
+                            <GameText text="The game could not start" />
+                        </h1>
                         <p className="play__error">{state.message}</p>
                         <PromptBar className="play__prompts">
                             <Prompt action="confirm" label="Try again" variant="primary" global onPress={() => location.reload()} />
@@ -176,7 +179,9 @@ function Overlay({ state, notice, rootRef }: { state: ScreenState; notice: strin
             return (
                 <div className="play__overlay" ref={rootRef}>
                     <div className="play__panel">
-                        <h1 className="play__heading">{heading}</h1>
+                        <h1 className="play__heading">
+                            <GameText text={heading} />
+                        </h1>
                         <ProgressBar fraction={fraction} label={notice ?? detail} />
                         <PromptBar className="play__prompts">
                             <Prompt action="back" label="Back to the menu" global onPress={leave} />

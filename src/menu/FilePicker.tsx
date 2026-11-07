@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { FileIcon, FolderIcon } from '../ui/icons';
+import { GameText } from '../ui/GameText';
 
 interface Props {
     disabled?: boolean;
@@ -22,11 +23,11 @@ export function FilePicker({ disabled, onPick, fileLabel = 'Choose a file…', f
         <div className="picker">
             <button className="button" disabled={disabled} onClick={() => fileInput.current?.click()}>
                 <FileIcon />
-                {fileLabel}
+                <GameText text={fileLabel} />
             </button>
             <button className="button" disabled={disabled} onClick={() => folderInput.current?.click()}>
                 <FolderIcon />
-                {folderLabel}
+                <GameText text={folderLabel} />
             </button>
             <input
                 ref={fileInput}

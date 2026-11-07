@@ -7,6 +7,7 @@ import { OFFICIAL_GAMES, STEAM } from '../../../shared/games.ts';
 import { mockSignIn, startSteamSignIn, unlinkAccount, useAccount, type SignInHandle } from '../../account/store';
 import { formatWhen } from '../../ui/format';
 import { ExternalIcon, StoreMark } from '../../ui/icons';
+import { GameText } from '../../ui/GameText';
 import { Sheet } from '../../ui/Sheet';
 import { describeError } from '../actions';
 
@@ -69,7 +70,8 @@ export function AccountSheet({ onClose }: { onClose(): void }) {
 
             <section className="sheet__section">
                 <h3 className="sheet__heading">
-                    <StoreMark provider="steam" /> Steam
+                    <StoreMark provider="steam" />
+                    <GameText text="Steam" />
                 </h3>
                 {account !== undefined ? (
                     <AccountCard account={account} />
@@ -83,21 +85,21 @@ export function AccountSheet({ onClose }: { onClose(): void }) {
                             <div className="sheet__actions">
                                 <a className="button" href={steam.url} target="_blank" rel="noreferrer">
                                     <ExternalIcon />
-                                    No window? Open Steam
+                                    <GameText text="No window? Open Steam" />
                                 </a>
                                 <button className="button button--quiet" onClick={() => steam.cancel()}>
-                                    Cancel
+                                    <GameText text="Cancel" />
                                 </button>
                             </div>
                         </div>
                     ) : (
                         <div className="sheet__actions">
                             <button className="button button--primary" disabled={!online} data-autofocus onClick={() => void signInSteam()}>
-                                {account === undefined ? 'Sign in with Steam' : 'Check again'}
+                                <GameText text={account === undefined ? 'Sign in with Steam' : 'Check again'} />
                             </button>
                             {account !== undefined ? (
                                 <button className="button button--quiet" onClick={() => void unlinkAccount('steam').catch((e) => setError(describeError(e)))}>
-                                    Sign out
+                                    <GameText text="Sign out" />
                                 </button>
                             ) : null}
                         </div>
@@ -106,7 +108,9 @@ export function AccountSheet({ onClose }: { onClose(): void }) {
             </section>
             {providers.mock ? (
                 <section className="sheet__section">
-                    <h3 className="sheet__heading">Test sign-in</h3>
+                    <h3 className="sheet__heading">
+                        <GameText text="Test sign-in" />
+                    </h3>
                     <p className="sheet__text sheet__text--quiet">
                         This server runs with AUTH_MOCK=1, for development: a made-up Steam account that owns the remasters
                         unlocks every game.
@@ -118,7 +122,7 @@ export function AccountSheet({ onClose }: { onClose(): void }) {
                                 void mockSignIn('steam', [STEAM.remasteredI_III, STEAM.remasteredIV_VI]).catch((e) => setError(describeError(e)))
                             }
                         >
-                            Sign in as a test player
+                            <GameText text="Sign in as a test player" />
                         </button>
                     </div>
                 </section>

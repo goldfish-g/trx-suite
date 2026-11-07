@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight, GearIcon, LockIcon, UserIcon } from '../ui/i
 import { MoveHint, Prompt, PromptBar } from '../ui/Prompt';
 import { describeProgress } from '../library/describe';
 import { ProgressBar } from '../ui/ProgressBar';
+import { GameText } from '../ui/GameText';
 import { formatBytes } from '../ui/format';
 import { isLockedLook, itemStatus, RING_ITEMS, type ItemStatus } from './items';
 import { createArtifact, type Artifact } from './models';
@@ -355,7 +356,9 @@ export function HomeScreen() {
             <div className="home__ui" ref={uiRef} inert={sheet !== null}>
             <header className="topbar">
                 <div className="brand" aria-label="TRX">
-                    <span className="brand__mark">TRX</span>
+                    <span className="brand__mark">
+                        <GameText text="TRX" />
+                    </span>
                     <span className="brand__line">Tomb Raider, in your browser</span>
                 </div>
                 <div className="topbar__actions">
@@ -386,7 +389,9 @@ export function HomeScreen() {
 
             <section className="spotlight" aria-live="polite">
                 <p className="spotlight__eyebrow">{item.tagline}</p>
-                <h1 className="spotlight__title">{item.title}</h1>
+                <h1 className="spotlight__title">
+                    <GameText text={item.title} />
+                </h1>
                 <Spotlight
                     status={status}
                     busy={busy}

@@ -45,6 +45,14 @@ menu, store sign-in and offline support.
 - **Offline.** A service worker keeps the app and the background levels;
   engine builds and game files stay in the browser (Cache Storage and
   IndexedDB). Downloads resume after a reload or a dropped connection.
+- **Dressed like the games' menus.** Titles and button labels are in TR1's
+  gold in-game lettering and the prompts show TRX's own controller and
+  keyboard icons, both taken from TRX's sprite sheets (`data/tr1/glyphs`,
+  GPL-3.0) by `scripts/make-game-art.mjs`. They are drawn a whole number of
+  screen pixels per pixel, so they stay sharp at any zoom. Panels and
+  buttons are black boxes in TR1's etched gold frames, the selected one
+  glows like the PlayStation games' selection bar, and progress bars are
+  banded like Lara's health bar. Other text is set in Alegreya.
 - **Custom levels** open their own list of profiles; TRX packages and lone
   level files play directly, older ones link to the TRX Level Converter.
 - **Playing.** Each profile keeps its saves and settings in IndexedDB. The

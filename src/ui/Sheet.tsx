@@ -5,6 +5,7 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { pushLayer } from '../input/controller';
 import { focusFirst } from '../input/spatial';
+import { GameText } from './GameText';
 import { Prompt, PromptBar } from './Prompt';
 
 interface Props {
@@ -68,7 +69,7 @@ export function Sheet({ title, eyebrow, onClose, children, wide, prompts }: Prop
                 <header className="sheet__header">
                     {eyebrow ? <p className="sheet__eyebrow">{eyebrow}</p> : null}
                     <h2 className="sheet__title" id={titleId}>
-                        {title}
+                        <GameText text={title} />
                     </h2>
                 </header>
                 <div className="sheet__body">{children}</div>

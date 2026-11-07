@@ -1,23 +1,47 @@
-/* TRX — a night museum: warm darkness, gold leaf, carved titles. */
+/* TRX — dressed like the games' own menus: TR1's gold lettering and button
+   icons (TRX's sprite sheets), black boxes in TR1's etched gold frames, the
+   PlayStation games' glowing selection bar, and bars banded like Lara's. */
 
 :root {
-    --bg: #050608;
-    --ink: #f3ebde;
-    --ink-dim: #c2b5a1;
-    --ink-faint: #8a7f70;
-    --gold: #d9a85b;
-    --gold-bright: #f6d89b;
-    --gold-deep: #8c6430;
-    --line: rgba(217, 168, 91, 0.22);
-    --line-strong: rgba(217, 168, 91, 0.5);
-    --glass: rgba(16, 13, 10, 0.72);
-    --glass-strong: rgba(14, 11, 9, 0.94);
+    --bg: #000;
+    --ink: #efe2c2;
+    --ink-dim: #c6b28c;
+    --ink-faint: #918060;
+    /* TR1's frame colours, as TRX's ui.json5 gives them. */
+    --gold: #e8c070;
+    --gold-dark: #8c7038;
+    --gold-bright: #fff0c4;
+    --gold-deep: #4a3814;
+    --box: rgba(0, 0, 0, 0.55);
+    --box-heavy: rgba(0, 0, 0, 0.88);
     --danger: #e8806a;
-    --ok: #a8cf8f;
-    --radius: 14px;
-    --radius-small: 10px;
-    --display: 'Cinzel', 'Trajan Pro', Georgia, serif;
-    --body: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --ok: #b4d48c;
+    --text: 'Alegreya Variable', 'Alegreya', 'Book Antiqua', Palatino, Georgia, serif;
+    --shadow: 1px 1px 0 #000;
+    /* Screen pixels per CSS pixel; src/ui/pixels.ts keeps it current. */
+    --dpr: 1;
+    /* One line of a frame, a whole number of screen pixels thick. */
+    --e: calc(max(1, round(nearest, var(--dpr) * 1.25, 1)) / var(--dpr) * 1px);
+    /* TR1's etched frame: light outside and dark inside along the top and
+       left, the other way round along the bottom and right. */
+    --frame:
+        inset var(--e) var(--e) 0 var(--gold), inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--gold-dark),
+        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 var(--gold-dark), inset calc(var(--e) * -2) calc(var(--e) * -2) 0 var(--gold);
+    --frame-dim:
+        inset var(--e) var(--e) 0 #6e5a30, inset calc(var(--e) * -1) calc(var(--e) * -1) 0 #3a2c12,
+        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 #3a2c12, inset calc(var(--e) * -2) calc(var(--e) * -2) 0 #6e5a30;
+    --frame-lit:
+        inset var(--e) var(--e) 0 var(--gold-bright), inset calc(var(--e) * -1) calc(var(--e) * -1) 0 #a8843c,
+        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 #a8843c, inset calc(var(--e) * -2) calc(var(--e) * -2) 0 var(--gold-bright);
+    --frame-danger:
+        inset var(--e) var(--e) 0 #e07a62, inset calc(var(--e) * -1) calc(var(--e) * -1) 0 #6c1c14,
+        inset calc(var(--e) * 2) calc(var(--e) * 2) 0 #6c1c14, inset calc(var(--e) * -2) calc(var(--e) * -2) 0 #e07a62;
+    /* The PlayStation games' selection: a bar that glows in its middle. */
+    --selected: linear-gradient(90deg, rgba(0, 0, 0, 0.7) 0%, rgba(232, 192, 112, 0.34) 50%, rgba(0, 0, 0, 0.7) 100%);
+    --plate: linear-gradient(180deg, #4a3412 0%, #2a1c08 55%, #160e04 100%);
+    --gs: 1;
+    /* The button icons, half again as big as the lettering beside them. */
+    --gi: 1.5;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
@@ -39,10 +63,9 @@ body,
     height: 100%;
     background: var(--bg);
     color: var(--ink);
-    font-family: var(--body);
-    font-size: 16px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
+    font-family: var(--text);
+    font-size: 17px;
+    line-height: 1.45;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -58,6 +81,15 @@ select {
     color: inherit;
 }
 
+::selection {
+    background: var(--gold-dark);
+    color: #fff;
+}
+
+* {
+    scrollbar-color: var(--gold-dark) #000;
+}
+
 .sr-only {
     position: absolute;
     width: 1px;
@@ -71,22 +103,74 @@ select {
 }
 
 .icon {
-    width: 1.15em;
-    height: 1.15em;
+    width: 1em;
+    height: 1em;
     flex: none;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+    fill: currentColor;
+    shape-rendering: crispEdges;
+}
+
+/* ------------------------------------------------------------ the game's lettering */
+
+/* src/ui/GameText.tsx: glyphs off TR1's font sheet. --gs, set by the places
+   below, is how many screen pixels each pixel of the font covers, rounded
+   to a whole number so the letters stay sharp. */
+.gt {
+    --gu: calc(max(1, round(nearest, var(--gs) * var(--dpr), 1)) / var(--dpr) * 1px);
+    /* TRX leaves half a pixel between letters: rounded down, as screen pixels allow. */
+    --gl: calc(round(down, max(1, round(nearest, var(--gs) * var(--dpr), 1)) * 0.5, 1) / var(--dpr) * 1px);
+    display: inline-block;
+    max-width: 100%;
+    vertical-align: middle;
+    line-height: calc(var(--gu) * 18);
+    filter: drop-shadow(var(--gu) var(--gu) 0 rgba(0, 0, 0, 0.6));
+}
+
+.gt__word {
+    display: inline-flex;
+    align-items: flex-start;
+    vertical-align: top;
+}
+
+.gt__g {
+    flex: none;
+    width: calc(var(--w) * var(--gu));
+    height: calc(var(--h) * var(--gu));
+    margin-left: calc(var(--d) * var(--gu));
+    margin-right: calc((var(--a) - var(--w) - var(--d)) * var(--gu) + var(--gl));
+    background: url('./ui/gameArt/font.png') no-repeat;
+    background-size: calc(256 * var(--gu)) auto;
+    background-position: calc(var(--x) * var(--gu) * -1) calc(var(--y) * var(--gu) * -1);
+    image-rendering: pixelated;
+}
+
+.gt__g:last-child {
+    margin-right: calc((var(--a) - var(--w) - var(--d)) * var(--gu));
+}
+
+.gt__space {
+    display: inline-block;
+    width: calc(var(--gu) * 6 + var(--gl));
+}
+
+/* Text the font cannot draw, such as a name in another script. */
+.gt--plain {
+    color: var(--gold);
+    font-family: var(--text);
+    font-size: calc(var(--gu) * 14);
+    font-weight: 700;
+    filter: none;
+    text-shadow: var(--gu) var(--gu) 0 #2a1806;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ------------------------------------------------------------ focus */
 
 :focus-visible {
-    outline: 2px solid var(--gold-bright);
-    outline-offset: 3px;
-    box-shadow: 0 0 0 6px rgba(246, 216, 155, 0.16), 0 0 24px rgba(246, 216, 155, 0.25);
+    outline: var(--e) solid var(--gold-bright);
+    outline-offset: calc(var(--e) * 2);
 }
 
 /* ------------------------------------------------------------ buttons */
@@ -97,73 +181,61 @@ select {
     justify-content: center;
     gap: 0.5em;
     min-height: 44px;
-    padding: 0.55em 1.1em;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-small);
-    background: rgba(255, 244, 226, 0.05);
-    color: var(--ink);
-    font-weight: 550;
-    letter-spacing: 0.01em;
+    padding: 0.5em 1.1em;
+    border: 0;
+    border-radius: 0;
+    background: var(--box);
+    box-shadow: var(--frame-dim);
+    color: var(--gold);
     text-decoration: none;
     cursor: pointer;
-    transition:
-        background 160ms var(--ease),
-        border-color 160ms var(--ease),
-        transform 160ms var(--ease),
-        box-shadow 160ms var(--ease);
 }
 
 .button:hover:not(:disabled) {
-    background: rgba(255, 244, 226, 0.1);
-    border-color: var(--line-strong);
+    background: var(--selected);
+    box-shadow: var(--frame);
 }
 
 .button:active:not(:disabled) {
-    transform: translateY(1px) scale(0.99);
+    transform: translate(var(--e), var(--e));
 }
 
 .button:disabled {
     opacity: 0.45;
+    filter: grayscale(0.6);
     cursor: default;
 }
 
 .button--primary {
-    border-color: transparent;
-    background: linear-gradient(180deg, #f7dca2 0%, #dcab5f 55%, #b8823d 100%);
-    color: #1d1309;
-    font-weight: 650;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.5),
-        0 6px 24px rgba(217, 168, 91, 0.25);
+    background: var(--plate);
+    box-shadow: var(--frame), 0 0 0 var(--e) #000;
 }
 
 .button--primary:hover:not(:disabled) {
-    background: linear-gradient(180deg, #ffe7b6 0%, #e7b86c 55%, #c48d46 100%);
-    border-color: transparent;
+    background: var(--selected), var(--plate);
+    box-shadow: var(--frame-lit), 0 0 0 var(--e) #000;
 }
 
 .button--large {
-    min-height: 52px;
-    padding: 0.7em 2.2em;
-    font-size: 1.05rem;
-    letter-spacing: 0.04em;
+    --gs: 1.5;
+    min-height: 56px;
+    padding: 0.6em 2em;
 }
 
 .button--small {
     min-height: 36px;
     padding: 0.3em 0.75em;
-    font-size: 0.9rem;
 }
 
 .button--quiet {
-    border-color: transparent;
     background: transparent;
-    color: var(--ink-dim);
+    box-shadow: none;
+    opacity: 0.85;
 }
 
 .button--danger {
-    border-color: rgba(232, 128, 106, 0.4);
-    color: #ffc2b4;
+    box-shadow: var(--frame-danger);
+    color: var(--danger);
 }
 
 .icon-button {
@@ -171,27 +243,16 @@ select {
     place-items: center;
     width: 44px;
     height: 44px;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    background: var(--glass);
-    color: var(--ink);
+    border: 0;
+    border-radius: 0;
+    background: var(--box);
+    box-shadow: var(--frame-dim);
+    color: var(--gold);
     cursor: pointer;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: border-color 160ms var(--ease), background 160ms var(--ease);
-}
-
-.icon-button svg {
-    width: 20px;
-    height: 20px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
 }
 
 .icon-button:hover {
-    border-color: var(--line-strong);
+    box-shadow: var(--frame);
 }
 
 .chip {
@@ -201,24 +262,20 @@ select {
     max-width: min(46vw, 320px);
     min-height: 44px;
     padding: 0.4em 1em;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: var(--glass);
-    color: var(--ink);
-    font-size: 0.92rem;
-    font-weight: 550;
+    border: 0;
+    border-radius: 0;
+    background: var(--box);
+    box-shadow: var(--frame-dim);
+    color: var(--gold);
     cursor: pointer;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
 }
 
 .chip:hover {
-    border-color: var(--line-strong);
+    box-shadow: var(--frame);
 }
 
 .chip--accent {
-    border-color: var(--gold);
-    color: var(--gold-bright);
+    box-shadow: var(--frame);
 }
 
 .chip__label {
@@ -231,14 +288,12 @@ select {
     display: inline-block;
     min-width: 1.9em;
     padding: 0.05em 0.45em;
-    border: 1px solid var(--line-strong);
-    border-bottom-width: 2px;
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.35);
-    color: var(--gold-bright);
-    font-family: var(--body);
+    border: 1px solid #000;
+    background: #b9c8b4;
+    box-shadow: inset -1px -1px 0 #7d9484;
+    color: #101810;
     font-size: 0.78rem;
-    font-weight: 650;
+    font-weight: 700;
     text-align: center;
 }
 
@@ -272,8 +327,8 @@ select {
     inset: 0;
     pointer-events: none;
     background:
-        radial-gradient(ellipse 85% 70% at 50% 42%, transparent 35%, rgba(3, 3, 5, 0.55) 100%),
-        linear-gradient(180deg, rgba(3, 3, 5, 0.55) 0%, transparent 18%, transparent 52%, rgba(3, 3, 5, 0.82) 100%);
+        radial-gradient(ellipse 85% 70% at 50% 42%, transparent 35%, rgba(0, 0, 0, 0.6) 100%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 18%, transparent 52%, rgba(0, 0, 0, 0.85) 100%);
 }
 
 .home__webgl {
@@ -281,6 +336,7 @@ select {
     inset: 40% 10% auto;
     text-align: center;
     color: var(--ink-dim);
+    text-shadow: var(--shadow);
 }
 
 .topbar {
@@ -309,23 +365,16 @@ select {
 }
 
 .brand__mark {
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 1.65rem;
-    letter-spacing: 0.22em;
-    background: linear-gradient(180deg, #fff1cf 10%, #d9a85b 60%, #9a6c34 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.6));
+    --gs: 2;
 }
 
 .brand__line {
-    font-size: 0.72rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
+    margin-top: 2px;
+    font-size: 0.82rem;
+    font-variant: small-caps;
+    letter-spacing: 0.12em;
     color: var(--ink-dim);
-    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+    text-shadow: var(--shadow);
 }
 
 .spotlight {
@@ -349,27 +398,17 @@ select {
 
 .spotlight__eyebrow {
     margin: 0;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
+    font-size: 1rem;
+    font-variant: small-caps;
+    letter-spacing: 0.2em;
     color: var(--gold);
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+    text-shadow: var(--shadow);
 }
 
 .spotlight__title {
+    --gs: 3;
     margin: 0;
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: clamp(2rem, 5.2vw, 3.6rem);
-    line-height: 1.05;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    background: linear-gradient(180deg, #fff6e2 0%, #f1d39a 45%, #c48c45 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    filter: drop-shadow(0 3px 18px rgba(0, 0, 0, 0.85));
+    line-height: 1;
     animation: rise 420ms var(--ease);
 }
 
@@ -378,9 +417,9 @@ select {
     align-items: center;
     gap: 0.5em;
     margin: 0 0 6px;
-    color: var(--ink-dim);
-    font-size: 0.98rem;
-    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+    color: var(--ink);
+    font-size: 1.05rem;
+    text-shadow: var(--shadow);
 }
 
 .spotlight__status--installed {
@@ -421,20 +460,20 @@ select {
     place-items: center;
     width: 52px;
     height: 52px;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    background: rgba(10, 8, 6, 0.45);
-    color: var(--gold-bright);
+    border: 0;
+    border-radius: 0;
+    background: var(--box);
+    box-shadow: var(--frame-dim);
+    color: var(--gold);
+    font-size: 24px;
     cursor: pointer;
-    opacity: 0.75;
-    transition: opacity 160ms var(--ease), transform 160ms var(--ease);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    opacity: 0.8;
 }
 
 .ring-nav__button:hover {
     opacity: 1;
-    transform: scale(1.06);
+    background: var(--selected);
+    box-shadow: var(--frame);
 }
 
 @media (pointer: coarse) {
@@ -456,28 +495,30 @@ select {
     top: 0;
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid var(--line-strong);
-    border-radius: 50%;
-    background: rgba(12, 9, 7, 0.8);
-    color: var(--gold-bright);
+    width: 32px;
+    height: 32px;
+    background: var(--box-heavy);
+    box-shadow: var(--frame-dim);
+    color: var(--gold);
     opacity: 0;
-    transition: opacity 200ms var(--ease);
+    transition: opacity 200ms linear;
 }
 
 .badge .icon {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
 
+/* Turns in eight steps, like the games' own loading wheels. */
 .badge__spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(246, 216, 155, 0.25);
-    border-top-color: var(--gold-bright);
-    border-radius: 50%;
-    animation: spin 900ms linear infinite;
+    width: 14px;
+    height: 14px;
+    background:
+        linear-gradient(var(--gold), var(--gold)) center top / 4px 5px no-repeat,
+        linear-gradient(var(--gold-dark), var(--gold-dark)) center bottom / 4px 5px no-repeat,
+        linear-gradient(#6e5a30, #6e5a30) left center / 5px 4px no-repeat,
+        linear-gradient(#6e5a30, #6e5a30) right center / 5px 4px no-repeat;
+    animation: spin 800ms steps(8) infinite;
 }
 
 @keyframes spin {
@@ -496,7 +537,7 @@ select {
     justify-content: space-between;
     gap: 16px;
     padding: 0 calc(20px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(20px + var(--safe-left));
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--ink-faint);
     z-index: 4;
 }
@@ -518,10 +559,10 @@ select {
     border: 0;
     padding: 6px 0;
     background: none;
-    color: var(--ink-faint);
-    font-size: 0.82rem;
+    color: var(--ink-dim);
+    font-size: 0.95rem;
     font-style: italic;
-    letter-spacing: 0.02em;
+    text-shadow: var(--shadow);
     cursor: pointer;
     text-align: right;
 }
@@ -529,15 +570,17 @@ select {
 .hints__caption::before {
     content: '';
     display: inline-block;
-    width: 18px;
-    height: 1px;
-    margin: 0 10px 4px 0;
-    background: var(--gold-deep);
+    width: 6px;
+    height: 6px;
+    margin: 0 10px 2px 0;
+    background: var(--gold-dark);
+    box-shadow: 1px 1px 0 #000;
+    transform: rotate(45deg);
     vertical-align: middle;
 }
 
 .hints__caption:hover {
-    color: var(--ink-dim);
+    color: var(--gold);
 }
 
 @media (max-width: 640px) {
@@ -545,8 +588,44 @@ select {
         display: none;
     }
 
+    /* The brand and both chips share a phone's width. */
+    .brand__mark {
+        --gs: 1.5;
+    }
+
+    .topbar {
+        gap: 8px;
+    }
+
+    .topbar__actions {
+        gap: 6px;
+    }
+
+    .topbar .prompt.prompt--chip {
+        gap: 0.4em;
+        padding-left: 0.65em;
+        padding-right: 0.65em;
+    }
+
+    /* Settings shows only its gear, or its button; the word stays for screen readers. */
+    .topbar .prompt--chip[data-action='menu'] {
+        min-width: 44px;
+    }
+
+    .topbar .prompt--chip[data-action='menu'] .prompt__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
     .spotlight {
         bottom: calc(52px + var(--safe-bottom));
+    }
+
+    .spotlight__title {
+        --gs: 2;
     }
 
     .hints__list {
@@ -571,8 +650,8 @@ select {
 .sheet-scrim {
     position: absolute;
     inset: 0;
-    background: rgba(2, 2, 3, 0.5);
-    animation: fade 220ms var(--ease);
+    background: rgba(0, 0, 0, 0.5);
+    animation: fade 160ms linear;
 }
 
 .sheet {
@@ -581,12 +660,9 @@ select {
     flex-direction: column;
     width: min(460px, 100%);
     height: 100%;
-    border-left: 1px solid var(--line);
-    background:
-        radial-gradient(120% 60% at 100% 0%, rgba(217, 168, 91, 0.1), transparent 60%),
-        var(--glass-strong);
-    box-shadow: -30px 0 80px rgba(0, 0, 0, 0.55);
-    animation: slide-in 300ms var(--ease);
+    background: var(--box-heavy);
+    box-shadow: var(--frame), -24px 0 0 rgba(0, 0, 0, 0.25);
+    animation: slide-in 220ms var(--ease);
     user-select: text;
     -webkit-user-select: text;
 }
@@ -601,25 +677,23 @@ select {
     justify-content: space-between;
     gap: 16px;
     padding: calc(22px + var(--safe-top)) 24px 14px;
-    border-bottom: 1px solid var(--line);
+    border-bottom: var(--e) solid var(--gold-dark);
+    box-shadow: 0 var(--e) 0 rgba(232, 192, 112, 0.35);
 }
 
 .sheet__eyebrow {
-    margin: 0 0 2px;
-    font-size: 0.72rem;
-    font-weight: 650;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
+    margin: 0 0 4px;
+    font-size: 0.95rem;
+    font-variant: small-caps;
+    letter-spacing: 0.18em;
     color: var(--gold);
+    text-shadow: var(--shadow);
 }
 
 .sheet__title {
+    --gs: 2;
     margin: 0;
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 1.6rem;
-    letter-spacing: 0.04em;
-    line-height: 1.15;
+    line-height: 1;
 }
 
 .sheet__body {
@@ -631,7 +705,7 @@ select {
 
 .sheet__section {
     padding: 18px 0;
-    border-bottom: 1px solid rgba(217, 168, 91, 0.1);
+    border-bottom: var(--e) dashed rgba(140, 112, 56, 0.45);
 }
 
 .sheet__section:last-child {
@@ -642,22 +716,19 @@ select {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 0 0 8px;
-    font-family: var(--display);
+    margin: 0 0 10px;
     font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--gold-bright);
 }
 
 .sheet__text {
     margin: 0 0 12px;
     color: var(--ink);
+    text-shadow: var(--shadow);
 }
 
 .sheet__text--quiet {
     color: var(--ink-dim);
-    font-size: 0.92rem;
+    font-size: 0.95rem;
 }
 
 .sheet__actions {
@@ -697,10 +768,8 @@ select {
         width: 100%;
         height: auto;
         max-height: 88dvh;
-        border-left: 0;
-        border-top: 1px solid var(--line);
-        border-radius: 22px 22px 0 0;
-        animation: slide-up 300ms var(--ease);
+        box-shadow: var(--frame), 0 -24px 0 rgba(0, 0, 0, 0.25);
+        animation: slide-up 220ms var(--ease);
     }
 
     .sheet__header {
@@ -716,27 +785,26 @@ select {
     align-items: flex-start;
     margin: 0 0 12px;
     padding: 12px 14px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-small);
-    background: rgba(217, 168, 91, 0.07);
+    background: linear-gradient(90deg, rgba(128, 56, 16, 0.32), rgba(0, 0, 0, 0.5));
+    box-shadow: var(--frame-dim);
     color: var(--ink);
-    font-size: 0.94rem;
+    font-size: 0.97rem;
+    text-shadow: var(--shadow);
 }
 
 .notice .icon {
-    margin-top: 2px;
+    margin-top: 4px;
     color: var(--gold);
 }
 
 .notice--error {
-    border-color: rgba(232, 128, 106, 0.45);
-    background: rgba(232, 128, 106, 0.08);
-    color: #ffd2c7;
+    background: linear-gradient(90deg, rgba(124, 32, 32, 0.45), rgba(0, 0, 0, 0.5));
+    box-shadow: var(--frame-danger);
+    color: #ffd6cc;
 }
 
 .notice--ok {
-    border-color: rgba(168, 207, 143, 0.4);
-    background: rgba(168, 207, 143, 0.08);
+    background: linear-gradient(90deg, rgba(40, 96, 24, 0.4), rgba(0, 0, 0, 0.5));
 }
 
 .list {
@@ -753,9 +821,8 @@ select {
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    border: 1px solid rgba(217, 168, 91, 0.14);
-    border-radius: var(--radius-small);
-    background: rgba(255, 244, 226, 0.03);
+    background: var(--box);
+    box-shadow: var(--frame-dim);
 }
 
 .list__main {
@@ -767,7 +834,7 @@ select {
 }
 
 .list__title {
-    font-weight: 600;
+    font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -776,7 +843,7 @@ select {
 .list__meta {
     margin: 0;
     color: var(--ink-faint);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
 }
 
 .list__meta--error {
@@ -786,14 +853,15 @@ select {
 .card {
     margin-top: 14px;
     padding: 14px 16px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: rgba(255, 244, 226, 0.04);
+    background: var(--box);
+    box-shadow: var(--frame-dim);
 }
 
 .card__title {
     margin: 0 0 6px;
-    font-weight: 650;
+    color: var(--gold);
+    font-weight: 700;
+    text-shadow: var(--shadow);
 }
 
 .picker {
@@ -816,18 +884,29 @@ select {
 }
 
 .field__label {
-    font-size: 0.86rem;
+    font-size: 0.95rem;
+    font-variant: small-caps;
+    letter-spacing: 0.08em;
     color: var(--ink-dim);
 }
 
+/* Sunk into the panel: the frame turned inside out. */
 .field__input {
     min-height: 44px;
     width: 100%;
-    padding: 0.5em 0.8em;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-small);
-    background: rgba(0, 0, 0, 0.35);
-    color: var(--ink);
+    padding: 0.45em 0.8em;
+    border: 0;
+    border-radius: 0;
+    background: #000;
+    box-shadow:
+        inset var(--e) var(--e) 0 var(--gold-dark),
+        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--gold);
+    color: var(--gold-bright);
+    font-weight: 600;
+}
+
+.field__input:focus {
+    outline: none;
 }
 
 .field--inline .field__input {
@@ -838,7 +917,7 @@ select {
     margin: 0 0 8px;
     padding-left: 1.2em;
     color: var(--ink-dim);
-    font-size: 0.92rem;
+    font-size: 0.95rem;
 }
 
 .account {
@@ -851,13 +930,15 @@ select {
 .account__avatar {
     width: 44px;
     height: 44px;
-    border-radius: 10px;
-    border: 1px solid var(--line);
+    box-shadow: 0 0 0 var(--e) var(--gold-dark), 0 0 0 calc(var(--e) * 2) #000;
+    image-rendering: pixelated;
 }
 
 .account__name {
     margin: 0;
-    font-weight: 650;
+    color: var(--gold);
+    font-weight: 700;
+    text-shadow: var(--shadow);
 }
 
 .store-mark {
@@ -865,47 +946,56 @@ select {
     place-items: center;
     width: 24px;
     height: 24px;
-    border-radius: 6px;
-    font-family: var(--body);
-    font-size: 0.75rem;
+    font-family: var(--text);
+    font-size: 0.85rem;
     font-weight: 800;
     color: #fff;
 }
 
 .store-mark--steam {
-    background: linear-gradient(135deg, #1b2838, #2a475e);
+    background: linear-gradient(180deg, #2a475e 0 50%, #1b2838 50%);
+    box-shadow: inset 1px 1px 0 #66c0f4, inset -1px -1px 0 #0b1219;
 }
 
 .confirm {
     padding: 12px 14px;
-    border: 1px solid rgba(232, 128, 106, 0.35);
-    border-radius: var(--radius-small);
+    background: rgba(124, 32, 32, 0.18);
+    box-shadow: var(--frame-danger);
 }
 
 /* ------------------------------------------------------------ progress */
 
+/* Banded like the games' health and air bars. */
 .progress {
     width: 100%;
 }
 
 .progress__track {
     position: relative;
-    height: 6px;
+    height: 12px;
     overflow: hidden;
-    border-radius: 999px;
-    background: rgba(255, 244, 226, 0.12);
+    background: #000;
+    box-shadow:
+        0 0 0 var(--e) #5a5a5a,
+        0 0 0 calc(var(--e) * 2) #000;
 }
 
 .progress__fill {
     height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #b8823d, #f6d89b);
-    transition: width 300ms var(--ease);
+    background: linear-gradient(
+        180deg,
+        #9a6a22 0 20%,
+        #e8c070 20% 40%,
+        #b8863a 40% 60%,
+        #8c6430 60% 80%,
+        #5a3c14 80% 100%
+    );
+    transition: width 300ms linear;
 }
 
 .progress__track--busy .progress__fill {
-    width: 35%;
-    animation: busy 1.3s ease-in-out infinite;
+    width: 30%;
+    animation: busy 1.4s steps(14) infinite;
 }
 
 @keyframes busy {
@@ -913,16 +1003,16 @@ select {
         transform: translateX(-100%);
     }
     to {
-        transform: translateX(300%);
+        transform: translateX(340%);
     }
 }
 
 .progress__label {
     margin-top: 8px;
     color: var(--ink-dim);
-    font-size: 0.88rem;
+    font-size: 0.95rem;
     text-align: center;
-    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+    text-shadow: var(--shadow);
 }
 
 /* ------------------------------------------------------------ play */
@@ -948,9 +1038,7 @@ select {
     place-items: center;
     padding: 24px;
     border: 0;
-    background:
-        radial-gradient(ellipse at 50% 40%, rgba(217, 168, 91, 0.1), transparent 60%),
-        rgba(3, 3, 5, 0.92);
+    background: #000;
     color: var(--ink);
 }
 
@@ -964,15 +1052,15 @@ select {
 }
 
 .play__heading {
+    --gs: 2;
     margin: 0;
-    font-family: var(--display);
-    font-size: 1.5rem;
-    letter-spacing: 0.06em;
+    line-height: 1;
 }
 
 .play__error {
     margin: 0;
-    color: #ffd2c7;
+    color: #ffd6cc;
+    text-shadow: var(--shadow);
 }
 
 .play__actions {
@@ -988,29 +1076,19 @@ select {
 }
 
 .play__gate-title {
-    display: block;
-    font-family: var(--display);
-    font-size: clamp(2rem, 6vw, 3rem);
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    background: linear-gradient(180deg, #fff6e2 0%, #f1d39a 45%, #c48c45 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: pulse 2.4s ease-in-out infinite;
-}
-
-.play__gate-hint {
-    display: block;
-    margin-top: 10px;
-    color: var(--ink-dim);
-    letter-spacing: 0.08em;
+    --gs: 4;
+    animation: pulse 1.6s steps(2, jump-none) infinite;
 }
 
 @keyframes pulse {
     50% {
-        opacity: 0.7;
+        opacity: 0.55;
+    }
+}
+
+@media (max-width: 640px) {
+    .play__gate-title {
+        --gs: 3;
     }
 }
 
@@ -1029,40 +1107,30 @@ select {
 /* A gamepad or a keyboard drives the menus: the focus must be unmissable. */
 html[data-input='gamepad'] :focus:not(.play__canvas),
 html[data-input='keyboard'] :focus:not(.play__canvas) {
-    outline: 2px solid var(--gold-bright);
-    outline-offset: 3px;
-    box-shadow: 0 0 0 6px rgba(246, 216, 155, 0.16), 0 0 24px rgba(246, 216, 155, 0.25);
+    outline: var(--e) solid var(--gold-bright);
+    outline-offset: calc(var(--e) * 2);
 }
 
 html[data-input='mouse'] :focus:not(:focus-visible),
 html[data-input='touch'] :focus {
     outline: none;
-    box-shadow: none;
 }
 
 .prompt {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.55em;
+    gap: 0.5em;
     min-height: 44px;
-    padding: 0.45em 1em 0.45em 0.6em;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: var(--glass);
-    color: var(--ink);
+    padding: 0.4em 1em 0.4em 0.6em;
+    border: 0;
+    border-radius: 0;
+    background: var(--box);
+    box-shadow: var(--frame-dim);
+    color: var(--gold);
     font: inherit;
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
     white-space: nowrap;
     cursor: pointer;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition:
-        background 160ms var(--ease),
-        border-color 160ms var(--ease),
-        transform 120ms var(--ease);
 }
 
 html[data-input='mouse'] .prompt,
@@ -1071,86 +1139,78 @@ html[data-input='touch'] .prompt {
 }
 
 .prompt:hover:not(:disabled) {
-    border-color: var(--line-strong);
-    background: rgba(40, 32, 24, 0.85);
+    background: var(--selected);
+    box-shadow: var(--frame);
 }
 
 .prompt:active:not(:disabled) {
-    transform: scale(0.97);
+    transform: translate(var(--e), var(--e));
 }
 
 .prompt:disabled {
     opacity: 0.45;
+    filter: grayscale(0.6);
     cursor: default;
 }
 
 .prompt .icon {
-    width: 1.15em;
-    height: 1.15em;
+    width: 1em;
+    height: 1em;
 }
 
 .prompt__label {
     overflow: hidden;
     text-overflow: ellipsis;
+    padding: 0 2px 2px 0;
 }
 
 .prompt--hint {
-    border-color: transparent;
     background: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    color: var(--ink-dim);
-    font-weight: 550;
+    box-shadow: none;
     cursor: default;
     padding-left: 0;
 }
 
 .prompt--primary {
-    min-height: 54px;
-    padding: 0.5em 1.9em 0.5em 0.75em;
-    border-color: transparent;
-    background: linear-gradient(180deg, #f7dca2 0%, #dcab5f 55%, #b8823d 100%);
-    color: #1d1309;
-    font-size: 1.08rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.5),
-        0 6px 24px rgba(217, 168, 91, 0.25);
+    --gs: 1.5;
+    min-height: 56px;
+    padding: 0.4em 1.8em 0.4em 0.9em;
+    background: var(--plate);
+    box-shadow: var(--frame), 0 0 0 var(--e) #000;
 }
 
 html[data-input='mouse'] .prompt--primary,
 html[data-input='touch'] .prompt--primary {
-    padding-left: 2.2em;
-    padding-right: 2.2em;
+    padding-left: 2em;
+    padding-right: 2em;
 }
 
 .prompt--primary:hover:not(:disabled) {
-    border-color: transparent;
-    background: linear-gradient(180deg, #ffe7b6 0%, #e7b86c 55%, #c48d46 100%);
-}
-
-/* The glyph sits on a dark disc, so it reads on the gold too. */
-.prompt--primary .glyph--face .glyph__disc {
-    fill: rgba(20, 14, 8, 0.9);
+    background: var(--selected), var(--plate);
+    box-shadow: var(--frame-lit), 0 0 0 var(--e) #000;
 }
 
 .prompt--chip {
     max-width: min(46vw, 320px);
 }
 
+/* A name too long for its chip loses whole words, not half a letter. */
+.prompt--chip .gt {
+    height: calc(var(--gu) * 18);
+    overflow: hidden;
+    white-space: normal;
+}
+
 .prompt--row {
     min-height: 36px;
-    padding: 0.25em 0.8em 0.25em 0.45em;
-    font-size: 0.88rem;
-    background: rgba(255, 244, 226, 0.05);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    padding: 0.25em 0.6em 0.25em 0.4em;
+    gap: 0.4em;
+    background: rgba(0, 0, 0, 0.4);
 }
 
 .prompt--danger {
-    border-color: rgba(232, 128, 106, 0.45);
-    color: #ffc2b4;
+    box-shadow: var(--frame-danger);
+    color: var(--danger);
 }
 
 .prompt-bar {
@@ -1166,107 +1226,79 @@ html[data-input='touch'] .prompt--primary {
 
 /* ------------------------------------------------------------ glyphs */
 
-.glyph {
+/* TRX's own button icons, sized with the prompt's lettering. */
+.glyphs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
     flex: none;
 }
 
-.glyph--face {
-    width: 1.55em;
-    height: 1.55em;
+.glyph {
+    --gu: calc(max(1, round(nearest, var(--gi) * var(--dpr), 1)) / var(--dpr) * 1px);
+    flex: none;
+    display: inline-block;
+    width: calc(var(--w) * var(--gu));
+    height: calc(var(--h) * var(--gu));
+    background-repeat: no-repeat;
+    background-position: calc(var(--x) * var(--gu) * -1) calc(var(--y) * var(--gu) * -1);
+    image-rendering: pixelated;
 }
 
-.glyph__disc {
-    fill: rgba(8, 7, 6, 0.85);
-    stroke: currentColor;
-    stroke-width: 1.4;
+.glyph--controller {
+    background-image: url('./ui/gameArt/controller.png');
+    background-size: calc(112 * var(--gu)) auto;
 }
 
-.glyph__letter {
-    fill: currentColor;
-    font-family: var(--body);
-    font-size: 12.5px;
+.glyph--keyboard {
+    /* Keycaps are wide already: Return is fifty pixels across. */
+    --gi: 1;
+    background-image: url('./ui/gameArt/keyboard.png');
+    background-size: calc(498 * var(--gu)) auto;
+}
+
+/* A button TRX has no icon for, drawn like its keycaps. */
+.glyph--cap {
+    display: inline-grid;
+    place-items: center;
+    width: auto;
+    min-width: calc(15 * var(--gu));
+    height: calc(15 * var(--gu));
+    padding: 0 calc(3 * var(--gu));
+    border: var(--gu) solid #000;
+    border-radius: calc(4 * var(--gu));
+    background: #b9c8b4;
+    box-shadow: inset calc(var(--gu) * -1) calc(var(--gu) * -1) 0 #7d9484;
+    color: #101810;
+    font-family: var(--text);
+    font-size: calc(10 * var(--gu));
     font-weight: 800;
-}
-
-.glyph__mark {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.glyph--pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 2.1em;
-    height: 1.45em;
-    padding: 0 0.5em;
-    border: 1.4px solid var(--ink-dim);
-    border-radius: 999px;
-    background: rgba(8, 7, 6, 0.85);
-    color: var(--ink);
-    font-size: 0.78em;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-}
-
-.glyph--key {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 1.9em;
-    height: 1.55em;
-    padding: 0 0.45em;
-    border: 1px solid var(--line-strong);
-    border-bottom-width: 2px;
-    border-radius: 6px;
-    background: rgba(8, 7, 6, 0.85);
-    color: var(--gold-bright);
-    font-family: var(--body);
-    font-size: 0.8em;
-    font-weight: 700;
-}
-
-.glyph--dpad {
-    width: 1.55em;
-    height: 1.55em;
-}
-
-.glyph--dpad path {
-    fill: rgba(243, 235, 222, 0.28);
-}
-
-.glyph--dpad path.glyph__lit {
-    fill: var(--ink);
+    line-height: 1;
 }
 
 /* ------------------------------------------------------------ rows */
 
 .row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 10px;
     min-height: 58px;
     padding: 10px 12px;
-    border: 1px solid rgba(217, 168, 91, 0.14);
-    border-radius: var(--radius-small);
-    background: rgba(255, 244, 226, 0.03);
+    background: var(--box);
+    box-shadow: var(--frame-dim);
     cursor: pointer;
-    transition:
-        background 160ms var(--ease),
-        border-color 160ms var(--ease);
 }
 
 .row:hover,
 .row:focus-within {
-    border-color: var(--line-strong);
-    background: rgba(255, 244, 226, 0.07);
+    background: var(--selected);
+    box-shadow: var(--frame);
 }
 
 .row__main {
-    flex: 1;
+    /* Beside its prompts when they fit, else above them. */
+    flex: 1 1 160px;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -1274,15 +1306,17 @@ html[data-input='touch'] .prompt--primary {
 }
 
 .row__title {
-    font-weight: 600;
+    color: var(--gold-bright);
+    font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    text-shadow: var(--shadow);
 }
 
 .row__meta {
     color: var(--ink-faint);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
 }
 
 .row__meta--error {
@@ -1291,6 +1325,7 @@ html[data-input='touch'] .prompt--primary {
 
 .row__prompts {
     display: flex;
+    margin-left: auto;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 6px;
@@ -1303,7 +1338,7 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 }
 
 .row--confirm {
-    border-color: rgba(232, 128, 106, 0.4);
+    box-shadow: var(--frame-danger);
 }
 
 /* ------------------------------------------------------------ choices */
@@ -1316,21 +1351,25 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 
 .choice {
     min-height: 40px;
-    padding: 0.35em 0.95em;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: rgba(255, 244, 226, 0.04);
-    color: var(--ink-dim);
+    padding: 0.3em 0.95em;
+    border: 0;
+    border-radius: 0;
+    background: var(--box);
+    box-shadow: var(--frame-dim);
+    color: var(--gold);
     font: inherit;
-    font-size: 0.9rem;
     cursor: pointer;
+    opacity: 0.7;
+}
+
+.choice:hover {
+    opacity: 1;
 }
 
 .choice--on {
-    border-color: var(--gold);
-    background: rgba(217, 168, 91, 0.18);
-    color: var(--gold-bright);
-    font-weight: 600;
+    background: var(--selected);
+    box-shadow: var(--frame);
+    opacity: 1;
 }
 
 /* ------------------------------------------------------------ prompt places */
@@ -1346,8 +1385,9 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 
 .spotlight__problem {
     margin: 0;
-    color: #ffd2c7;
-    font-size: 0.92rem;
+    color: #ffd6cc;
+    font-size: 0.97rem;
+    text-shadow: var(--shadow);
 }
 
 .sheet__header {
@@ -1362,14 +1402,9 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 
 .sheet__prompts {
     padding: 12px 20px calc(14px + var(--safe-bottom));
-    border-top: 1px solid var(--line);
-    background: rgba(10, 8, 6, 0.6);
-}
-
-.sheet__prompts .prompt {
-    background: rgba(255, 244, 226, 0.05);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    border-top: var(--e) solid var(--gold-dark);
+    box-shadow: inset 0 var(--e) 0 rgba(232, 192, 112, 0.35);
+    background: rgba(0, 0, 0, 0.6);
 }
 
 .sheet__prompts .prompt--hint {
@@ -1402,18 +1437,38 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 }
 
 .prompt--accent {
-    border-color: var(--gold);
-    color: var(--gold-bright);
+    background: var(--selected);
+    box-shadow: var(--frame);
 }
 
-.glyph__view {
-    width: 1.2em;
-    height: 0.9em;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.4;
+/* Places that hold only the game's lettering: no line of the text font around it. */
+.brand__mark,
+.spotlight__title,
+.sheet__title,
+.play__heading {
+    font-size: 0;
+    line-height: 0;
 }
 
-.glyph__view rect:last-child {
-    fill: rgba(8, 7, 6, 0.95);
+/* A big window: the home screen's lettering grows with it, as TRX's does in
+   the game. */
+@media (min-width: 1500px) and (min-height: 850px) {
+    .topbar,
+    .spotlight,
+    .hints {
+        --gs: 1.5;
+        --gi: 2;
+    }
+
+    .brand__mark {
+        --gs: 3;
+    }
+
+    .spotlight__title {
+        --gs: 4;
+    }
+
+    .spotlight .prompt--primary {
+        --gs: 2;
+    }
 }

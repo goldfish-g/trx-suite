@@ -11,6 +11,7 @@ import { deleteProfile, renameProfile } from '../../profiles/store';
 import type { ProfileRecord } from '../../profiles/types';
 import { formatBytes, formatWhen } from '../../ui/format';
 import { DownloadIcon, LockIcon, PlayIcon, PlusIcon, TrashIcon } from '../../ui/icons';
+import { GameText } from '../../ui/GameText';
 import { ProgressBar } from '../../ui/ProgressBar';
 import { Prompt } from '../../ui/Prompt';
 import { Row } from '../../ui/Row';
@@ -47,7 +48,9 @@ export function GameSheet({ item, status, onClose, onSignIn }: Props) {
 
     const ownCopy = (
         <section className="sheet__section">
-            <h3 className="sheet__heading">Use your own copy</h3>
+            <h3 className="sheet__heading">
+                <GameText text="Use your own copy" />
+            </h3>
             <p className="sheet__text">
                 Pick the game’s folder from an installed copy, or a zip of it. The files are checked to be {game.title} and stay
                 on this device.
@@ -79,7 +82,7 @@ export function GameSheet({ item, status, onClose, onSignIn }: Props) {
                     </p>
                     <div className="sheet__actions">
                         <button className="button" data-autofocus onClick={() => void run(() => removeGameData(status.record.id))}>
-                            Cancel
+                            <GameText text="Cancel" />
                         </button>
                     </div>
                 </section>
@@ -93,11 +96,11 @@ export function GameSheet({ item, status, onClose, onSignIn }: Props) {
                     <div className="sheet__actions">
                         {status.record.source.kind !== 'upload' ? (
                             <button className="button button--primary" data-autofocus onClick={() => void run(() => retryImport(status.record.id))}>
-                                Try again
+                                <GameText text="Try again" />
                             </button>
                         ) : null}
                         <button className="button" onClick={() => void run(() => removeGameData(status.record.id))}>
-                            Remove
+                            <GameText text="Remove" />
                         </button>
                     </div>
                 </section>
@@ -120,7 +123,7 @@ export function GameSheet({ item, status, onClose, onSignIn }: Props) {
                                 onClick={() => void run(() => downloadGame(status.entry))}
                             >
                                 <DownloadIcon />
-                                Download · {formatBytes(status.entry.sizeBytes)}
+                                <GameText text={`Download · ${formatBytes(status.entry.sizeBytes)}`} />
                             </button>
                         </div>
                     </section>
@@ -142,7 +145,7 @@ export function GameSheet({ item, status, onClose, onSignIn }: Props) {
                         </p>
                         <div className="sheet__actions">
                             <button className="button button--primary" data-autofocus onClick={onSignIn}>
-                                Sign in to unlock
+                                <GameText text="Sign in to unlock" />
                             </button>
                         </div>
                     </section>
@@ -186,13 +189,15 @@ function Installed({
                 <div className="sheet__actions">
                     <button className="button button--primary button--large" data-autofocus disabled={busy} onClick={() => void run(() => playGame(record, game))}>
                         <PlayIcon />
-                        {profiles.length === 0 ? 'Start playing' : 'Continue'}
+                        <GameText text={profiles.length === 0 ? 'Start playing' : 'Continue'} />
                     </button>
                 </div>
             </section>
 
             <section className="sheet__section">
-                <h3 className="sheet__heading">Profiles</h3>
+                <h3 className="sheet__heading">
+                    <GameText text="Profiles" />
+                </h3>
                 <p className="sheet__text sheet__text--quiet">Each profile keeps its own saves and settings.</p>
                 <ul className="list">
                     {profiles.map((profile) => (
@@ -217,13 +222,15 @@ function Installed({
                         }
                     >
                         <PlusIcon />
-                        New profile
+                        <GameText text="New profile" />
                     </button>
                 </div>
             </section>
 
             <section className="sheet__section">
-                <h3 className="sheet__heading">Game files</h3>
+                <h3 className="sheet__heading">
+                    <GameText text="Game files" />
+                </h3>
                 <p className="sheet__text sheet__text--quiet">
                     {describeSource(record.source)} · {formatBytes(record.sizeBytes)} · {record.fileCount} files
                 </p>
@@ -232,10 +239,10 @@ function Installed({
                         <p className="sheet__text">Remove the game files from this device? Profiles and saves stay.</p>
                         <div className="sheet__actions">
                             <button className="button button--danger" onClick={() => void run(() => removeGameData(record.id))}>
-                                Remove
+                                <GameText text="Remove" />
                             </button>
                             <button className="button" onClick={() => setConfirmRemove(false)}>
-                                Keep
+                                <GameText text="Keep" />
                             </button>
                         </div>
                     </div>
@@ -243,7 +250,7 @@ function Installed({
                     <div className="sheet__actions">
                         <button className="button button--quiet" onClick={() => setConfirmRemove(true)}>
                             <TrashIcon />
-                            Remove from this device
+                            <GameText text="Remove from this device" />
                         </button>
                     </div>
                 )}

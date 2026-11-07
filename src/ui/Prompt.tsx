@@ -2,118 +2,98 @@
 // and shows the glyph of the device in hand, such as (A) on an Xbox pad,
 // (✕) on a PlayStation one or Enter on a keyboard; pressing that button does
 // it. With a mouse or a finger, the glyph goes and the prompt is a button.
+// The glyphs are TRX's own, the ones the games show in their prompts.
 
-import type { MouseEvent, ReactNode } from 'react';
+import type { CSSProperties, MouseEvent, ReactNode } from 'react';
 import { KEY_LABELS, useInputDevice, type MenuAction, type PadStyle } from '../input/controller';
+import { ICONS, type IconName } from './gameArt/sheets';
+import { GameText } from './GameText';
 
 /** An action, or both horizontal directions at once, as "choose" hints show them. */
 export type GlyphName = MenuAction | 'horizontal';
 
-const FACE: Record<'confirm' | 'back' | 'alternate' | 'extra', number> = { confirm: 0, back: 1, alternate: 2, extra: 3 };
+type PadAction = Exclude<MenuAction, 'left' | 'right' | 'up' | 'down'>;
 
-/** Xbox letters and colours, by standard button number. */
-const XBOX = [
-    { text: 'A', color: '#7ccf5a' },
-    { text: 'B', color: '#ef6b5c' },
-    { text: 'X', color: '#5ea2ef' },
-    { text: 'Y', color: '#f2cc4b' },
-];
+/** A TRX icon, or a cap with a few letters on it where TRX has no icon. */
+type Art = IconName | { cap: string };
 
-/** Nintendo prints its letters the other way round from where Xbox has them. */
-const NINTENDO = ['B', 'A', 'Y', 'X'];
-
-const PLAYSTATION_COLORS = ['#8fb4ef', '#ef7f7f', '#e39ad3', '#5fd1b0'];
-
-function PlayStationShape({ index }: { index: number }) {
-    switch (index) {
-        case 0:
-            return <path d="M8.5 8.5l7 7m0-7l-7 7" />;
-        case 1:
-            return <circle cx="12" cy="12" r="4.2" />;
-        case 2:
-            return <rect x="8" y="8" width="8" height="8" rx="0.6" />;
-        default:
-            return <path d="M12 7.6l4.6 8H7.4z" />;
-    }
-}
-
-function FaceButton({ index, pad }: { index: number; pad: PadStyle }) {
-    if (pad === 'playstation') {
-        return (
-            <svg className="glyph glyph--face" viewBox="0 0 24 24" aria-hidden="true" style={{ color: PLAYSTATION_COLORS[index] }}>
-                <circle className="glyph__disc" cx="12" cy="12" r="11" />
-                <g className="glyph__mark">
-                    <PlayStationShape index={index} />
-                </g>
-            </svg>
-        );
-    }
-    const xbox = XBOX[index]!;
-    const text = pad === 'nintendo' ? NINTENDO[index]! : xbox.text;
-    return (
-        <svg
-            className="glyph glyph--face"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            style={{ color: pad === 'nintendo' ? 'var(--ink)' : xbox.color }}
-        >
-            <circle className="glyph__disc" cx="12" cy="12" r="11" />
-            <text x="12" y="16.4" textAnchor="middle" className="glyph__letter">
-                {text}
-            </text>
-        </svg>
-    );
-}
-
-const SHOULDERS: Record<PadStyle, [string, string]> = {
-    xbox: ['LB', 'RB'],
-    playstation: ['L1', 'R1'],
-    nintendo: ['L', 'R'],
+const PAD: Record<PadStyle, Record<PadAction, Art>> = {
+    xbox: {
+        confirm: 'controller button a',
+        back: 'controller button b',
+        alternate: 'controller button x',
+        extra: 'controller button y',
+        previous: 'controller bumper left',
+        next: 'controller bumper right',
+        // TRX's START and BACK are as wide as words; the old marks fit a chip.
+        menu: { cap: '≡' },
+        view: { cap: '⧉' },
+    },
+    playstation: {
+        confirm: 'controller button cross',
+        back: 'controller button circle',
+        alternate: 'controller button square',
+        extra: 'controller button triangle',
+        previous: 'controller button l1',
+        next: 'controller button r1',
+        menu: 'controller button options',
+        view: 'controller button share',
+    },
+    // Nintendo prints its letters the other way round from where Xbox has them.
+    nintendo: {
+        confirm: 'controller button b',
+        back: 'controller button a',
+        alternate: 'controller button y',
+        extra: 'controller button x',
+        previous: { cap: 'L' },
+        next: { cap: 'R' },
+        menu: { cap: '+' },
+        view: { cap: '−' },
+    },
 };
 
-const START: Record<PadStyle, string> = { xbox: '≡', playstation: 'Options', nintendo: '+' };
+const ARROW_KEYS: Record<string, string> = { '←': 'left', '→': 'right', '↑': 'up', '↓': 'down', Enter: 'return', Esc: 'escape' };
 
-/** The small button left of the face buttons: two windows on Xbox. */
-function ViewButton({ pad }: { pad: PadStyle }) {
-    if (pad === 'playstation') return <span className="glyph glyph--pill">Create</span>;
-    if (pad === 'nintendo') return <span className="glyph glyph--pill">−</span>;
-    return (
-        <span className="glyph glyph--pill" aria-hidden="true">
-            <svg className="glyph__view" viewBox="0 0 16 12">
-                <rect x="1" y="1" width="9" height="7" rx="1" />
-                <rect x="6" y="4" width="9" height="7" rx="1" />
-            </svg>
-        </span>
-    );
+/** The keycap of the key an action shows on a keyboard prompt. */
+function keyArt(action: MenuAction): Art {
+    const label = KEY_LABELS[action];
+    const name = `keyboard ${ARROW_KEYS[label] ?? label.toLowerCase()}`;
+    return name in ICONS ? (name as IconName) : { cap: label };
 }
 
-function DPad({ lit }: { lit: 'left' | 'right' | 'up' | 'down' | 'horizontal' }) {
-    const on = (side: string) => (lit === side || (lit === 'horizontal' && (side === 'left' || side === 'right')) ? 'glyph__lit' : '');
-    return (
-        <svg className="glyph glyph--dpad" viewBox="0 0 24 24" aria-hidden="true">
-            <path className={on('up')} d="M9.5 2.5h5v6l-2.5 2.5-2.5-2.5z" />
-            <path className={on('down')} d="M9.5 21.5h5v-6l-2.5-2.5-2.5 2.5z" />
-            <path className={on('left')} d="M2.5 9.5v5h6l2.5-2.5-2.5-2.5z" />
-            <path className={on('right')} d="M21.5 9.5v5h-6l-2.5-2.5 2.5-2.5z" />
-        </svg>
-    );
+function GlyphArt({ art }: { art: Art }) {
+    if (typeof art !== 'string') return <span className="glyph glyph--cap">{art.cap}</span>;
+    const [sheet, x, y, w, h] = ICONS[art];
+    const style = { '--x': x, '--y': y, '--w': w, '--h': h } as CSSProperties;
+    return <i className={`glyph glyph--${sheet}`} style={style} />;
 }
 
 /** The glyph for an action on the device in hand; nothing for a mouse or a finger. */
 export function Glyph({ name }: { name: GlyphName }) {
     const { device, pad } = useInputDevice();
     if (device === 'mouse' || device === 'touch') return null;
-    if (device === 'keyboard') {
-        const text = name === 'horizontal' ? '← →' : KEY_LABELS[name];
-        return <kbd className="glyph glyph--key">{text}</kbd>;
+    let art: Art[];
+    if (name === 'horizontal') {
+        art = device === 'keyboard' ? [keyArt('left'), keyArt('right')] : ['controller dpad left', 'controller dpad right'];
+    } else if (device === 'keyboard') {
+        art = [keyArt(name)];
+    } else if (name === 'left' || name === 'right' || name === 'up' || name === 'down') {
+        art = [`controller dpad ${name}`];
+    } else {
+        art = [PAD[pad][name]];
     }
-    if (name === 'horizontal' || name === 'left' || name === 'right' || name === 'up' || name === 'down') return <DPad lit={name} />;
-    if (name === 'previous' || name === 'next') {
-        return <span className="glyph glyph--pill">{SHOULDERS[pad][name === 'previous' ? 0 : 1]}</span>;
-    }
-    if (name === 'menu') return <span className="glyph glyph--pill">{START[pad]}</span>;
-    if (name === 'view') return <ViewButton pad={pad} />;
-    return <FaceButton index={FACE[name]} pad={pad} />;
+    return (
+        <span className="glyphs" aria-hidden="true">
+            {art.map((part, index) => (
+                <GlyphArt key={index} art={part} />
+            ))}
+        </span>
+    );
+}
+
+/** A prompt's label: in the game's lettering when it is plain text. */
+function Label({ label }: { label: ReactNode }) {
+    return <span className="prompt__label">{typeof label === 'string' ? <GameText text={label} /> : label}</span>;
 }
 
 interface PromptProps {
@@ -141,7 +121,7 @@ export function Prompt({ action, label, onPress, global, disabled, variant, icon
         return (
             <span className={`${classes} prompt--hint`}>
                 <Glyph name={action} />
-                <span className="prompt__label">{label}</span>
+                <Label label={label} />
             </span>
         );
     }
@@ -164,7 +144,7 @@ export function Prompt({ action, label, onPress, global, disabled, variant, icon
             onClick={click}
         >
             {pointer ? icon : <Glyph name={action} />}
-            <span className="prompt__label">{label}</span>
+            <Label label={label} />
         </button>
     );
 }
@@ -176,7 +156,7 @@ export function MoveHint({ name, label }: { name: GlyphName; label: string }) {
     return (
         <span className="prompt prompt--hint">
             <Glyph name={name} />
-            <span className="prompt__label">{label}</span>
+            <Label label={label} />
         </span>
     );
 }
