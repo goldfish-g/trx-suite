@@ -1,8 +1,10 @@
 // Reads zip archives straight from a Blob. Only the directory is read up
 // front; each file is sliced out and inflated when it is asked for, so an
-// archive of any size never has to fit in memory.
+// archive of any size never has to fit in memory. Each file is checked
+// against the checksum the archive records for it as it is read.
 
-import { ArchiveError, type ArchiveEntry } from './entry';
+import { crc32OfBlob } from './crc32';
+import { ArchiveError, DamagedArchiveError, type ArchiveEntry } from './entry';
 import { decodeLzma } from './lzma';
 
 const END_OF_DIRECTORY = 0x06054b50;
@@ -41,7 +43,7 @@ async function findDirectory(blob: Blob): Promise<Directory> {
             break;
         }
     }
-    if (end < 0) throw new ArchiveError('The zip archive is damaged: its directory is missing.');
+    if (end < 0) throw new DamagedArchiveError('The zip archive is damaged: its directory is missing.');
 
     const directory = {
         count: tail.getUint16(end + 10, true),
@@ -53,7 +55,7 @@ async function findDirectory(blob: Blob): Promise<Directory> {
         const at = Number(tail.getBigUint64(locator + 8, true));
         const zip64 = await viewOf(blob, at, at + 56);
         if (zip64.getUint32(0, true) !== ZIP64_END_OF_DIRECTORY) {
-            throw new ArchiveError('The zip archive is damaged: its large-file directory is missing.');
+            throw new DamagedArchiveError('The zip archive is damaged: its large-file directory is missing.');
         }
         directory.count = Number(zip64.getBigUint64(32, true));
         directory.size = Number(zip64.getBigUint64(40, true));
@@ -62,16 +64,19 @@ async function findDirectory(blob: Blob): Promise<Directory> {
     return directory;
 }
 
-async function readEntry(
-    blob: Blob,
-    localOffset: number,
-    compressedSize: number,
-    size: number,
-    method: number,
-): Promise<Blob> {
+interface Located {
+    path: string;
+    localOffset: number;
+    compressedSize: number;
+    size: number;
+    method: number;
+    crc: number;
+}
+
+async function unpack(blob: Blob, { localOffset, compressedSize, size, method }: Located): Promise<Blob> {
     const header = await viewOf(blob, localOffset, localOffset + 30);
     if (header.getUint32(0, true) !== LOCAL_HEADER) {
-        throw new ArchiveError('The zip archive is damaged: a file header is missing.');
+        throw new DamagedArchiveError('The zip archive is damaged: a file header is missing.');
     }
     const start = localOffset + 30 + header.getUint16(26, true) + header.getUint16(28, true);
     const data = blob.slice(start, start + compressedSize);
@@ -85,6 +90,21 @@ async function readEntry(
     }
     const inflated = data.stream().pipeThrough(new DecompressionStream('deflate-raw'));
     return new Response(inflated).blob();
+}
+
+async function readEntry(blob: Blob, entry: Located): Promise<Blob> {
+    let data: Blob;
+    try {
+        data = await unpack(blob, entry);
+    } catch (error) {
+        // Bytes that do not inflate, or decode as LZMA, are damaged ones.
+        if (error instanceof DamagedArchiveError) throw error;
+        throw new DamagedArchiveError(`The zip archive is damaged: ${entry.path} cannot be unpacked.`);
+    }
+    if (data.size !== entry.size || (await crc32OfBlob(data)) !== entry.crc) {
+        throw new DamagedArchiveError(`The zip archive is damaged: ${entry.path} does not match its checksum.`);
+    }
+    return data;
 }
 
 /** Why an entry cannot be read, or null when it can. */
@@ -103,10 +123,11 @@ export async function readZip(blob: Blob): Promise<ArchiveEntry[]> {
     let at = 0;
     for (let i = 0; i < directory.count; i++) {
         if (at + 46 > view.byteLength || view.getUint32(at, true) !== DIRECTORY_ENTRY) {
-            throw new ArchiveError('The zip archive is damaged: its directory is cut short.');
+            throw new DamagedArchiveError('The zip archive is damaged: its directory is cut short.');
         }
         const flags = view.getUint16(at + 8, true);
         const method = view.getUint16(at + 10, true);
+        const crc = view.getUint32(at + 16, true);
         let compressedSize = view.getUint32(at + 20, true);
         let size = view.getUint32(at + 24, true);
         const nameLength = view.getUint16(at + 28, true);
@@ -146,7 +167,7 @@ export async function readZip(blob: Blob): Promise<ArchiveEntry[]> {
             read: () =>
                 problem !== null
                     ? Promise.reject(new ArchiveError(problem))
-                    : readEntry(blob, localOffset, compressedSize, size, method),
+                    : readEntry(blob, { path, localOffset, compressedSize, size, method, crc }),
         });
     }
     return entries;

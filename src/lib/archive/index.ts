@@ -2,7 +2,7 @@ import { ArchiveError, type ArchiveEntry } from './entry';
 import { readTar } from './tar';
 import { readZip } from './zip';
 
-export { ArchiveError, type ArchiveEntry } from './entry';
+export { ArchiveError, DamagedArchiveError, type ArchiveEntry } from './entry';
 
 /** Lists the files of a zip, tar or tar.gz archive, telling them apart by content. */
 export async function readArchive(blob: Blob): Promise<ArchiveEntry[]> {

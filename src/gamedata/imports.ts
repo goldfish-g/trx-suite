@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import type { EngineNumber } from '../games/catalog';
-import { readArchive, type ArchiveEntry } from '../lib/archive';
+import { DamagedArchiveError, readArchive, type ArchiveEntry } from '../lib/archive';
 import { newId } from '../lib/db';
 import { discardPartial, download } from '../lib/download';
 import { planLayout } from './layout';
@@ -85,66 +85,83 @@ async function requestPersistentStorage(): Promise<void> {
     }
 }
 
-async function run(record: GameDataRecord, input: ImportInput, signal: AbortSignal): Promise<void> {
+/** Fetches and reads the files, and stores them, which makes the record ready. */
+async function bringIn(record: GameDataRecord, input: ImportInput, signal: AbortSignal): Promise<void> {
     const { id, source } = record;
-    try {
-        let entries: ArchiveEntry[];
-        if (input.kind === 'files') {
-            entries = input.entries;
+    let entries: ArchiveEntry[];
+    if (input.kind === 'files') {
+        entries = input.entries;
+    } else {
+        let blob: Blob;
+        if (input.kind === 'archive') {
+            blob = input.blob;
         } else {
-            let blob: Blob;
-            if (input.kind === 'archive') {
-                blob = input.blob;
-            } else {
-                if (source.kind === 'upload') {
-                    throw new Error('The upload was interrupted. Choose the files again.');
-                }
-                blob = await download(source.url, {
-                    resumeKey: resumeKey(id),
-                    expectedSize: record.sizeBytes || undefined,
-                    signal,
-                    onProgress: ({ received, total }) =>
-                        report(id, { phase: 'downloading', done: received, total, notice: null }),
-                    onRetry: ({ waitMs, reason }) =>
-                        report(id, {
-                            ...(useImports.getState().progress[id] ?? {
-                                phase: 'downloading',
-                                done: 0,
-                                total: null,
-                            }),
-                            notice: `Connection lost (${reason}). Trying again in ${Math.ceil(waitMs / 1000)} s…`,
-                        }),
-                });
+            if (source.kind === 'upload') {
+                throw new Error('The upload was interrupted. Choose the files again.');
             }
-            report(id, { phase: 'unpacking', done: 0, total: null, notice: null });
-            entries = await readArchive(blob);
+            blob = await download(source.url, {
+                resumeKey: resumeKey(id),
+                expectedSize: record.sizeBytes || undefined,
+                signal,
+                onProgress: ({ received, total }) =>
+                    report(id, { phase: 'downloading', done: received, total, notice: null }),
+                onRetry: ({ waitMs, reason }) =>
+                    report(id, {
+                        ...(useImports.getState().progress[id] ?? {
+                            phase: 'downloading',
+                            done: 0,
+                            total: null,
+                        }),
+                        notice: `Connection lost (${reason}). Trying again in ${Math.ceil(waitMs / 1000)} s…`,
+                    }),
+            });
         }
+        report(id, { phase: 'unpacking', done: 0, total: null, notice: null });
+        entries = await readArchive(blob);
+    }
 
-        const planned = planLayout(entries, record);
-        const total = planned.reduce((sum, file) => sum + file.entry.size, 0);
-        let done = 0;
-        await deleteGameDataFiles(id);
+    const planned = planLayout(entries, record);
+    const total = planned.reduce((sum, file) => sum + file.entry.size, 0);
+    let done = 0;
+    await deleteGameDataFiles(id);
+    report(id, { phase: 'unpacking', done, total, notice: null });
+    for (const file of planned) {
+        signal.throwIfAborted();
+        const blob = await file.entry.read();
+        await putGameDataFile({ gamedataId: id, path: file.path, blob });
+        done += file.entry.size;
         report(id, { phase: 'unpacking', done, total, notice: null });
-        for (const file of planned) {
-            signal.throwIfAborted();
-            const blob = await file.entry.read();
-            await putGameDataFile({ gamedataId: id, path: file.path, blob });
-            done += file.entry.size;
-            report(id, { phase: 'unpacking', done, total, notice: null });
-        }
+    }
 
-        await updateGameData(id, {
-            status: 'ready',
-            error: undefined,
-            sizeBytes: total,
-            fileCount: planned.length,
-        });
+    await updateGameData(id, {
+        status: 'ready',
+        error: undefined,
+        sizeBytes: total,
+        fileCount: planned.length,
+    });
+}
+
+async function run(record: GameDataRecord, input: ImportInput, signal: AbortSignal): Promise<void> {
+    const { id } = record;
+    try {
+        try {
+            await bringIn(record, input, signal);
+        } catch (error) {
+            // A download can arrive damaged, and resuming it again would keep
+            // the bad bytes. So it starts over, once.
+            if (!(error instanceof DamagedArchiveError) || input.kind !== 'download' || signal.aborted) throw error;
+            console.warn(`[imports] ${record.name}: ${error.message} Downloading it again.`);
+            await discardPartial(resumeKey(id));
+            await bringIn(record, input, signal);
+        }
         await discardPartial(resumeKey(id));
         await requestPersistentStorage();
     } catch (error) {
         if (signal.aborted) return;
         console.error(`[imports] ${record.name}:`, error);
         await deleteGameDataFiles(id).catch(() => {});
+        // Damaged bytes are no use to a retry, which then downloads afresh.
+        if (error instanceof DamagedArchiveError) await discardPartial(resumeKey(id)).catch(() => {});
         await updateGameData(id, { status: 'failed', error: describe(error) });
     } finally {
         running.delete(id);

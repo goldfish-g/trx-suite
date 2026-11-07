@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ArchiveError, readArchive } from '.';
+import { ArchiveError, DamagedArchiveError, readArchive } from '.';
+import { crc32 } from './crc32';
 
 const encoder = new TextEncoder();
 
@@ -12,9 +13,11 @@ interface ZipFile {
     name: string;
     data: string;
     deflate?: boolean;
+    /** Flips a byte of the stored data after its checksum is taken, as a broken download might. */
+    damage?: boolean;
 }
 
-/** Builds a zip archive, without checksums, which the reader does not check. */
+/** Builds a zip archive. */
 async function makeZip(files: ZipFile[]): Promise<Blob> {
     const parts: Uint8Array[] = [];
     const directory: Uint8Array[] = [];
@@ -22,11 +25,14 @@ async function makeZip(files: ZipFile[]): Promise<Blob> {
     for (const file of files) {
         const name = encoder.encode(file.name);
         const raw = encoder.encode(file.data);
-        const body = file.deflate ? await compress(raw, 'deflate-raw') : raw;
+        const body = file.deflate ? await compress(raw, 'deflate-raw') : raw.slice();
+        const crc = crc32(raw);
+        if (file.damage) body[Math.floor(body.length / 2)]! ^= 0xff;
         const local = new DataView(new ArrayBuffer(30));
         local.setUint32(0, 0x04034b50, true);
         local.setUint16(6, 0x0800, true);
         local.setUint16(8, file.deflate ? 8 : 0, true);
+        local.setUint32(14, crc, true);
         local.setUint32(18, body.length, true);
         local.setUint32(22, raw.length, true);
         local.setUint16(26, name.length, true);
@@ -34,6 +40,7 @@ async function makeZip(files: ZipFile[]): Promise<Blob> {
         entry.setUint32(0, 0x02014b50, true);
         entry.setUint16(8, 0x0800, true);
         entry.setUint16(10, file.deflate ? 8 : 0, true);
+        entry.setUint32(16, crc, true);
         entry.setUint32(20, body.length, true);
         entry.setUint32(24, raw.length, true);
         entry.setUint16(28, name.length, true);
@@ -147,8 +154,21 @@ describe('readArchive', () => {
         await expect(entries[1]!.read()).rejects.toThrow(/zip method 12/);
     });
 
+    it('refuses a file whose bytes do not match its checksum, as damaged', async () => {
+        const zip = await makeZip([
+            { name: 'ok.phd', data: 'a level, intact' },
+            { name: 'title.phd', data: 'a level, damaged on the way', damage: true },
+            { name: 'track.flac', data: 'music, damaged on the way '.repeat(20), deflate: true, damage: true },
+        ]);
+        const [ok, title, track] = await readArchive(zip);
+        expect(await (await ok!.read()).text()).toBe('a level, intact');
+        await expect(title!.read()).rejects.toBeInstanceOf(DamagedArchiveError);
+        await expect(title!.read()).rejects.toThrow(/title.phd does not match its checksum/);
+        await expect(track!.read()).rejects.toBeInstanceOf(DamagedArchiveError);
+    });
+
     it('refuses a zip whose directory is missing', async () => {
         const broken = new Blob([new Uint8Array([0x50, 0x4b, 3, 4, 0, 0, 0, 0])]);
-        await expect(readArchive(broken)).rejects.toBeInstanceOf(ArchiveError);
+        await expect(readArchive(broken)).rejects.toBeInstanceOf(DamagedArchiveError);
     });
 });
