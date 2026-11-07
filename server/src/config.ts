@@ -1,6 +1,7 @@
 // Server settings, read once from the environment at startup.
 
 import { randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /**
@@ -71,12 +72,30 @@ function parsePublicUrl(value: string): string {
     return url.href.replace(/\/+$/, '');
 }
 
+/**
+ * A secret kept in a file, as a mounted Docker secret is, so it stays out of
+ * the container's environment. Surrounding whitespace is dropped.
+ */
+function readSecret(path: string | undefined, name: string, cwd: string): string | undefined {
+    const file = nonEmpty(path);
+    if (file === undefined) return undefined;
+    let text: string;
+    try {
+        text = readFileSync(resolve(cwd, file), 'utf8');
+    } catch (error) {
+        throw new ConfigError(`${name} names a file that cannot be read: ${(error as Error).message}`);
+    }
+    const secret = text.trim();
+    if (secret === '') throw new ConfigError(`${name} names an empty file.`);
+    return secret;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): LoadedConfig {
     const warnings: string[] = [];
     const production = env.NODE_ENV === 'production';
     const port = parsePort(nonEmpty(env.PORT));
 
-    let sessionSecret = nonEmpty(env.SESSION_SECRET);
+    let sessionSecret = nonEmpty(env.SESSION_SECRET) ?? readSecret(env.SESSION_SECRET_FILE, 'SESSION_SECRET_FILE', cwd);
     if (sessionSecret === undefined) {
         if (production) throw new ConfigError('SESSION_SECRET must be set when NODE_ENV=production.');
         sessionSecret = randomBytes(32).toString('base64url');
@@ -94,7 +113,7 @@ export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): LoadedC
         warnings.push('AUTH_MOCK=1: anyone can sign in with a made-up account and unlock every game.');
     }
 
-    const steamApiKey = nonEmpty(env.STEAM_API_KEY);
+    const steamApiKey = nonEmpty(env.STEAM_API_KEY) ?? readSecret(env.STEAM_API_KEY_FILE, 'STEAM_API_KEY_FILE', cwd);
     if (steamApiKey === undefined) warnings.push('STEAM_API_KEY is not set, so Steam sign-in is off.');
 
     const httpsKeyFile = nonEmpty(env.HTTPS_KEY);

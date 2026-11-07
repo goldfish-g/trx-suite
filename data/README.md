@@ -88,7 +88,9 @@ Engine builds, flyby levels and the ring's objects go to everyone.
 | `HOST` | `0.0.0.0` | Address to listen on. |
 | `PUBLIC_URL` | `http://localhost:$PORT` | The address players open, without a trailing slash. Steam sends players back to `$PUBLIC_URL/auth/steam/callback`, so behind a proxy, or anywhere but localhost, it must be set. |
 | `SESSION_SECRET` | random per start | Signs session cookies. Required, at least 32 characters, when `NODE_ENV=production`; without it every restart signs everyone out. Generate one with `openssl rand -base64 48`. |
+| `SESSION_SECRET_FILE` | none | A file holding the session secret instead. |
 | `STEAM_API_KEY` | none | A Steam Web API key (<https://steamcommunity.com/dev/apikey>). Steam sign-in is off without it. |
+| `STEAM_API_KEY_FILE` | none | A file holding the key instead, such as a mounted Docker secret, which keeps it out of the container's environment. |
 | `GOG_CLIENT_ID`, `GOG_CLIENT_SECRET` | GOG Galaxy's | The OAuth client GOG sign-in uses. GOG offers none to third parties, so the default is GOG Galaxy's public one, as Heroic, Lutris and lgogdownloader use. |
 | `DATA_DIR` | `./data` | This directory. |
 | `ENGINES_DIR` | `$DATA_DIR/engines` | The engine builds. Without `manifest.json` in it, its subdirectories are the versions. |

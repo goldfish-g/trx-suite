@@ -1,4 +1,6 @@
 // @vitest-environment node
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
@@ -164,6 +166,25 @@ describe('loadConfig', () => {
             gogClientSecret: 'secret',
             authMock: true,
         });
+    });
+
+    it('reads the Steam key from a file, as a mounted secret', () => {
+        const dir = mkdtempSync(join(tmpdir(), 'trx-config-'));
+        writeFileSync(join(dir, 'steam_api_key.txt'), '  0123456789ABCDEF0123456789ABCDEF\r\n');
+        expect(loadConfig({ STEAM_API_KEY_FILE: 'steam_api_key.txt' }, dir).config.steamApiKey).toBe('0123456789ABCDEF0123456789ABCDEF');
+        // The variable itself wins over the file.
+        expect(loadConfig({ STEAM_API_KEY: 'KEY', STEAM_API_KEY_FILE: 'steam_api_key.txt' }, dir).config.steamApiKey).toBe('KEY');
+        expect(() => loadConfig({ STEAM_API_KEY_FILE: 'missing.txt' }, dir)).toThrow(/STEAM_API_KEY_FILE/);
+        writeFileSync(join(dir, 'empty.txt'), '\n');
+        expect(() => loadConfig({ STEAM_API_KEY_FILE: 'empty.txt' }, dir)).toThrow(/empty/);
+    });
+
+    it('reads the session secret from a file, so restarts keep players signed in', () => {
+        const dir = mkdtempSync(join(tmpdir(), 'trx-config-'));
+        writeFileSync(join(dir, 'session_secret.txt'), `${'s'.repeat(43)}\n`);
+        const { config, warnings } = loadConfig({ SESSION_SECRET_FILE: 'session_secret.txt' }, dir);
+        expect(config.sessionSecret).toBe('s'.repeat(43));
+        expect(warnings.join('\n')).not.toMatch(/SESSION_SECRET/);
     });
 
     it('insists on a session secret, and no mock sign-in, in production', () => {
