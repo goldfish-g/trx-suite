@@ -1,6 +1,6 @@
 {
-  // The converter's worker, with the TRX Level Converter it runs (the
-  // converter submodule), checked with the converter's own settings: it is
+  // The converter's worker and tests, with the TRX Level Converter they run
+  // (the converter submodule), checked with the converter's own settings: it is
   // not written for noUncheckedIndexedAccess, which the app uses.
   "compilerOptions": {
     "target": "ES2022",
@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/custom/convert/worker.ts"]
+  "include": ["src/custom/convert/worker.ts", "src/custom/convert/stock.test.ts"]
 }

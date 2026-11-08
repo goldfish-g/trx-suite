@@ -31,7 +31,7 @@ async function convert({ title, modId, files }: ConvertRequest): Promise<void> {
     }
 
     reply({ kind: 'step', label: 'Writing its game flow' });
-    const withGameflow = setupCustomGameflow(mapped, modId, Number(version), false, title);
+    const withGameflow = await setupCustomGameflow(mapped, modId, Number(version), false, title);
 
     reply({ kind: 'step', label: 'Bringing it up to date' });
     const { files: out, notes } = await migrateToCurrentTRX(withGameflow, {
