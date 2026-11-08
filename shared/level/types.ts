@@ -168,4 +168,6 @@ export interface Level {
     objectTextures: ObjectTexture[];
     items: Item[];
     flybyCameras: FlybyCamera[];
+    /** Floor data: what each square does (slopes, portals, triggers, climbable walls), indexed by Sector.floorData. */
+    floorData: Uint16Array;
 }

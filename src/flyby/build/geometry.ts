@@ -11,6 +11,7 @@
 import { Matrix4, Vector3 } from 'three';
 import { poseMoveable as pose } from '../../../shared/level/pose.ts';
 import type { Face, Level, Mesh, MoveableDef, ObjectTexture, Room, Shade } from '../../../shared/level/types.ts';
+import type { Horizon } from './horizons';
 import { ROOM_WATER } from '../../../shared/level/types.ts';
 
 export const UNIT = 1 / 1024;
@@ -62,7 +63,7 @@ export interface RoomVisibility {
 
 const WATER_TINT: Shade = [0.55, 0.85, 1.0];
 const LIGHT_DIRECTION = new Vector3(0.35, 0.85, 0.4).normalize();
-const SKYBOX_IDS: Record<number, number> = { 2: 254, 3: 355 };
+const SKYBOX_IDS: Record<number, number> = { 2: 254, 3: 355, 4: 459 };
 /** Objects that only exist to steer the game and draw nothing useful. */
 const LARA = 0;
 
@@ -244,17 +245,65 @@ function addItems(level: Level, builders: Map<number, ChunkBuilder>): void {
     }
 }
 
-function buildSky(level: Level): SceneChunk | null {
+/** How far above the camera TR4's cloud layer hangs, how far it reaches, and the size of one repeat of its texture, in squares. */
+const CLOUD_HEIGHT = 2.5;
+const CLOUD_REACH = 75;
+const CLOUD_TILE = 6;
+
+/**
+ * TR4's cloud layer: a flat sheet of the level's sky texture over the
+ * camera, tinted as the level's script says.
+ */
+function addClouds(builder: ChunkBuilder, horizon: Horizon, texture: number): void {
+    const n = Math.round((2 * CLOUD_REACH) / CLOUD_TILE);
+    const face: Face = { vertices: [0, 1, 2, 3], texture, doubleSided: true, effects: 0 };
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            const x0 = -CLOUD_REACH + i * CLOUD_TILE;
+            const z0 = -CLOUD_REACH + j * CLOUD_TILE;
+            const corners = [
+                new Vector3(x0, CLOUD_HEIGHT, z0),
+                new Vector3(x0 + CLOUD_TILE, CLOUD_HEIGHT, z0),
+                new Vector3(x0 + CLOUD_TILE, CLOUD_HEIGHT, z0 + CLOUD_TILE),
+                new Vector3(x0, CLOUD_HEIGHT, z0 + CLOUD_TILE),
+            ];
+            builder.face(face, (vertex) => ({ p: corners[vertex]!, shade: horizon.tint }), false);
+        }
+    }
+}
+
+function buildSky(level: Level, horizon: Horizon | null): SceneChunk | null {
+    // TR4 shows a sky only where its script says so.
+    if (level.engine === 4 && horizon === null) return null;
     const id = SKYBOX_IDS[level.engine];
     const def = id === undefined ? undefined : level.moveables.get(id);
     if (def === undefined) return null;
-    const builder = new ChunkBuilder(level.objectTextures, null);
+    let textures = level.objectTextures;
+    const builder = new ChunkBuilder(
+        level.engine === 4 ? (textures = [...textures, cloudTexture(level)]) : textures,
+        null,
+    );
+    if (level.engine === 4 && horizon !== null) addClouds(builder, horizon, textures.length - 1);
     const matrices = poseMoveable(level, def, new Matrix4());
     for (let i = 0; i < def.meshCount; i++) {
         const mesh = level.meshes[def.firstMesh + i];
         if (mesh !== undefined) addMesh(builder, mesh, matrices[i]!, [1, 1, 1], level.engine);
     }
     return builder.empty ? null : builder.build(-1, false);
+}
+
+/** TR4's sky texture: the whole of the file's last tile. */
+function cloudTexture(level: Level): ObjectTexture {
+    return {
+        attributes: 0,
+        tile: level.tileCount - 1,
+        uv: [
+            { u: 0, v: 0 },
+            { u: 256, v: 0 },
+            { u: 256, v: 256 },
+            { u: 0, v: 256 },
+        ],
+    };
 }
 
 /** Rooms that only show after the level flips; the background never flips. */
@@ -266,7 +315,7 @@ export function flippedRooms(level: Level): Set<number> {
     return flipped;
 }
 
-export function buildScene(level: Level): LevelScene {
+export function buildScene(level: Level, horizon: Horizon | null = null): LevelScene {
     const flipped = flippedRooms(level);
     const builders = new Map<number, ChunkBuilder>();
     for (const room of level.rooms) {
@@ -288,26 +337,32 @@ export function buildScene(level: Level): LevelScene {
         tiles: level.tiles,
         tileCount: level.tileCount,
         chunks,
-        sky: buildSky(level),
-        // Flipped rooms share their space with the rooms they replace; the
-        // camera must never think it is in one.
-        visibility: level.rooms.filter((room) => !flipped.has(room.index)).map((room) => ({
-            index: room.index,
-            x: room.x,
-            z: room.z,
-            sectorsX: room.sectorsX,
-            sectorsZ: room.sectorsZ,
-            yTop: room.yTop,
-            yBottom: room.yBottom,
-            floors: Int16Array.from(room.sectors, (sector) => sector.floor),
-            ceilings: Int16Array.from(room.sectors, (sector) => sector.ceiling),
-            portals: room.portals.map((portal) => ({
-                toRoom: portal.toRoom,
-                normal: [portal.normal.x, portal.normal.y, portal.normal.z],
-                corners: portal.corners.flatMap((c) => [c.x, c.y, c.z]),
-            })),
-        })),
+        sky: buildSky(level, horizon),
+        visibility: roomVisibility(level),
     };
+}
+
+/** The rooms' outlines and doorways, for drawing only the rooms the camera can see (visibility.ts). */
+export function roomVisibility(level: Level): RoomVisibility[] {
+    const flipped = flippedRooms(level);
+    // Flipped rooms share their space with the rooms they replace; the
+    // camera must never think it is in one.
+    return level.rooms.filter((room) => !flipped.has(room.index)).map((room) => ({
+        index: room.index,
+        x: room.x,
+        z: room.z,
+        sectorsX: room.sectorsX,
+        sectorsZ: room.sectorsZ,
+        yTop: room.yTop,
+        yBottom: room.yBottom,
+        floors: Int16Array.from(room.sectors, (sector) => sector.floor),
+        ceilings: Int16Array.from(room.sectors, (sector) => sector.ceiling),
+        portals: room.portals.map((portal) => ({
+            toRoom: portal.toRoom,
+            normal: [portal.normal.x, portal.normal.y, portal.normal.z],
+            corners: portal.corners.flatMap((c) => [c.x, c.y, c.z]),
+        })),
+    }));
 }
 
 /** The buffers of a scene, to hand to another thread without copying. */

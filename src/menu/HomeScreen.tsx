@@ -7,6 +7,7 @@ import { refreshAccount, useAccount } from '../account/store';
 import { startCloudSync } from '../cloud/sync';
 import { FlybyLayer } from '../flyby/FlybyLayer';
 import { loadPreparedLevel } from '../flyby/load';
+import { plannedRoutes } from '../flyby/planned';
 import { flybyCandidates, rememberFlyby } from '../flyby/pick';
 import { resumeInterruptedImports, retryImport, useImports } from '../gamedata/imports';
 import { pushLayer } from '../input/controller';
@@ -169,12 +170,18 @@ export function HomeScreen() {
         let cancelled = false;
         (async () => {
             const candidates = await flybyCandidates();
-            for (const candidate of candidates.slice(0, 4)) {
+            for (const candidate of candidates.slice(0, 8)) {
                 try {
                     const choice = await candidate.load();
                     if (choice === null || cancelled) continue;
-                    const prepared = await loadPreparedLevel(choice.bytes, choice.fileName);
+                    // Routes planned ahead for this very file, when it is one of the official games' own.
+                    const planned = await plannedRoutes(choice.mod, choice.fileName, choice.bytes.length).catch(() => null);
+                    if (cancelled) return;
+                    // Some levels have nothing worth flying through (all dark, cramped or open to the void).
+                    if (planned !== null && planned.length === 0) continue;
+                    const prepared = await loadPreparedLevel(choice.bytes, choice.fileName, undefined, planned);
                     if (cancelled || stageRef.current === null) return;
+                    if (prepared.routes.length === 0) continue;
                     stageRef.current.setBackground(new FlybyLayer(prepared, { reducedMotion: reducedMotion() }));
                     setCaption(choice.caption);
                     rememberFlyby(choice.key);

@@ -13,16 +13,31 @@ menu, store sign-in and offline support.
 
 - **A level flies by behind the menu.** On every visit the app picks a level
   from the games in the player's library (the official games and their
-  expansions) and flies a camera through it. TR4 levels follow their own
-  scripted flyby cameras, timed by their speeds as the game times them and
-  cut where the game cuts; other routes are made up through the rooms.
-  Players without a game get the levels the
-  server offers everyone (Croft Manor from Tomb Raider III by default). The
-  level files are read in the browser and drawn with three.js, the approach
-  of Evgeny Popov's [TRN](https://github.com/Popov72/TRN2) viewer. Made-up
-  routes are smoothed like a pulled string and slow down through bends;
-  `src/flyby/route/smoothness.test.ts` measures every route of every level
-  for jolts.
+  expansions) and flies a camera through it. Players without a game get the
+  levels the server offers everyone (Croft Manor from Tomb Raider III by
+  default). The level files are read in the browser and drawn with three.js,
+  the approach of Evgeny Popov's [TRN](https://github.com/Popov72/TRN2)
+  viewer; TR4 levels get their sky (horizon and tinted clouds) as their
+  script sets it.
+- **The flybys are planned to show each level off** (`src/flyby/route/plan.ts`):
+  long, slow tours over the places Lara can reach (`reach.ts`: a flood from
+  her start and every trigger she sets off, by walking, climbing, ladders,
+  jumps, swimming and drops), at about her own camera's height, through the
+  best-looking places. Every triangle that is drawn counts (`world.ts`), so
+  the camera keeps clear of walls, statics and objects alike; it may pass
+  only see-through faces, doors and smashable windows. Along the way the
+  camera turns, slowly, toward the most open, bright and varied view. Each
+  route is flown as the menu flies it and every half second its view is
+  checked by casting sight lines (and against the rooms the renderer would
+  cull from there): a wall up close or filling the view, grazing a wall,
+  darkness, nothing but sky, the void past the edge of the level or a hole
+  in it, a stall or a whip-pan; the tour is cut to its good stretches.
+  TR4's own flyby paths are checked the same way. The official levels'
+  routes are planned ahead (`node scripts/plan-flybys.mjs`, into
+  `src/flyby/planned/`) and ship with the app; a file that differs is
+  planned on the spot, and a level with nothing worth showing is skipped.
+  `src/flyby/route/planned.test.ts` flies every shipped route against its
+  level for room, faults and jolts.
 - **A ring of artifacts** stands for the games, each an object from the game
   itself, cut out of its level files by the server: Tomb Raider's Scion, the
   Dagger of Xian, the Infada Stone, an ankh from The Last Revelation, a
@@ -137,6 +152,9 @@ docker run -p 8080:8080 -v /path/to/data:/data \
 
 - `/dev/flyby.html?level=<url>&seed=1&route=0&t=5` shows a level's flyby,
   held at a moment of a route when `route` and `t` are given.
+- `/dev/flybysheet.html?level=<url>&routes=<url of a JSON route list>` lays
+  out every route of a level as a strip of frames, each with the planner's
+  verdict on its view; without `routes` it plans them (`attempts=60`).
 - `/dev/cullcheck.html?level=<url>` renders moments of every route with and
   without room culling and reports how many pixels differ.
 - `/dev/objects.html?level=<url>&maxr=400` lays out every object of a level

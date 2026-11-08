@@ -6,10 +6,13 @@ import type { FlybyLevel, FlybyManifest } from '../../shared/api.ts';
 import { findOfficialGame, OFFICIAL_GAMES } from '../../shared/games.ts';
 import { getGameDataFile, listGameData, listGameDataPaths } from '../gamedata/store';
 import { LEVEL_TITLES } from '../games/levels';
+import { isScenic } from './scenic';
 
 export interface FlybyChoice {
     bytes: Uint8Array;
     fileName: string;
+    /** The game it is from. */
+    mod: string;
     /** "Lara's Home · Tomb Raider III", for the caption. */
     caption: string;
     key: string;
@@ -17,14 +20,6 @@ export interface FlybyChoice {
 
 const LAST_KEY = 'trx-suite:last-flyby';
 const OFFICIAL_MODS = new Set(OFFICIAL_GAMES.map((game) => game.mod));
-
-/** Cutscenes are tiny sets; title levels of TR1–3 are a single room. */
-function isScenic(name: string, mod: string): boolean {
-    if (!/\.(phd|tub|tr2|tr4)$/.test(name)) return false;
-    if (/^(cut|vict)/.test(name)) return false;
-    if (name.startsWith('title') && !mod.startsWith('tr4')) return false;
-    return true;
-}
 
 function caption(mod: string, fileName: string): string {
     const game = findOfficialGame(mod);
@@ -64,7 +59,7 @@ async function libraryCandidates(): Promise<Candidate[][]> {
                     async load() {
                         const blob = await getGameDataFile(record.id, path);
                         if (blob === undefined) return null;
-                        return { bytes: new Uint8Array(await blob.arrayBuffer()), fileName, caption: caption(record.mod, fileName), key };
+                        return { bytes: new Uint8Array(await blob.arrayBuffer()), fileName, mod: record.mod, caption: caption(record.mod, fileName), key };
                     },
                 };
             }),
@@ -86,6 +81,7 @@ async function serverCandidates(): Promise<Candidate[]> {
             return {
                 bytes: new Uint8Array(await file.arrayBuffer()),
                 fileName: level.file,
+                mod: level.mod,
                 caption: `${level.name} · ${findOfficialGame(level.mod)?.title ?? ''}`.replace(/ · $/, ''),
                 key: `${level.mod}/${level.file}`,
             };

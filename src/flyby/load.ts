@@ -1,6 +1,6 @@
 // Hands level files to the worker, or reads them here when workers fail.
 
-import type { PreparedLevel } from './prepare';
+import type { PreparedLevel, RouteData } from './prepare';
 import type { WorkerRequest } from './worker';
 
 let worker: Worker | null = null;
@@ -30,16 +30,22 @@ function getWorker(): Worker | null {
     return worker;
 }
 
-export async function loadPreparedLevel(bytes: Uint8Array, fileName: string, seed?: number): Promise<PreparedLevel> {
+export async function loadPreparedLevel(
+    bytes: Uint8Array,
+    fileName: string,
+    seed?: number,
+    planned?: RouteData[] | null,
+    attempts?: number,
+): Promise<PreparedLevel> {
     const target = getWorker();
     if (target === null) {
         const { prepareLevel } = await import('./prepare');
-        return prepareLevel(bytes, fileName, seed);
+        return prepareLevel(bytes, fileName, seed, planned, attempts);
     }
     const id = nextId++;
     return new Promise((resolve, reject) => {
         pending.set(id, { resolve, reject });
-        const request: WorkerRequest = { id, bytes, fileName, seed };
+        const request: WorkerRequest = { id, bytes, fileName, seed, planned, attempts };
         target.postMessage(request, [bytes.buffer as ArrayBuffer]);
     });
 }

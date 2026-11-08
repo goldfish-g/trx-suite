@@ -133,7 +133,10 @@ export class FlybyLayer {
                     uFade: this.fade,
                     uAdditive: { value: additive ? 1 : 0 },
                 },
-                transparent: additive,
+                // The sky (no fog) draws before the level, glows and all: as a
+                // transparent material three.js would draw its glows after the
+                // level, over it, since the sky ignores depth.
+                transparent: additive && fog,
                 blending: additive ? THREE.AdditiveBlending : THREE.NoBlending,
                 depthWrite: !additive && fog,
                 depthTest: fog,
@@ -182,6 +185,20 @@ export class FlybyLayer {
         this.time = Math.min(time, (this.player?.duration ?? 0) / 2);
         this.update(0, 1);
         this.aim.reset();
+    }
+
+    /**
+     * Shows a moment of a route fully faded in, for contact sheets: flown
+     * there from the start, so the camera has turned as it would have.
+     */
+    debugFrame(route: number, time: number, aspect = 16 / 9): void {
+        this.routeOrder = [route];
+        this.nextRoute();
+        const step = 1 / 30;
+        this.update(0, aspect);
+        while (this.time + step < time) this.update(step, aspect);
+        this.update(Math.max(0, time - this.time), aspect);
+        this.fade.value = 1;
     }
 
     get routeCount(): number {

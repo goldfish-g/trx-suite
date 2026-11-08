@@ -4,8 +4,9 @@
 
 import { buildScene, sceneTransferables, type LevelScene } from './build/geometry';
 import { parseLevel } from '../../shared/level/parse.ts';
-import { panSpeed } from './route/player';
-import { generateRoute, scriptedRoutes, type CameraRoute } from './route/route';
+import { tr4Horizon } from './build/horizons';
+import { planRoutes } from './route/plan';
+import type { CameraRoute } from './route/route';
 
 /** A route as plain numbers, which crosses to another thread intact. */
 export interface RouteData {
@@ -16,6 +17,8 @@ export interface RouteData {
     roll: number[] | null;
     speeds: number[] | null;
     holds: number[] | null;
+    /** For made-up routes, how far to turn from the way ahead at each point, in radians (positive: left): toward the best view. */
+    look?: number[] | null;
     rooms: number[];
 }
 
@@ -24,25 +27,12 @@ export interface PreparedLevel {
     routes: RouteData[];
 }
 
-const GENERATED_ROUTES = 6;
-/** Degrees a second a scripted flyby may usually pan. */
-const CALM_PAN = 90;
-
-function toData(route: CameraRoute): RouteData {
-    return {
-        kind: route.kind,
-        points: route.points.flatMap((p) => [p.x, p.y, p.z]),
-        targets: route.targets?.flatMap((p) => [p.x, p.y, p.z]) ?? null,
-        fov: route.fov,
-        roll: route.roll,
-        speeds: route.speeds,
-        holds: route.holds,
-        rooms: route.rooms,
-    };
-}
+/** Planning on the spot, for a level with no routes planned ahead: tours tried, and for how long at most, in milliseconds (twice that when it finds too few). */
+const ATTEMPTS_ON_THE_SPOT = 400;
+const BUDGET_ON_THE_SPOT = 3000;
 
 /** A small seeded random generator (mulberry32), so a seed repeats the same routes. */
-function seeded(seed: number): () => number {
+export function seeded(seed: number): () => number {
     let state = seed >>> 0;
     return () => {
         state = (state + 0x6d2b79f5) >>> 0;
@@ -53,28 +43,20 @@ function seeded(seed: number): () => number {
     };
 }
 
-export async function prepareLevel(bytes: Uint8Array, fileName: string, seed?: number): Promise<PreparedLevel> {
+/**
+ * Reads a level and its routes: the ones planned ahead for it when there
+ * are some, else routes planned now.
+ */
+export async function prepareLevel(bytes: Uint8Array, fileName: string, seed?: number, planned?: RouteData[] | null, attempts = ATTEMPTS_ON_THE_SPOT): Promise<PreparedLevel> {
     const level = await parseLevel(bytes, fileName);
-    const random = seed === undefined ? Math.random : seeded(seed);
-    // Some flyby sequences are cut-scenes that whip the camera round; a
-    // background keeps to the calm ones.
-    const routes = scriptedRoutes(level)
-        .map(toData)
-        .filter((route) => {
-            const pan = panSpeed(route);
-            return pan.typical <= CALM_PAN && pan.most <= CALM_PAN * 2.2;
-        });
-    const seen = new Set<string>();
-    for (let i = 0; i < GENERATED_ROUTES; i++) {
-        const route = generateRoute(level, random);
-        if (route === null) continue;
-        const data = toData(route);
-        const key = data.points.slice(0, 3).concat(data.points.slice(-3)).map((v) => v.toFixed(2)).join();
-        if (seen.has(key)) continue;
-        seen.add(key);
-        routes.push(data);
-    }
-    return { scene: buildScene(level), routes };
+    // TR4 draws a sky only where its script says so.
+    const horizon = level.engine === 4 ? tr4Horizon(fileName) : null;
+    const sky = level.engine === 4 ? horizon !== null : undefined;
+    const routes =
+        planned !== undefined && planned !== null && planned.length > 0
+            ? planned
+            : planRoutes(level, { random: seed === undefined ? Math.random : seeded(seed), attempts, sky, budget: BUDGET_ON_THE_SPOT }).routes.map((r) => r.route);
+    return { scene: buildScene(level, horizon), routes };
 }
 
 export function preparedTransferables(prepared: PreparedLevel): ArrayBuffer[] {

@@ -67,6 +67,19 @@ export class RoomCuller {
                 return room.index;
             }
         }
+        // In a doorway's border square, in no room's inner squares: the
+        // smallest room whose outline holds the point. Sticking with the
+        // last room instead can hide everything ahead.
+        let best: RoomVisibility | null = null;
+        for (const room of this.rooms.values()) {
+            const i = Math.floor((x - room.x) / SQUARE);
+            const j = Math.floor((z - room.z) / SQUARE);
+            if (i < 0 || j < 0 || i >= room.sectorsX || j >= room.sectorsZ) continue;
+            if (y < room.yTop - 64 || y > room.yBottom + 64) continue;
+            if (best === null || room.sectorsX * room.sectorsZ < best.sectorsX * best.sectorsZ) best = room;
+        }
+        // Nowhere at all: draw everything rather than guess.
+        this.current = best?.index ?? null;
         return this.current;
     }
 

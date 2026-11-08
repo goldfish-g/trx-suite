@@ -346,6 +346,7 @@ interface Body {
     statics: Map<number, StaticDef>;
     objectTextures: ObjectTexture[];
     items: Item[];
+    floorData: Uint16Array;
     flybyCameras: FlybyCamera[];
     /** TR1's palette, which comes near the end of the file. */
     palette8: Uint8Array | null;
@@ -360,7 +361,7 @@ function readBody(r: Reader, engine: LevelEngine, tub: boolean): Body {
     const rooms: Room[] = [];
     for (let i = 0; i < roomCount; i++) rooms.push(readRoom(r, engine, i));
 
-    r.skip(r.count32(2, 'floor data words') * 2);
+    const floorData = r.u16Array(r.count32(2, 'floor data words'));
 
     const meshWords = r.count32(2, 'mesh data words');
     const meshStart = r.pos;
@@ -491,7 +492,7 @@ function readBody(r: Reader, engine: LevelEngine, tub: boolean): Body {
         palette8 = r.take(768);
     }
 
-    return { rooms, meshes, meshTree, frames, moveables, statics, objectTextures, items, flybyCameras, palette8 };
+    return { rooms, floorData, meshes, meshTree, frames, moveables, statics, objectTextures, items, flybyCameras, palette8 };
 }
 
 /** Swaps flat-coloured faces for textured ones on the palette tile. */

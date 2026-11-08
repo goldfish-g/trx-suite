@@ -10,12 +10,20 @@ export interface RoutePlayer {
     /** How quickly the camera turns to where the route looks, per second. */
     turnRate: number;
     sample(time: number, position: THREE.Vector3, target: THREE.Vector3): { fov: number | null; roll: number };
+    /** Made-up routes: how long the path is, in squares, and how far along it the camera is at a moment. */
+    length?: number;
+    distanceAt?(time: number): number;
 }
 
 /** The pace of made-up routes, in squares a second. */
 export const BASE_SPEED = 1.15;
 /** Generated routes look at where they will be this far ahead, in squares, averaged. */
 const LOOK_AHEAD = [1.2, 2.2, 3.2, 4.2];
+/** How far made-up routes tilt the camera down and up, in radians. */
+const MIN_TILT = -0.32;
+const MAX_TILT = 0.12;
+/** The least distance across from the camera to where it looks, in squares. */
+const MIN_ACROSS = 1;
 /** Some flybys bank hard; a background should not. */
 const MAX_ROLL = 0.2;
 const GAME_FPS = 30;
@@ -93,6 +101,17 @@ function generatedPlayer(route: RouteData, speed: number): RoutePlayer {
     const end = curve.getPointAt(1);
     const endTangent = curve.getTangentAt(1);
     const ahead = new THREE.Vector3();
+    const heading = new THREE.Vector3();
+    const look = route.look ?? null;
+    const last = points.length - 1;
+    /** How far to turn from the way ahead at a distance along the path. */
+    const turnAt = (distance: number): number => {
+        if (look === null || look.length !== points.length) return 0;
+        const index = curve.getUtoTmapping(Math.min(Math.max(distance / length, 0), 1), 0) * last;
+        const i = Math.min(Math.floor(index), last - 1);
+        const value = (k: number) => look[Math.min(Math.max(k, 0), last)]!;
+        return catmullRom(value(i - 1), value(i), value(i + 1), value(i + 2), index - i);
+    };
     const at = (distance: number, out: THREE.Vector3) => {
         if (distance <= length) return curve.getPointAt(Math.max(distance, 0) / length, out);
         // Past the end, carry on the way the route was heading.
@@ -113,6 +132,8 @@ function generatedPlayer(route: RouteData, speed: number): RoutePlayer {
     return {
         duration,
         turnRate: 2.2,
+        length,
+        distanceAt: (time) => distanceAt(Math.max(time, 0)),
         sample(time, position, target) {
             const distance = distanceAt(Math.max(time, 0));
             at(distance, position);
@@ -120,9 +141,45 @@ function generatedPlayer(route: RouteData, speed: number): RoutePlayer {
             for (const step of LOOK_AHEAD) target.add(at(distance + step, ahead));
             target.divideScalar(LOOK_AHEAD.length);
             target.y -= 0.12; // a touch downward, to take in the floor
+            // Turn toward the best view, as the route was planned to.
+            const turn = turnAt(distance);
+            if (turn !== 0) {
+                target.sub(position);
+                turnAbout(target, turn);
+                target.add(position);
+            }
+            // Keep the target a square or more away across: straight above or
+            // below the camera (a steep climb), its heading would spin.
+            let across = Math.hypot(target.x - position.x, target.z - position.z);
+            if (across < MIN_ACROSS) {
+                curve.getTangentAt(Math.min(Math.max(distance / length, 0), 1), heading);
+                let hx = target.x - position.x;
+                let hz = target.z - position.z;
+                if (across < 1e-3) {
+                    hx = heading.x;
+                    hz = heading.z;
+                }
+                const scale = MIN_ACROSS / (Math.hypot(hx, hz) || 1);
+                target.x = position.x + hx * scale;
+                target.z = position.z + hz * scale;
+                across = MIN_ACROSS;
+            }
+            // Never tilt far: up shows the empty top of the sky, down only the floor.
+            const tilt = Math.atan2(target.y - position.y, across);
+            const limited = Math.min(Math.max(tilt, MIN_TILT), MAX_TILT);
+            if (limited !== tilt) target.y = position.y + Math.tan(limited) * across;
             return { fov: null, roll: 0 };
         },
     };
+}
+
+/** Turns a direction about the vertical, by an angle in radians: positive turns left. */
+export function turnAbout(direction: THREE.Vector3, angle: number): THREE.Vector3 {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const x = direction.x * cos + direction.z * sin;
+    const z = -direction.x * sin + direction.z * cos;
+    return direction.set(x, direction.y, z);
 }
 
 /** Speed near a rest, by the share of the leg left to it: full beyond 40%, easing to a crawl. */
