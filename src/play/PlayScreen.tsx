@@ -210,6 +210,8 @@ function describeStage(state: SessionStage | { kind: 'loading' }): {
             };
         case 'starting':
             return { heading: 'Starting the engine', fraction: null };
+        case 'cloud':
+            return { heading: 'Bringing in your saves', fraction: null, detail: 'From the cloud' };
         case 'files':
             return {
                 heading: 'Loading the game',

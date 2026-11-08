@@ -2374,3 +2374,53 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     color: var(--ink-dim);
     text-shadow: var(--shadow);
 }
+
+/* Cloud saves: levels and profiles kept with the Steam account. */
+.level-card__cloud {
+    display: inline-flex;
+    margin-right: 6px;
+    vertical-align: -0.12em;
+    color: var(--accent-bright);
+}
+
+.level-card__badge--cloud {
+    color: var(--ink);
+}
+
+.level-card__badge--cloud .icon {
+    color: var(--accent-bright);
+}
+
+/* Not on this device yet: the screenshot waits in the dark. */
+.level-card--cloud .shot img {
+    filter: grayscale(0.6) brightness(0.75);
+}
+
+.custom__subhead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 14px;
+    width: min(1480px, 100%);
+    margin: 22px auto 10px;
+    font-size: 1rem;
+    font-weight: 400;
+    text-shadow: var(--shadow);
+}
+
+.custom__subhead:first-child {
+    margin-top: 0;
+}
+
+.custom__subnote {
+    color: var(--ink-dim);
+    font-size: 0.9rem;
+}
+
+.row__cloud {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    color: var(--accent-bright);
+}

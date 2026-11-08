@@ -91,6 +91,8 @@ export function testConfig(fixture: Fixture, overrides: Partial<Config> = {}): C
         httpsCertFile: undefined,
         trcustomsUrl: 'https://trcustoms.test',
         trcustomsMediaUrl: 'https://data.trcustoms.test/media/',
+        cloudDir: join(fixture.root, 'cloud'),
+        cloudQuotaBytes: 1024 * 1024,
         ...overrides,
     };
 }

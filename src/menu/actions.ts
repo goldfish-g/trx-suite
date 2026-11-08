@@ -58,6 +58,7 @@ export async function newGameProfile(record: GameDataRecord, name: string): Prom
     return createProfile({
         name,
         gamedataId: record.id,
+        title: record.mod,
         mod: record.mod,
         engine: record.engine,
         engineVersion: await newestEngine(),

@@ -1,11 +1,13 @@
 // Custom levels, over the level flying by: the ones in the library
-// (Installed) and the ones on TRCustoms (Browse), each by the game they were
-// made for. The triggers switch between Installed and Browse, the bumpers
+// (Library), with those the cloud lists from other devices to download
+// again, and the ones on TRCustoms (Browse), each by the game they were
+// made for. The triggers switch between Library and Browse, the bumpers
 // between Tomb Raider I, II and III; a click or a tap on a tab does too.
 // Levels are cards: (A) opens one, or plays one already installed.
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { CustomLevelGame, CustomLevelSort, CustomLevelSummary } from '../../shared/api.ts';
+import type { CloudIndex, CloudLevel } from '../../shared/cloud.ts';
 import type { GameDataRecord } from '../gamedata/types';
 import { useImports } from '../gamedata/imports';
 import { ENGINE_NAMES, type EngineNumber } from '../games/catalog';
@@ -18,11 +20,13 @@ import { Glyph, MoveHint, Prompt, PromptBar } from '../ui/Prompt';
 import { AddLevelSheet } from './AddLevelSheet';
 import { browseKey, hasMore, loadMore, SORTS, useBrowse, type BrowseQuery } from './browse';
 import { gameTitle, keepFocus } from './labels';
-import { BrowseCard, InstalledCard } from './LevelCard';
+import { BrowseCard, CloudCard, InstalledCard } from './LevelCard';
 import { installedCopy, LevelDetails } from './LevelDetails';
+import { useCloud } from '../cloud/sync';
+import { cloudLevelOf, cloudOnlyLevels, cloudProfilesOf } from '../cloud/view';
 
 type Section = 'installed' | 'browse';
-type Opened = { kind: 'remote'; level: CustomLevelSummary } | { kind: 'installed'; recordId: string };
+type Opened = { kind: 'remote'; level: CustomLevelSummary } | { kind: 'installed'; recordId: string } | { kind: 'cloud'; mod: string };
 
 const BROWSE_GAMES: readonly CustomLevelGame[] = [1, 2, 3];
 const SECTION_KEY = 'trx-suite:custom-section';
@@ -62,10 +66,13 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
     const progress = useImports((state) => state.progress);
 
     const installed = useMemo(() => gamedata.filter((record) => record.layout !== 'game'), [gamedata]);
+    // Levels added on another device, which the cloud lists for downloading here.
+    const cloudIndex = useCloud((state) => state.index);
+    const cloudOnly = useMemo(() => cloudOnlyLevels(cloudIndex, gamedata), [cloudIndex, gamedata]);
     // A tab for TR4 too, once the library holds a level for it.
     const installedGames = useMemo<EngineNumber[]>(
-        () => (installed.some((record) => record.engine === 4) ? [1, 2, 3, 4] : [1, 2, 3]),
-        [installed],
+        () => (installed.some((record) => record.engine === 4) || cloudOnly.some((level) => level.engine === 4) ? [1, 2, 3, 4] : [1, 2, 3]),
+        [installed, cloudOnly],
     );
 
     const [section, setSection] = useState<Section>(() =>
@@ -164,7 +171,13 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
         // The card the details came from takes the focus back.
         requestAnimationFrame(() => {
             const selector =
-                back?.kind === 'remote' ? `[data-level="${back.level.id}"]` : back?.kind === 'installed' ? `[data-record="${back.recordId}"]` : null;
+                back?.kind === 'remote'
+                    ? `[data-level="${back.level.id}"]`
+                    : back?.kind === 'installed'
+                      ? `[data-record="${back.recordId}"]`
+                      : back?.kind === 'cloud'
+                        ? `[data-record="cloud:${back.mod}"]`
+                        : null;
             const card = selector === null ? null : root.current?.querySelector<HTMLElement>(selector);
             if (card !== null && card !== undefined) card.focus({ preventScroll: true });
             else if (drivenByButtons()) focusFirstCard();
@@ -177,7 +190,7 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
             <header className="custom__header">
                 <div className="custom__tabs custom__tabs--sections" role="tablist" aria-label="Section">
                     <Glyph name="sectionPrevious" />
-                    <SectionTab label="Installed" count={installed.length} on={section === 'installed'} onPick={() => setSection('installed')} />
+                    <SectionTab label="Library" count={installed.length + cloudOnly.length} on={section === 'installed'} onPick={() => setSection('installed')} />
                     <SectionTab label="Browse" on={section === 'browse'} onPick={() => setSection('browse')} />
                     <Glyph name="sectionNext" />
                 </div>
@@ -198,7 +211,7 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                             >
                                 <GameText text={ENGINE_NAMES[candidate]} />
                                 {section === 'installed' ? (
-                                    <span className="game-tab__count">{installed.filter((record) => record.engine === candidate).length}</span>
+                                    <span className="game-tab__count">{installed.filter((record) => record.engine === candidate).length + cloudOnly.filter((level) => level.engine === candidate).length}</span>
                                 ) : null}
                             </button>
                         ))}
@@ -271,8 +284,11 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                 ) : (
                     <InstalledGrid
                         records={installed.filter((record) => record.engine === shownGame).reverse()}
+                        cloudLevels={cloudOnly.filter((level) => level.engine === shownGame)}
+                        cloudIndex={cloudIndex}
                         game={shownGame}
                         onOpen={(record) => setOpened({ kind: 'installed', recordId: record.id })}
+                        onOpenCloud={(level) => setOpened({ kind: 'cloud', mod: level.mod })}
                         onBrowse={() => setSection('browse')}
                         onAdd={() => setAdding(true)}
                         levelInfo={levelInfo}
@@ -303,6 +319,7 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                 <LevelDetails
                     summary={opened.kind === 'remote' ? opened.level : undefined}
                     recordId={opened.kind === 'installed' ? opened.recordId : undefined}
+                    cloudMod={opened.kind === 'cloud' ? opened.mod : undefined}
                     onClose={closeDetails}
                 />
             ) : null}
@@ -419,17 +436,21 @@ function BrowseGrid({ query, scroller, gamedata, onOpen, onClearSearch }: Browse
 
 interface InstalledGridProps {
     records: GameDataRecord[];
+    /** Levels the cloud lists that this device has not got. */
+    cloudLevels: CloudLevel[];
+    cloudIndex: CloudIndex | null;
     game: EngineNumber;
     levelInfo: ReturnType<typeof useLibrary.getState>['levelInfo'];
     progress: ReturnType<typeof useImports.getState>['progress'];
     lastPlayed(record: GameDataRecord): string | null;
     onOpen(record: GameDataRecord): void;
+    onOpenCloud(level: CloudLevel): void;
     onBrowse(): void;
     onAdd(): void;
 }
 
-function InstalledGrid({ records, game, levelInfo, progress, lastPlayed, onOpen, onBrowse, onAdd }: InstalledGridProps) {
-    if (records.length === 0) {
+function InstalledGrid({ records, cloudLevels, cloudIndex, game, levelInfo, progress, lastPlayed, onOpen, onOpenCloud, onBrowse, onAdd }: InstalledGridProps) {
+    if (records.length === 0 && cloudLevels.length === 0) {
         return (
             <div className="custom__empty">
                 <p className="sheet__text">No {gameTitle(game)} levels in your library yet. Thousands are made by the community.</p>
@@ -447,17 +468,46 @@ function InstalledGrid({ records, game, levelInfo, progress, lastPlayed, onOpen,
         );
     }
     return (
-        <ul className="level-grid">
-            {records.map((record) => (
-                <InstalledCard
-                    key={record.id}
-                    record={record}
-                    info={levelInfo[record.id]}
-                    progress={progress[record.id]}
-                    lastPlayed={lastPlayed(record)}
-                    onDetails={() => onOpen(record)}
-                />
-            ))}
-        </ul>
+        <>
+            {records.length > 0 ? (
+                <ul className="level-grid">
+                    {records.map((record) => (
+                        <InstalledCard
+                            key={record.id}
+                            record={record}
+                            info={levelInfo[record.id]}
+                            progress={progress[record.id]}
+                            lastPlayed={lastPlayed(record)}
+                            inCloud={cloudLevelOf(cloudIndex, record) !== undefined}
+                            onDetails={() => onOpen(record)}
+                        />
+                    ))}
+                </ul>
+            ) : null}
+            {cloudLevels.length > 0 ? (
+                <>
+                    <h3 className="custom__subhead">
+                        <GameText text="In your cloud" />
+                        <span className="custom__subnote">Added on another device. Download one to play it here; its saves come with it.</span>
+                    </h3>
+                    <ul className="level-grid">
+                        {cloudLevels.map((level) => {
+                            const profiles = cloudProfilesOf(cloudIndex, level.mod);
+                            const played = profiles.map((profile) => profile.lastPlayedAt).filter((when): when is string => when !== null).sort().at(-1) ?? null;
+                            return (
+                                <CloudCard
+                                    key={level.mod}
+                                    level={level}
+                                    profiles={profiles.length}
+                                    lastPlayed={played}
+                                    onDetails={() => onOpenCloud(level)}
+                                    onAddFiles={onAdd}
+                                />
+                            );
+                        })}
+                    </ul>
+                </>
+            ) : null}
+        </>
     );
 }

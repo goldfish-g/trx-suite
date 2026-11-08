@@ -1,6 +1,7 @@
 // The app's own settings: installing it, storage, motion, and where things come from.
 
 import { useEffect, useState } from 'react';
+import { useAccount } from '../../account/store';
 import { promptInstall, useInstall } from '../../pwa/install';
 import { formatBytes } from '../../ui/format';
 import { InstallIcon } from '../../ui/icons';
@@ -20,6 +21,7 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
     const [storage, setStorage] = useState<Storage | null>(null);
     const [motion, setMotion] = useState(reducedMotionChoice);
     const theme = useTheme((state) => state.theme);
+    const signedIn = useAccount((state) => state.me?.accounts.some((account) => account.provider === 'steam') ?? false);
 
     useEffect(() => {
         void (async () => {
@@ -70,7 +72,10 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                 <h3 className="sheet__heading">
                     <GameText text="Look" />
                 </h3>
-                <p className="sheet__text sheet__text--quiet">The menus of which game: its lettering, frames and buttons.</p>
+                <p className="sheet__text sheet__text--quiet">
+                    The menus of which game: its lettering, frames and buttons.
+                    {signedIn ? ' Your other devices signed in to Steam take it too.' : ''}
+                </p>
                 <div className="choices" role="radiogroup" aria-label="Look">
                     {THEMES.map((entry) => (
                         <button

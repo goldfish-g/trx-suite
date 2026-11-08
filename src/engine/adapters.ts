@@ -14,12 +14,18 @@ export interface AdapterHooks {
     onStorageMod(mod: string): void;
     /** The engine is about to play this mod, and reads its files next. */
     prepareMod(mod: string): Promise<void>;
+    /** The engine reads this mod's saves next: the moment to bring in the cloud's. */
+    beforeLoad?(mod: string): Promise<void>;
+    /** What the game saved is in the browser's storage now. */
+    onFlushed?(): void;
 }
 
 export interface SessionAdapters {
     adapters: TrxAdapters;
     /** Writes what is pending to persistent storage now. */
     flushNow(): Promise<void>;
+    /** The mods whose storage the engine has read in. */
+    loadedMods(): string[];
 }
 
 /** A profile's storage for one mod: a directory backed by a database of its own. */
@@ -67,6 +73,7 @@ export function createAdapters(hooks: AdapterHooks): SessionAdapters {
             .then(async () => {
                 const engine = hooks.getEngine();
                 for (const storage of loaded) await syncStorage(engine, storage, false);
+                hooks.onFlushed?.();
             })
             .catch((error: unknown) => console.error('[storage] saving failed:', error));
         return flushing;
@@ -92,6 +99,7 @@ export function createAdapters(hooks: AdapterHooks): SessionAdapters {
             }
             hooks.onStorageMod(mod);
             await hooks.prepareMod(mod);
+            await hooks.beforeLoad?.(mod);
         },
 
         syncPersistenceIn: async () => {
@@ -114,5 +122,7 @@ export function createAdapters(hooks: AdapterHooks): SessionAdapters {
             flushTimer = setTimeout(() => void flushNow(), FLUSH_DELAY_MS);
         },
     };
-    return { adapters, flushNow };
+    const loadedMods = () =>
+        [...storages.values()].filter((storage) => storage.loaded).map((storage) => storage.path.slice(storage.path.lastIndexOf('/') + 1));
+    return { adapters, flushNow, loadedMods };
 }

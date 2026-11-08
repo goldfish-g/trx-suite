@@ -7,10 +7,12 @@ import { removeGameData, retryImport } from '../../gamedata/imports';
 import type { GameDataRecord } from '../../gamedata/types';
 import { describeProgress, describeSource } from '../../library/describe';
 import { useLibrary } from '../../library/store';
-import { deleteProfile, renameProfile } from '../../profiles/store';
+import { deleteProfileEverywhere, useCloud } from '../../cloud/sync';
+import { cloudProfilesOf } from '../../cloud/view';
+import { renameProfile } from '../../profiles/store';
 import type { ProfileRecord } from '../../profiles/types';
 import { formatBytes, formatWhen } from '../../ui/format';
-import { DownloadIcon, LockIcon, PlayIcon, PlusIcon, TrashIcon } from '../../ui/icons';
+import { CloudIcon, DownloadIcon, LockIcon, PlayIcon, PlusIcon, TrashIcon } from '../../ui/icons';
 import { GameText } from '../../ui/GameText';
 import { ProgressBar } from '../../ui/ProgressBar';
 import { Prompt } from '../../ui/Prompt';
@@ -32,7 +34,8 @@ export function GameSheet({ item, status, onClose, onSignIn }: Props) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const offline = useOnlineNotice();
-    const needsServer = status.kind === 'available' || status.kind === 'locked' || status.kind === 'failed';
+    const cloudProfiles = useCloud((state) => cloudProfilesOf(state.index, game.mod).length);
+    const needsServer =status.kind === 'available' || status.kind === 'locked' || status.kind === 'failed';
 
     const run = async (task: () => Promise<unknown>) => {
         setBusy(true);
@@ -160,6 +163,16 @@ export function GameSheet({ item, status, onClose, onSignIn }: Props) {
     return (
         <Sheet title={game.title} eyebrow={item.tagline} onClose={onClose}>
             {offline !== null && needsServer ? <p className="notice">{offline}</p> : null}
+            {status.kind !== 'installed' && cloudProfiles > 0 ? (
+                <p className="notice notice--ok">
+                    <CloudIcon />
+                    <span>
+                        {cloudProfiles === 1
+                            ? `Your cloud keeps a profile of ${game.title}. It comes back here with its saves once the game is on this device.`
+                            : `Your cloud keeps ${cloudProfiles} profiles of ${game.title}. They come back here with their saves once the game is on this device.`}
+                    </span>
+                </p>
+            ) : null}
             {body}
             {error !== null ? <p className="notice notice--error">{error}</p> : null}
         </Sheet>
@@ -272,6 +285,9 @@ function ProfileRow({
 }) {
     const [name, setName] = useState(profile.name);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const cloudAccount = useCloud((state) => state.account);
+    // Its saves are one set on every device signed in to this cloud.
+    const synced = profile.cloud !== undefined && profile.cloud.account === cloudAccount;
     useEffect(() => setName(profile.name), [profile.name]);
     const save = () => {
         const trimmed = name.trim();
@@ -310,12 +326,14 @@ function ProfileRow({
                 className="row--confirm"
                 prompts={
                     <>
-                        <Prompt variant="row" action="confirm" label="Delete" className="prompt--danger" onPress={() => void deleteProfile(profile.id)} />
+                        <Prompt variant="row" action="confirm" label="Delete" className="prompt--danger" onPress={() => void deleteProfileEverywhere(profile)} />
                         <Prompt variant="row" action="back" label="Keep" onPress={() => setConfirmDelete(false)} />
                     </>
                 }
             >
-                <span className="row__title">Delete {profile.name} and its saves?</span>
+                <span className="row__title">
+                    {synced ? `Delete ${profile.name} and its saves here, in the cloud and on your other devices?` : `Delete ${profile.name} and its saves?`}
+                </span>
             </Row>
         );
     }
@@ -333,6 +351,12 @@ function ProfileRow({
             <span className="row__title">{profile.name}</span>
             <span className="row__meta">
                 Played {formatWhen(profile.lastPlayedAt)} · engine {profile.engineVersion}
+                {synced ? (
+                    <span className="row__cloud" title="Its saves are in your cloud">
+                        <CloudIcon />
+                        In the cloud
+                    </span>
+                ) : null}
             </span>
         </Row>
     );

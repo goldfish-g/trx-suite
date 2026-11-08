@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { CONVERTER_VERSION, convertLevel } from '../custom/convert';
 import type { EngineNumber } from '../games/catalog';
 import { DamagedArchiveError, readArchive, type ArchiveEntry } from '../lib/archive';
+import { requestCloudSync } from '../lib/changes';
 import { newId } from '../lib/db';
 import { discardPartial, download } from '../lib/download';
 import { planLayout } from './layout';
@@ -188,6 +189,8 @@ async function run(record: GameDataRecord, input: ImportInput, signal: AbortSign
         }
         await discardPartial(resumeKey(id));
         await requestPersistentStorage();
+        // A custom level for the cloud to list, or a game whose profiles the cloud keeps.
+        requestCloudSync();
     } catch (error) {
         if (signal.aborted) return;
         console.error(`[imports] ${record.name}:`, error);

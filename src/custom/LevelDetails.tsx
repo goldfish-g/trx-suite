@@ -17,7 +17,10 @@ import { GameText } from '../ui/GameText';
 import { ChevronLeft, ChevronRight, DownloadIcon, ExternalIcon, PlayIcon, TrashIcon } from '../ui/icons';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt, PromptBar } from '../ui/Prompt';
-import { installFromTrcustoms, playCustomLevel, redownloadCustomLevel, removeCustomLevel } from './actions';
+import { useAccount } from '../account/store';
+import { cloudLevelFor, deleteFromCloud, useCloud } from '../cloud/sync';
+import { cloudLevelOf, cloudProfilesOf } from '../cloud/view';
+import { installFromCloud, installFromTrcustoms, playCustomLevel, redownloadCustomLevel, removeCustomLevel } from './actions';
 import { CONVERTER_VERSION } from './convert';
 import { fetchLevelDetails } from './api';
 import { Description } from './Description';
@@ -29,6 +32,8 @@ interface Props {
     summary?: CustomLevelSummary;
     /** Or a level in the library, by its game data id. */
     recordId?: string;
+    /** Or a level the cloud lists, added on another device, by its mod. */
+    cloudMod?: string;
     onClose(): void;
 }
 
@@ -37,19 +42,34 @@ export function installedCopy(gamedata: readonly GameDataRecord[], levelId: numb
     return gamedata.filter((record) => record.source.kind === 'trcustoms' && record.source.levelId === levelId).at(-1);
 }
 
-export function LevelDetails({ summary, recordId, onClose }: Props) {
+export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Props) {
     const panel = useRef<HTMLDivElement>(null);
     const info = useRef<HTMLDivElement>(null);
     const { gamedata, levelInfo } = useLibrary();
     const progress = useImports((state) => state.progress);
+    const cloudIndex = useCloud((state) => state.index);
+    const online = useAccount((state) => state.online);
 
-    const record = recordId !== undefined ? gamedata.find((candidate) => candidate.id === recordId) : summary !== undefined ? installedCopy(gamedata, summary.id) : undefined;
+    // A level from the cloud shows what the cloud kept of it, until it is downloaded.
+    const cloudEntry = cloudMod !== undefined ? cloudIndex?.levels.find((level) => level.mod === cloudMod) : undefined;
+    const summary = given ?? cloudEntry?.summary;
+    const record =
+        recordId !== undefined
+            ? gamedata.find((candidate) => candidate.id === recordId)
+            : summary !== undefined
+              ? installedCopy(gamedata, summary.id)
+              : cloudMod !== undefined
+                ? gamedata.find((candidate) => candidate.layout !== 'game' && candidate.mod === cloudMod)
+                : undefined;
+    const listed = cloudEntry ?? (record !== undefined ? cloudLevelOf(cloudIndex, record) : summary !== undefined ? cloudLevelFor(summary.id) : undefined);
+    const cloudProfiles = listed === undefined ? 0 : cloudProfilesOf(cloudIndex, listed.mod).length;
     const stored = record === undefined ? undefined : levelInfo[record.id];
-    const levelId = summary?.id ?? (record?.source.kind === 'trcustoms' ? record.source.levelId : null);
+    const levelId = summary?.id ?? (record?.source.kind === 'trcustoms' ? record.source.levelId : listed?.source.kind === 'trcustoms' ? listed.source.levelId : null);
 
     const [fetched, setFetched] = useState<CustomLevelDetails | null>(null);
     const [problem, setProblem] = useState<string | null>(null);
     const [confirm, setConfirm] = useState(false);
+    const [confirmCloud, setConfirmCloud] = useState(false);
     const [shot, setShot] = useState(0);
     const [busy, setBusy] = useState(false);
 
@@ -76,7 +96,7 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
     const closeRef = useRef(onClose);
     closeRef.current = onClose;
     const confirmRef = useRef(confirm);
-    confirmRef.current = confirm;
+    confirmRef.current = confirm || confirmCloud;
     useEffect(() => {
         const pop = pushLayer({
             root: () => panel.current,
@@ -98,6 +118,7 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
                     case 'back':
                         if (confirmRef.current) {
                             setConfirm(false);
+                            setConfirmCloud(false);
                             return true;
                         }
                         return false;
@@ -134,6 +155,21 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
         primary = <Prompt action="confirm" label="Play" variant="primary" global icon={<PlayIcon />} disabled={busy} onPress={() => void run(() => playCustomLevel(record))} />;
     } else if (record?.status === 'failed' && record.source.kind !== 'upload') {
         primary = <Prompt action="confirm" label="Try again" variant="primary" global disabled={busy} onPress={() => void run(() => retryImport(record.id))} />;
+    } else if (record === undefined && listed !== undefined && listed.source.kind !== 'upload') {
+        // Back as the cloud lists it: the version its saves were made in.
+        const entry = listed;
+        const size = entry.source.kind === 'trcustoms' ? (entry.source.sizeBytes ?? 0) : 0;
+        primary = (
+            <Prompt
+                action="confirm"
+                label={size > 0 ? `Download · ${formatBytes(size)}` : 'Download'}
+                variant="primary"
+                global
+                icon={<DownloadIcon />}
+                disabled={busy || !online}
+                onPress={() => void run(() => installFromCloud(entry))}
+            />
+        );
     } else if (record === undefined && level?.file !== null && level?.file !== undefined && level.game !== null) {
         const file = level.file;
         primary = (
@@ -254,6 +290,15 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
                             stay.
                         </p>
                     ) : null}
+                    {record === undefined && listed !== undefined ? (
+                        <p className="details__note">
+                            {listed.source.kind === 'upload'
+                                ? `In your cloud: added from ${listed.source.name} on another device. Add the same files here to play it with its saves.`
+                                : cloudProfiles > 0
+                                  ? `In your cloud, with the saves of ${cloudProfiles === 1 ? 'one profile' : `${cloudProfiles} profiles`}. Download it and they come back with it.`
+                                  : 'In your cloud: you added it on another device.'}
+                        </p>
+                    ) : null}
                     {problem !== null ? <p className="notice notice--error">{problem}</p> : null}
 
                     {facts.length > 0 ? (
@@ -270,12 +315,37 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
                 </div>
 
                 <PromptBar className="details__prompts">
-                    {confirm && record !== undefined ? (
+                    {confirmCloud && listed !== undefined ? (
                         <>
-                            <span className="details__ask">{record.status === 'importing' ? 'Stop adding it?' : 'Delete it with its saves?'}</span>
+                            <span className="details__ask">Delete it and its saves from the cloud and every device?</span>
                             <Prompt
                                 action="confirm"
-                                label={record.status === 'importing' ? 'Stop' : 'Delete'}
+                                label="Delete"
+                                variant="danger"
+                                global
+                                disabled={busy || !online}
+                                onPress={() => {
+                                    setConfirmCloud(false);
+                                    void run(async () => {
+                                        await deleteFromCloud(listed.mod);
+                                        if (record === undefined && cloudMod !== undefined) onClose();
+                                    });
+                                }}
+                            />
+                            <Prompt action="back" label="Keep" global onPress={() => setConfirmCloud(false)} />
+                        </>
+                    ) : confirm && record !== undefined ? (
+                        <>
+                            <span className="details__ask">
+                                {record.status === 'importing'
+                                    ? 'Stop adding it?'
+                                    : listed !== undefined
+                                      ? 'Remove it from this device? Your cloud keeps it and its saves.'
+                                      : 'Delete it with its saves?'}
+                            </span>
+                            <Prompt
+                                action="confirm"
+                                label={record.status === 'importing' ? 'Stop' : listed !== undefined ? 'Remove' : 'Delete'}
                                 variant="danger"
                                 global
                                 onPress={() => {
@@ -307,6 +377,8 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
                                 <Prompt action="extra" label="Stop" global onPress={() => void run(() => cancelRedownload(record.id))} />
                             ) : record !== undefined ? (
                                 <Prompt action="extra" label={record.status === 'importing' ? 'Stop' : 'Delete'} global icon={<TrashIcon />} onPress={() => setConfirm(true)} />
+                            ) : listed !== undefined ? (
+                                <Prompt action="extra" label="Delete from cloud" global icon={<TrashIcon />} disabled={!online} onPress={() => setConfirmCloud(true)} />
                             ) : null}
                             <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />
                         </>

@@ -1,6 +1,7 @@
 // Runs a profile: fetches its engine, hands it the game files, and plays
 // until the engine exits.
 
+import { pullSavesForSession, pushSavesForSession } from '../cloud/sync';
 import { getGameData, listGameData, listGameDataFiles } from '../gamedata/store';
 import type { GameDataRecord } from '../gamedata/types';
 import { GAMES, type EngineNumber } from '../games/catalog';
@@ -12,9 +13,13 @@ import { baseModOf, borrowedFiles, GameFiles, hideOtherGames, type StagedGame } 
 import { loadEngine } from './load';
 import type { TrxEngine } from './types';
 
+const PUSH_DELAY_MS = 3000;
+
 export type SessionStage =
     | { kind: 'engine'; received: number; total: number | null }
     | { kind: 'starting' }
+    /** Bringing in the profile's saves from the cloud. */
+    | { kind: 'cloud' }
     | { kind: 'files'; done: number; total: number }
     | { kind: 'gate'; pass: () => void }
     | { kind: 'running' };
@@ -125,7 +130,16 @@ export async function runSession(options: SessionOptions): Promise<number> {
 
     onStage({ kind: 'starting' });
     let engine: TrxEngine | null = null;
-    const { adapters, flushNow } = createAdapters({
+    // New saves go to the cloud a moment after the game writes them.
+    let pushTimer: ReturnType<typeof setTimeout> | null = null;
+    let pushing: Promise<void> = Promise.resolve();
+    const push = () => {
+        if (pushTimer !== null) clearTimeout(pushTimer);
+        pushTimer = null;
+        pushing = pushing.then(() => pushSavesForSession(profile.id, loadedMods()));
+        return pushing;
+    };
+    const { adapters, flushNow, loadedMods } = createAdapters({
         profileId: profile.id,
         getEngine: () => {
             if (engine === null) throw new Error('The engine has not started yet.');
@@ -149,6 +163,15 @@ export async function runSession(options: SessionOptions): Promise<number> {
             // The engine waits here until the page makes way for the new session.
             await new Promise<never>(() => {});
         },
+        beforeLoad: async (mod) => {
+            onStage({ kind: 'cloud' });
+            await pullSavesForSession(profile.id, mod);
+            onStage({ kind: 'starting' });
+        },
+        onFlushed: () => {
+            if (pushTimer !== null) clearTimeout(pushTimer);
+            pushTimer = setTimeout(() => void push(), PUSH_DELAY_MS);
+        },
     });
     engine = await loaded.createTRX({
         canvas,
@@ -162,7 +185,7 @@ export async function runSession(options: SessionOptions): Promise<number> {
     const started = engine;
     const onResize = () => started.syncViewport();
     const onHide = () => {
-        if (document.visibilityState === 'hidden') void flushNow();
+        if (document.visibilityState === 'hidden') void flushNow().then(push);
     };
     window.addEventListener('resize', onResize);
     window.visualViewport?.addEventListener('resize', onResize);
@@ -183,5 +206,7 @@ export async function runSession(options: SessionOptions): Promise<number> {
         window.visualViewport?.removeEventListener('resize', onResize);
         document.removeEventListener('visibilitychange', onHide);
         await flushNow();
+        // The menus sync whatever does not make it in time.
+        await Promise.race([push(), new Promise((resolve) => setTimeout(resolve, 5000))]);
     }
 }

@@ -97,6 +97,8 @@ Engine builds, flyby levels and the ring's objects go to everyone.
 | `HTTPS_KEY`, `HTTPS_CERT` | none | PEM files to serve https directly, for testing on phones on the LAN: browsers only run the engine in secure contexts. A local CA such as mkcert works. |
 | `AUTH_MOCK` | off | `1` offers `POST /api/auth/mock`, which signs in a made-up account owning whatever it says. For end-to-end tests only: it unlocks every game for anyone, and the server refuses it when `NODE_ENV=production`. |
 | `LOG_LEVEL` | `info` | Fastify's log level. |
+| `CLOUD_DIR` | `$DATA_DIR/cloud` | Where the cloud saves of players signed in with Steam are kept. Back it up: it is the only copy of their saves the server has. |
+| `CLOUD_QUOTA_MB` | `256` | What one account may keep in the cloud, in megabytes. |
 | `TRCUSTOMS_URL` | `https://trcustoms.org` | The TRCustoms the custom levels browser lists. The server asks it for levels and streams their archives, since TRCustoms sends no CORS headers. |
 | `TRCUSTOMS_MEDIA_URL` | `https://data.trcustoms.org/media` | Where TRCustoms keeps its screenshots. The server passes them on, as their missing CORP header keeps a cross-origin isolated page from showing them, and keeps the latest 64 MB in memory. |
 
@@ -109,6 +111,26 @@ player back to `/auth/steam/callback`, and the app collects the result by
 polling. Steam only tells the server what an account owns when the profile's
 *Game details* are public (Steam → Edit Profile → Privacy Settings); otherwise
 the account signs in owning nothing, and the app can say why.
+
+## Cloud saves
+
+Players signed in with Steam keep their profiles, saves and the list of
+custom levels they added in `CLOUD_DIR`, a directory per account:
+
+```
+cloud/steam/<steam id>/
+  index.json        the look picked in the settings; profiles, each with its
+                    save files by hash and revision;
+                    custom levels (where to download them, never the files);
+                    what was deleted, so other devices delete it too
+  files/<sha256>    the save files, named by their contents
+```
+
+Changes to one account go one at a time, and `index.json` is replaced
+whole, so a crash never leaves half of it. A save file nothing points to
+any more is deleted a quarter of an hour after it was sent. Only the
+player's own session reaches their directory: every `/api/cloud` route
+takes the account from the signed session cookie.
 
 ## Running
 

@@ -4,16 +4,19 @@
 
 import { useEffect, useState, type MouseEvent } from 'react';
 import type { CustomLevelSummary } from '../../shared/api.ts';
+import type { CloudLevel } from '../../shared/cloud.ts';
+import { useAccount } from '../account/store';
+import { deleteFromCloud, describeCloudError } from '../cloud/sync';
 import { cancelRedownload, retryImport, type ImportProgress } from '../gamedata/imports';
 import type { GameDataRecord, LevelInfoRecord } from '../gamedata/types';
 import { ENGINE_NAMES, type EngineNumber } from '../games/catalog';
 import { describeProgress } from '../library/describe';
 import { formatBytes, formatWhen } from '../ui/format';
 import { GameText } from '../ui/GameText';
-import { CheckIcon, PlayIcon, TrashIcon } from '../ui/icons';
+import { CheckIcon, CloudIcon, DownloadIcon, PlayIcon, TrashIcon } from '../ui/icons';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt } from '../ui/Prompt';
-import { playCustomLevel, removeCustomLevel } from './actions';
+import { installFromCloud, playCustomLevel, removeCustomLevel } from './actions';
 import { CONVERTER_VERSION } from './convert';
 import { authorsLine, lengthLabel, ratingTone } from './labels';
 
@@ -111,10 +114,12 @@ interface InstalledCardProps {
     info: LevelInfoRecord | undefined;
     progress: ImportProgress | undefined;
     lastPlayed: string | null;
+    /** Whether the cloud lists it, which keeps it when it goes from here. */
+    inCloud?: boolean;
     onDetails(): void;
 }
 
-export function InstalledCard({ record, info, progress, lastPlayed, onDetails }: InstalledCardProps) {
+export function InstalledCard({ record, info, progress, lastPlayed, inCloud = false, onDetails }: InstalledCardProps) {
     const [confirm, setConfirm] = useState(false);
     const cover = useObjectUrl(info?.cover);
     const facts: Facts = info?.details ?? { name: record.name, authors: [], rating: null, difficulty: null, duration: null };
@@ -128,6 +133,11 @@ export function InstalledCard({ record, info, progress, lastPlayed, onDetails }:
     } else {
         status = (
             <span className="level-card__status">
+                {inCloud ? (
+                    <span className="level-card__cloud" title="In your cloud">
+                        <CloudIcon />
+                    </span>
+                ) : null}
                 {formatBytes(record.sizeBytes)}
                 {lastPlayed !== null ? ` · played ${formatWhen(lastPlayed)}` : ' · not played yet'}
                 {record.convert === true && record.convertedWith !== CONVERTER_VERSION ? (
@@ -154,8 +164,8 @@ export function InstalledCard({ record, info, progress, lastPlayed, onDetails }:
             <span className="level-card__prompts">
                 {confirm ? (
                     <>
-                        <span className="level-card__ask">Delete it with its saves?</span>
-                        <Prompt variant="row" action="confirm" label="Delete" className="prompt--danger" onPress={() => void removeCustomLevel(record)} />
+                        <span className="level-card__ask">{inCloud ? 'Remove it from this device? Your cloud keeps it and its saves.' : 'Delete it with its saves?'}</span>
+                        <Prompt variant="row" action="confirm" label={inCloud ? 'Remove' : 'Delete'} className="prompt--danger" onPress={() => void removeCustomLevel(record)} />
                         <Prompt variant="row" action="back" label="Keep" onPress={() => setConfirm(false)} />
                     </>
                 ) : (
@@ -172,6 +182,102 @@ export function InstalledCard({ record, info, progress, lastPlayed, onDetails }:
                         ) : (
                             <Prompt variant="row" action="extra" label={record.status === 'importing' ? 'Cancel' : 'Delete'} icon={<TrashIcon />} onPress={() => setConfirm(true)} />
                         )}
+                    </>
+                )}
+            </span>
+        </li>
+    );
+}
+
+interface CloudCardProps {
+    level: CloudLevel;
+    /** The profiles the cloud keeps of it. */
+    profiles: number;
+    lastPlayed: string | null;
+    onDetails(): void;
+    /** For a level added from files: pick them here too. */
+    onAddFiles(): void;
+}
+
+/**
+ * A level the cloud lists but this device has not got, added on another
+ * one: "(A) Download (X) Details (Y) Delete from cloud".
+ */
+export function CloudCard({ level, profiles, lastPlayed, onDetails, onAddFiles }: CloudCardProps) {
+    const online = useAccount((state) => state.online);
+    const [confirm, setConfirm] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [problem, setProblem] = useState<string | null>(null);
+    const facts: Facts = level.summary ?? { name: level.name, authors: [], rating: null, difficulty: null, duration: null };
+    const { source } = level;
+    const size = source.kind === 'trcustoms' ? (source.sizeBytes ?? (level.summary?.file?.id === source.fileId ? level.summary.file.sizeBytes : 0)) : 0;
+
+    const run = (task: () => Promise<unknown>) => {
+        setBusy(true);
+        setProblem(null);
+        task()
+            .catch((error: unknown) => setProblem(describeCloudError(error)))
+            .finally(() => setBusy(false));
+    };
+
+    const saves = profiles === 0 ? 'no saves yet' : profiles === 1 ? 'saves of 1 profile' : `saves of ${profiles} profiles`;
+    const click = (event: MouseEvent<HTMLLIElement>) => {
+        if (event.target instanceof Element && event.target.closest('button, a')) return;
+        const main = event.currentTarget.querySelector<HTMLElement>('[data-action="confirm"]:not(:disabled)');
+        if (main !== null) main.click();
+        else onDetails();
+    };
+
+    return (
+        <li className={`level-card level-card--installed level-card--cloud ${confirm ? 'level-card--confirm' : ''}`} tabIndex={0} data-scope="" data-record={`cloud:${level.mod}`} onClick={click}>
+            <Shot src={level.summary?.cover ?? null} engine={level.engine} />
+            <span className="level-card__badge level-card__badge--cloud">
+                <CloudIcon />
+                In your cloud
+            </span>
+            <CardText level={{ ...facts, name: level.name }} />
+            <span className="level-card__foot">
+                {problem !== null ? (
+                    <span className="level-card__status level-card__status--error">{problem}</span>
+                ) : source.kind === 'upload' ? (
+                    <span className="level-card__status">Added from {source.name} on another device · {saves}</span>
+                ) : (
+                    <span className="level-card__status">
+                        Not on this device · {saves}
+                        {lastPlayed !== null ? ` · played ${formatWhen(lastPlayed)}` : ''}
+                    </span>
+                )}
+            </span>
+            <span className="level-card__prompts">
+                {confirm ? (
+                    <>
+                        <span className="level-card__ask">Delete it and its saves from the cloud and every device?</span>
+                        <Prompt
+                            variant="row"
+                            action="confirm"
+                            label="Delete"
+                            className="prompt--danger"
+                            disabled={busy || !online}
+                            onPress={() => run(() => deleteFromCloud(level.mod))}
+                        />
+                        <Prompt variant="row" action="back" label="Keep" onPress={() => setConfirm(false)} />
+                    </>
+                ) : (
+                    <>
+                        {source.kind === 'upload' ? (
+                            <Prompt variant="row" action="confirm" label="Add the files" onPress={onAddFiles} />
+                        ) : (
+                            <Prompt
+                                variant="row"
+                                action="confirm"
+                                label={size > 0 ? `Download · ${formatBytes(size)}` : 'Download'}
+                                icon={<DownloadIcon />}
+                                disabled={busy || !online}
+                                onPress={() => run(() => installFromCloud(level))}
+                            />
+                        )}
+                        {source.kind === 'trcustoms' ? <Prompt variant="row" action="alternate" label="Details" onPress={onDetails} /> : null}
+                        <Prompt variant="row" action="extra" label="Delete from cloud" icon={<TrashIcon />} disabled={!online} onPress={() => setConfirm(true)} />
                     </>
                 )}
             </span>

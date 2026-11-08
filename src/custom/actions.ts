@@ -3,6 +3,8 @@
 // current TRX from the TRX Level Converter as it comes in.
 
 import type { CustomLevelDetails, CustomLevelFile, CustomLevelSummary } from '../../shared/api.ts';
+import type { CloudLevel } from '../../shared/cloud.ts';
+import { cloudLevelFor } from '../cloud/sync';
 import { importGameData, redownloadGameData, removeGameData } from '../gamedata/imports';
 import { LayoutError, loneLevelPath } from '../gamedata/layout';
 import { putLevelInfo } from '../gamedata/store';
@@ -39,24 +41,83 @@ async function keepLevelInfo(gamedataId: string, level: CustomLevelSummary | Cus
     await putLevelInfo({ gamedataId, details, cover });
 }
 
-/** Downloads a level's newest archive from TRCustoms, to convert and keep. */
+/**
+ * Downloads a level's newest archive from TRCustoms, to convert and keep. A
+ * level the player added before, on this device or another, comes back as
+ * the cloud lists it, as the version its saves were made in and in the same
+ * place, so its saves find it.
+ */
 export async function installFromTrcustoms(level: CustomLevelSummary | CustomLevelDetails): Promise<GameDataRecord> {
-    if (level.file === null) throw new Error('TRCustoms has no archive for this level.');
     if (level.game === null) throw new Error(`This level is for ${level.engineName}, which TRX does not play.`);
+    const listed = cloudLevelFor(level.id);
+    const source = listed?.source.kind === 'trcustoms' ? listed.source : null;
+    const file: CustomLevelFile | null =
+        source !== null
+            ? {
+                  id: source.fileId,
+                  version: source.version,
+                  sizeBytes: level.file?.id === source.fileId ? level.file.sizeBytes : (source.sizeBytes ?? 0),
+                  url: trcustomsFileUrl(source.fileId),
+              }
+            : level.file;
+    if (file === null) throw new Error('TRCustoms has no archive for this level.');
     const record = await importGameData(
         {
-            name: level.name,
-            mod: trcustomsMod(level),
+            name: listed?.name ?? level.name,
+            mod: listed?.mod ?? trcustomsMod(level),
             engine: level.game,
             layout: 'custom',
             convert: true,
-            source: { kind: 'trcustoms', levelId: level.id, fileId: level.file.id, version: level.file.version, url: level.file.url },
-            sizeBytes: level.file.sizeBytes,
+            source: { kind: 'trcustoms', levelId: level.id, fileId: file.id, version: file.version, url: file.url },
+            sizeBytes: file.sizeBytes,
         },
         { kind: 'download' },
     );
     void keepLevelInfo(record.id, level).catch((error: unknown) => console.warn('[custom] keeping the level’s details failed:', error));
     return record;
+}
+
+function trcustomsFileUrl(fileId: number): string {
+    return `/api/trcustoms/files/${fileId}`;
+}
+
+/** Downloads a level the cloud lists, added on another device, back into the library. */
+export async function installFromCloud(level: CloudLevel): Promise<GameDataRecord> {
+    const { source } = level;
+    if (source.kind === 'upload') {
+        throw new Error(`It was added from files (${source.name}) on another device. Add the same files here to play it.`);
+    }
+    if (source.kind === 'trcustoms') {
+        const summary: CustomLevelSummary = level.summary ?? {
+            id: source.levelId,
+            name: level.name,
+            game: level.engine === 4 ? null : level.engine,
+            engineName: `TR${level.engine}`,
+            authors: [],
+            difficulty: null,
+            duration: null,
+            rating: null,
+            genres: [],
+            cover: null,
+            releaseDate: '',
+            downloads: 0,
+            reviews: 0,
+            file: null,
+        };
+        return installFromTrcustoms(summary);
+    }
+    return importGameData(
+        {
+            name: level.name,
+            mod: level.mod,
+            engine: level.engine,
+            layout: level.layout,
+            convert: level.layout === 'custom',
+            startLevel: level.startLevel,
+            source: { kind: 'link', url: source.url },
+        },
+        { kind: 'download' },
+    );
 }
 
 /**
@@ -128,6 +189,7 @@ export async function playCustomLevel(record: GameDataRecord): Promise<void> {
     const profile = await createProfile({
         name: record.name,
         gamedataId: record.id,
+        title: record.mod,
         // A lone level plays through the engine's own trN-level.
         mod: record.layout === 'level' ? `tr${record.engine}-level` : record.mod,
         engine: record.engine,
@@ -136,7 +198,10 @@ export async function playCustomLevel(record: GameDataRecord): Promise<void> {
     playProfile(profile);
 }
 
-/** Removes a custom level with its saves. */
+/**
+ * Removes a custom level from this device with its saves here. The cloud
+ * keeps what it has of it, to download it and its saves again.
+ */
 export async function removeCustomLevel(record: GameDataRecord): Promise<void> {
     for (const profile of await listProfiles()) {
         if (profile.gamedataId === record.id) await deleteProfile(profile.id);

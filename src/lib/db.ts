@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type { CloudSavesBase } from '../cloud/types';
 import type { GameDataFile, GameDataRecord, LevelInfoRecord } from '../gamedata/types';
 import type { ProfileRecord } from '../profiles/types';
 import type { PartialDownload, PartialDownloadPart } from './download';
@@ -30,12 +31,17 @@ interface ShellDb extends DBSchema {
         key: string;
         value: LevelInfoRecord;
     };
+    /** What a profile's saves were when this device and the cloud last agreed, by profile and game. */
+    cloudsaves: {
+        key: string;
+        value: CloudSavesBase;
+    };
 }
 
 let dbPromise: Promise<IDBPDatabase<ShellDb>> | null = null;
 
 export function getDb(): Promise<IDBPDatabase<ShellDb>> {
-    dbPromise ??= openDB<ShellDb>('trx-shell-library', 2, {
+    dbPromise ??= openDB<ShellDb>('trx-shell-library', 3, {
         upgrade(db, oldVersion) {
             if (oldVersion < 1) {
                 db.createObjectStore('profiles', { keyPath: 'id' });
@@ -49,6 +55,9 @@ export function getDb(): Promise<IDBPDatabase<ShellDb>> {
             }
             if (oldVersion < 2) {
                 db.createObjectStore('levelinfo', { keyPath: 'gamedataId' });
+            }
+            if (oldVersion < 3) {
+                db.createObjectStore('cloudsaves', { keyPath: 'key' });
             }
         },
         // A page still on the old version would block the upgrade in another.

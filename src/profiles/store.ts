@@ -1,5 +1,5 @@
 import type { EngineNumber } from '../games/catalog';
-import { announceLibraryChange } from '../lib/changes';
+import { announceLibraryChange, requestCloudSync } from '../lib/changes';
 import { getDb, newId } from '../lib/db';
 import type { ProfileRecord } from './types';
 
@@ -27,26 +27,38 @@ export async function getProfile(id: string): Promise<ProfileRecord | undefined>
 export interface NewProfile {
     name: string;
     gamedataId: string;
+    /** The game data's mod, the same on every device. */
+    title: string;
     mod: string;
     engine: EngineNumber;
     engineVersion: string;
 }
 
 export async function createProfile(fields: NewProfile): Promise<ProfileRecord> {
+    const now = new Date().toISOString();
     const profile: ProfileRecord = {
         ...fields,
         id: newId(),
         storageMods: [],
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
         lastPlayedAt: null,
     };
     const db = await getDb();
     await db.put('profiles', profile);
     announceLibraryChange();
+    requestCloudSync();
     return profile;
 }
 
-async function updateProfile(id: string, patch: Partial<ProfileRecord>): Promise<void> {
+/** Keeps a profile as given: one that came from the cloud. */
+export async function putProfile(profile: ProfileRecord): Promise<void> {
+    const db = await getDb();
+    await db.put('profiles', profile);
+    announceLibraryChange();
+}
+
+export async function updateProfile(id: string, patch: Partial<ProfileRecord>): Promise<void> {
     const db = await getDb();
     const profile = await db.get('profiles', id);
     if (profile === undefined) return;
@@ -54,8 +66,9 @@ async function updateProfile(id: string, patch: Partial<ProfileRecord>): Promise
     announceLibraryChange();
 }
 
-export function renameProfile(id: string, name: string): Promise<void> {
-    return updateProfile(id, { name });
+export async function renameProfile(id: string, name: string): Promise<void> {
+    await updateProfile(id, { name, updatedAt: new Date().toISOString() });
+    requestCloudSync();
 }
 
 export function markProfilePlayed(id: string): Promise<void> {
@@ -76,7 +89,10 @@ function deleteDatabase(name: string): Promise<void> {
     });
 }
 
-/** Deletes a profile along with its saves and settings. */
+/**
+ * Deletes a profile on this device, along with its saves and settings. The
+ * cloud keeps its copy: cloud/sync.ts deletes it there too.
+ */
 export async function deleteProfile(id: string): Promise<void> {
     const profile = await getProfile(id);
     if (profile === undefined) return;
@@ -84,6 +100,9 @@ export async function deleteProfile(id: string): Promise<void> {
         await deleteDatabase(profileStoragePath(id, mod));
     }
     const db = await getDb();
-    await db.delete('profiles', id);
+    const tx = db.transaction(['profiles', 'cloudsaves'], 'readwrite');
+    await tx.objectStore('profiles').delete(id);
+    for (const mod of profile.storageMods) await tx.objectStore('cloudsaves').delete(`${id}/${mod}`);
+    await tx.done;
     announceLibraryChange();
 }

@@ -1,14 +1,18 @@
-// Signing in with Steam, which only proves which games the player owns, so
-// the server may send them.
+// Signing in with Steam, which proves which games the player owns, so the
+// server may send them, and keeps their saves and custom levels in the cloud.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LinkedAccount } from '../../../shared/api.ts';
 import { OFFICIAL_GAMES, STEAM } from '../../../shared/games.ts';
 import { mockSignIn, startSteamSignIn, unlinkAccount, useAccount, type SignInHandle } from '../../account/store';
-import { formatWhen } from '../../ui/format';
-import { ExternalIcon, StoreMark } from '../../ui/icons';
+import { formatBytes, formatWhen } from '../../ui/format';
+import { CloudIcon, ExternalIcon, StoreMark, TrashIcon } from '../../ui/icons';
 import { GameText } from '../../ui/GameText';
+import { Prompt } from '../../ui/Prompt';
+import { Row } from '../../ui/Row';
 import { Sheet } from '../../ui/Sheet';
+import { deleteFromCloud, describeCloudError, syncCloudNow, useCloud } from '../../cloud/sync';
+import { cloudTitles, type CloudTitle } from '../../cloud/view';
 import { describeError } from '../actions';
 
 /** Names for the Steam apps the server reports, for "Owns …" lines. */
@@ -54,7 +58,8 @@ export function AccountSheet({ onClose }: { onClose(): void }) {
             <section className="sheet__section">
                 <p className="sheet__text">
                     {freeGames.map((game) => game.title).join(' and ')} are free for everyone. Sign in with Steam, and the
-                    games your account owns unlock for download. Signing in only reads which games you own.
+                    games your account owns unlock for download, and your saves and custom levels are kept in the cloud for your
+                    other devices. Steam only tells the app which games you own.
                 </p>
                 <p className="sheet__text sheet__text--quiet">
                     Bought the games elsewhere? Open a game and choose “Use your own copy” to bring its files from an
@@ -106,6 +111,7 @@ export function AccountSheet({ onClose }: { onClose(): void }) {
                     )
                 ) : null}
             </section>
+            {account !== undefined ? <CloudSection /> : null}
             {providers.mock ? (
                 <section className="sheet__section">
                     <h3 className="sheet__heading">
@@ -157,5 +163,116 @@ function AccountCard({ account }: { account: LinkedAccount }) {
                 <p className="list__meta">Checked {formatWhen(account.checkedAt)}</p>
             </div>
         </div>
+    );
+}
+
+function cloudStatusLine(status: ReturnType<typeof useCloud.getState>['status'], lastSyncAt: string | null, error: string | null): string {
+    switch (status) {
+        case 'syncing':
+            return 'Syncing…';
+        case 'offline':
+            return 'Offline. Your saves sync once the connection is back.';
+        case 'error':
+            return `The last sync failed: ${error ?? 'something went wrong'}`;
+        default:
+            return lastSyncAt === null ? 'Not synced yet' : `Synced ${formatWhen(lastSyncAt)}`;
+    }
+}
+
+/**
+ * The cloud: what it keeps of each game and custom level, and the way to
+ * take one out, its saves on every device going with it.
+ */
+function CloudSection() {
+    const { status, index, lastSyncAt, error } = useCloud();
+    const online = useAccount((state) => state.online);
+    const titles = useMemo(() => (index === null ? [] : cloudTitles(index)), [index]);
+
+    return (
+        <section className="sheet__section">
+            <h3 className="sheet__heading">
+                <CloudIcon />
+                <GameText text="Cloud saves" />
+            </h3>
+            <p className="sheet__text">
+                Your profiles and their saves, and the custom levels you add, are kept with this Steam account. Sign in on another device and
+                your profiles come back once their game is there; your custom levels wait under Custom levels → Library to download again.
+            </p>
+            <p className={`list__meta ${status === 'error' ? 'notice--error' : ''}`}>
+                {cloudStatusLine(status, lastSyncAt, error)}
+                {index !== null ? ` · ${formatBytes(index.usage.bytes)} of ${formatBytes(index.usage.limitBytes)} used` : ''}
+            </p>
+            <div className="sheet__actions">
+                <button className="button" disabled={!online || status === 'syncing'} onClick={() => void syncCloudNow()}>
+                    <GameText text="Sync now" />
+                </button>
+            </div>
+            {titles.length > 0 ? (
+                <ul className="list">
+                    {titles.map((title) => (
+                        <CloudTitleRow key={title.title} title={title} online={online} />
+                    ))}
+                </ul>
+            ) : index !== null ? (
+                <p className="sheet__text sheet__text--quiet">Nothing in your cloud yet. Play a game and its saves go there.</p>
+            ) : null}
+        </section>
+    );
+}
+
+function CloudTitleRow({ title, online }: { title: CloudTitle; online: boolean }) {
+    const [confirm, setConfirm] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [problem, setProblem] = useState<string | null>(null);
+    const profiles = title.profiles.length;
+    const meta = [
+        title.kind === 'level' ? 'Custom level' : null,
+        profiles === 0 ? 'no saves' : profiles === 1 ? '1 profile' : `${profiles} profiles`,
+        profiles > 0 ? formatBytes(title.bytes) : null,
+        title.lastPlayedAt !== null ? `played ${formatWhen(title.lastPlayedAt)}` : null,
+    ]
+        .filter((part): part is string => part !== null)
+        .join(' · ');
+
+    const remove = async () => {
+        setBusy(true);
+        setProblem(null);
+        try {
+            await deleteFromCloud(title.title);
+        } catch (failure) {
+            setProblem(describeCloudError(failure));
+            setBusy(false);
+            setConfirm(false);
+        }
+    };
+
+    if (confirm) {
+        return (
+            <Row
+                className="row--confirm"
+                prompts={
+                    <>
+                        <Prompt variant="row" action="confirm" label="Delete" className="prompt--danger" disabled={busy || !online} onPress={() => void remove()} />
+                        <Prompt variant="row" action="back" label="Keep" onPress={() => setConfirm(false)} />
+                    </>
+                }
+            >
+                <span className="row__title">
+                    {title.kind === 'level'
+                        ? `Delete ${title.name} and its saves from the cloud and every device? Where the level is downloaded, it stays.`
+                        : `Delete the saves of ${title.name} from the cloud and every device, this one too?`}
+                </span>
+            </Row>
+        );
+    }
+    return (
+        <Row
+            label={title.name}
+            prompts={<Prompt variant="row" action="extra" label="Delete from cloud" icon={<TrashIcon />} disabled={!online} onPress={() => setConfirm(true)} />}
+        >
+            <span className="row__title">{title.name}</span>
+            <span className="row__meta">{meta}</span>
+            {problem !== null ? <span className="row__meta notice--error">{problem}</span> : null}
+        </Row>
     );
 }

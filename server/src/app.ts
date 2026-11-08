@@ -14,6 +14,8 @@ import {
 } from 'fastify';
 import type { ApiError } from '../../shared/api.ts';
 import { registerAccountRoutes } from './account-routes.ts';
+import { CloudStore } from './cloud.ts';
+import { registerCloudRoutes } from './cloud-routes.ts';
 import { createCatalogStore, type Catalog, type LoadCatalog } from './catalog.ts';
 import type { Config } from './config.ts';
 import { registerContentRoutes } from './content-routes.ts';
@@ -135,6 +137,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
     registerContentRoutes(app, context);
     registerAccountRoutes(app, context);
     registerTrcustomsRoutes(app, context, { baseUrl: config.trcustomsUrl, mediaUrl: config.trcustomsMediaUrl });
+    registerCloudRoutes(app, context, new CloudStore(config.cloudDir, { quotaBytes: config.cloudQuotaBytes }, context.now));
     registerPageRoutes(app, config);
     return app;
 }

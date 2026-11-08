@@ -269,6 +269,22 @@ export const SearchIcon = icon([
     '............',
 ]);
 
+// prettier-ignore
+export const CloudIcon = icon([
+    '............',
+    '............',
+    '............',
+    '....####....',
+    '...#....#...',
+    '.###.....##.',
+    '#..........#',
+    '#..........#',
+    '#..........#',
+    '.##########.',
+    '............',
+    '............',
+]);
+
 /** A neutral mark for a store, in its initials: logos are their owners' to use. */
 export function StoreMark({ provider }: { provider: 'steam' }): ReactNode {
     return <span className={`store-mark store-mark--${provider}`}>S</span>;

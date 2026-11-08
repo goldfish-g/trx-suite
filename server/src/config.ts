@@ -25,6 +25,10 @@ export interface Config {
     /** TRCustoms, which the custom levels browser lists, and where its images live. */
     trcustomsUrl: string;
     trcustomsMediaUrl: string;
+    /** Where the cloud saves of players signed in with Steam are kept. */
+    cloudDir: string;
+    /** What one account may keep in the cloud, in bytes. */
+    cloudQuotaBytes: number;
 }
 
 export class ConfigError extends Error {}
@@ -122,6 +126,11 @@ export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): LoadedC
     }
 
     const dataDir = resolve(cwd, nonEmpty(env.DATA_DIR) ?? 'data');
+    const quotaMb = nonEmpty(env.CLOUD_QUOTA_MB);
+    const cloudQuotaMb = quotaMb === undefined ? 256 : Number(quotaMb);
+    if (!Number.isFinite(cloudQuotaMb) || cloudQuotaMb <= 0) {
+        throw new ConfigError(`CLOUD_QUOTA_MB must be a positive number of megabytes, not "${quotaMb}".`);
+    }
     return {
         config: {
             port,
@@ -137,6 +146,8 @@ export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): LoadedC
             httpsCertFile: httpsCertFile && resolve(cwd, httpsCertFile),
             trcustomsUrl: (nonEmpty(env.TRCUSTOMS_URL) ?? 'https://trcustoms.org').replace(/\/+$/, ''),
             trcustomsMediaUrl: (nonEmpty(env.TRCUSTOMS_MEDIA_URL) ?? 'https://data.trcustoms.org/media').replace(/\/*$/, '/'),
+            cloudDir: resolve(cwd, nonEmpty(env.CLOUD_DIR) ?? resolve(dataDir, 'cloud')),
+            cloudQuotaBytes: Math.round(cloudQuotaMb * 1024 * 1024),
         },
         warnings,
     };

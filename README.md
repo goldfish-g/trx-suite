@@ -57,8 +57,9 @@ menu, store sign-in and offline support.
   games' selection bar, and progress bars are banded like one of the
   game's bars. Other text is set in Alegreya.
 - **Custom levels from TRCustoms.** The ring's compass opens a screen of
-  its own over the level flying by, with two sections: the custom levels
-  in the library (Installed) and the ones on
+  its own over the level flying by, with two sections: the player's own
+  custom levels (Library), with any the cloud keeps from their other
+  devices, and the ones on
   [TRCustoms](https://trcustoms.org) (Browse), each by the game they were
   made for, Tomb Raider I, II or III. The triggers switch sections, the
   bumpers games; a click or a tap on a tab does too. Levels are cards
@@ -78,6 +79,23 @@ menu, store sign-in and offline support.
   home levels, music, sounds and videos), and the engine's own copies of
   the other games' game flows are taken away, so TRX finds nothing else
   to start and its passport has no Switch Game.
+- **Cloud saves.** Signed in with Steam, a player's profiles and their
+  saves, and the custom levels they added, are kept on the server with
+  their Steam account. Another device signed in to the same account gets
+  the profiles back, saves and all, once it has the game they play, and
+  lists the custom levels under Custom levels → Library ("In your
+  cloud") to download again; the server keeps where a level came from,
+  never the level. Saves are merged file by file against what the device
+  and the cloud last agreed on: a slot changed on one device goes to the
+  others, and a slot two devices both changed keeps the newer save. They
+  sync when the menus open, when a game starts (before the engine reads
+  them) and as the game saves. The account panel lists what the cloud
+  keeps of each game and level; taking one out deletes its profiles and
+  saves from the cloud and from every device, and deleting a profile
+  deletes it everywhere. Removing a custom level from a device leaves
+  the cloud's copy alone. Only the save files travel; each device keeps
+  its own settings, except the look picked under Settings → Look, which
+  follows the player (the latest pick wins).
 - **Playing.** Each profile keeps its saves and settings in IndexedDB. For
   the official games, the
   engine's game switcher offers every installed game; picking one starts the
@@ -142,7 +160,8 @@ pages, which a web page cannot read; GOG owners bring the files of their own
 copy instead.
 
 What an account owns is kept in a signed session cookie; signing in again
-refreshes it. The server checks it on every download request.
+refreshes it. The server checks it on every download request. The cloud
+saves belong to the Steam account in that cookie.
 
 ## Layout
 
@@ -153,10 +172,11 @@ server/        the API server: catalog, sign-in, downloads, TRCustoms, static fi
 src/
   flyby/       culled rendering of levels, smooth camera routes
   menu/        the home screen, the ring and its artifacts, the panels
-  custom/      custom levels: Installed and Browse, TRCustoms, the converter's worker
+  custom/      custom levels: Library and Browse, TRCustoms, the converter's worker
   stage/       the WebGL canvas behind the menus
   input/       keyboard, gamepad, mouse and touch as one stream of actions
   account/     sign-in and the catalog, remembered for offline use
+  cloud/       cloud saves: syncing profiles, saves and custom levels with the server
   pwa/         installing, updating, the service worker's registration, keeping the screen on
   gamedata/    the library: imports, layout, storage   (from the shell)
   games/       recognising games and custom levels     (from the shell)

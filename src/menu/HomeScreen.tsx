@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { refreshAccount, useAccount } from '../account/store';
+import { startCloudSync } from '../cloud/sync';
 import { FlybyLayer } from '../flyby/FlybyLayer';
 import { loadPreparedLevel } from '../flyby/load';
 import { flybyCandidates, rememberFlyby } from '../flyby/pick';
@@ -84,6 +85,8 @@ export function HomeScreen() {
             resumed = true;
             void resumeInterruptedImports();
         }
+        // Saves and custom levels in step with the cloud, now and as they change.
+        startCloudSync();
         document.title = 'TRX';
     }, []);
 
