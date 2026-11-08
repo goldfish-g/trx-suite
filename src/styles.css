@@ -2424,3 +2424,13 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     margin-left: 8px;
     color: var(--accent-bright);
 }
+
+/* A panel opened from a level's details, such as its profiles, stands over them. */
+.details-layer ~ .sheet-layer {
+    z-index: 70;
+}
+
+/* A question asked on a row is read in full, over as many lines as it takes. */
+.row--confirm .row__title {
+    white-space: normal;
+}

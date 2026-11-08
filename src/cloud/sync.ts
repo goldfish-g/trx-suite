@@ -554,6 +554,33 @@ export function startCloudSync(): void {
     scheduleCloudSync(0);
 }
 
+/**
+ * Brings the cloud's profiles onto this device for the games and levels it
+ * has, as a sync would, without the saves (the game brings those in when it
+ * starts). For a device about to make a first profile of a game: with the
+ * cloud's there, it continues those saves instead of starting a set of its
+ * own. Asks the cloud for a few seconds at most; offline, it goes by what
+ * the last sync heard.
+ */
+export async function adoptCloudProfiles(): Promise<void> {
+    const account = steamAccount();
+    if (account === null) return;
+    let index = useCloud.getState().index;
+    if (navigator.onLine) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        try {
+            index = await fetchCloudIndex(controller.signal);
+        } catch {
+            // What the last sync heard will do.
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+    if (index === null || keyOf(index) !== account) return;
+    await bringProfiles(index, account);
+}
+
 // --------------------------------------------------------- the session
 
 /**

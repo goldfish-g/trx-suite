@@ -4,7 +4,7 @@
 
 import type { CustomLevelDetails, CustomLevelFile, CustomLevelSummary } from '../../shared/api.ts';
 import type { CloudLevel } from '../../shared/cloud.ts';
-import { cloudLevelFor } from '../cloud/sync';
+import { adoptCloudProfiles, cloudLevelFor } from '../cloud/sync';
 import { importGameData, redownloadGameData, removeGameData } from '../gamedata/imports';
 import { LayoutError, loneLevelPath } from '../gamedata/layout';
 import { putLevelInfo } from '../gamedata/store';
@@ -13,6 +13,7 @@ import { customMod, type EngineNumber } from '../games/catalog';
 import { engineFromHeader } from '../games/detect';
 import { loadEngineVersions } from '../engine/versions';
 import { createProfile, deleteProfile, listProfiles } from '../profiles/store';
+import type { ProfileRecord } from '../profiles/types';
 import { describeDetection, playProfile, type PickedFiles } from '../menu/actions';
 import { fetchLevelDetails } from './api';
 import { levelNameFromArchive } from './labels';
@@ -179,15 +180,10 @@ export async function addLevelFromFiles(picked: PickedFiles, level?: string): Pr
     throw new LayoutError(describeDetection(detection));
 }
 
-/** Plays a custom level with the saves played last, making them the first time. */
-export async function playCustomLevel(record: GameDataRecord): Promise<void> {
-    const [latest] = (await listProfiles()).filter((profile) => profile.gamedataId === record.id);
-    if (latest !== undefined) {
-        playProfile(latest);
-        return;
-    }
-    const profile = await createProfile({
-        name: record.name,
+/** Makes a new set of saves for a custom level. */
+export async function newCustomProfile(record: GameDataRecord, name = record.name): Promise<ProfileRecord> {
+    return createProfile({
+        name,
         gamedataId: record.id,
         title: record.mod,
         // A lone level plays through the engine's own trN-level.
@@ -195,7 +191,21 @@ export async function playCustomLevel(record: GameDataRecord): Promise<void> {
         engine: record.engine,
         engineVersion: await newestEngine(),
     });
-    playProfile(profile);
+}
+
+const profilesOfLevel = async (record: GameDataRecord) => (await listProfiles()).filter((profile) => profile.gamedataId === record.id);
+
+/**
+ * Plays a custom level with the profile played last. A first profile on
+ * this device is the cloud's, when it keeps one; else a new one.
+ */
+export async function playCustomLevel(record: GameDataRecord): Promise<void> {
+    let [latest] = await profilesOfLevel(record);
+    if (latest === undefined) {
+        await adoptCloudProfiles();
+        [latest] = await profilesOfLevel(record);
+    }
+    playProfile(latest ?? (await newCustomProfile(record)));
 }
 
 /**

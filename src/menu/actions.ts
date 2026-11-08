@@ -3,6 +3,7 @@
 
 import type { CatalogEntry } from '../../shared/api.ts';
 import type { OfficialGame } from '../../shared/games.ts';
+import { adoptCloudProfiles } from '../cloud/sync';
 import { loadEngineVersions } from '../engine/versions';
 import { importGameData } from '../gamedata/imports';
 import { LayoutError, planLayout } from '../gamedata/layout';
@@ -66,9 +67,16 @@ export async function newGameProfile(record: GameDataRecord, name: string): Prom
     });
 }
 
-/** Plays a game with the profile played last, making the first one if needed. */
+/**
+ * Plays a game with the profile played last. A first profile on this
+ * device is the cloud's, when it keeps one; else a new one.
+ */
 export async function playGame(record: GameDataRecord, game: OfficialGame): Promise<void> {
-    const [latest] = await profilesOf(record.id);
+    let [latest] = await profilesOf(record.id);
+    if (latest === undefined) {
+        await adoptCloudProfiles();
+        [latest] = await profilesOf(record.id);
+    }
     playProfile(latest ?? (await newGameProfile(record, game.title)));
 }
 

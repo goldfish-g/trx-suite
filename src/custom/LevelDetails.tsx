@@ -25,6 +25,7 @@ import { CONVERTER_VERSION } from './convert';
 import { fetchLevelDetails } from './api';
 import { Description } from './Description';
 import { Shot, useObjectUrl } from './LevelCard';
+import { ProfilesSheet } from './ProfilesSheet';
 import { authorsLine, gameTitle, keepFocus, lengthLabel, ratingTone } from './labels';
 
 interface Props {
@@ -70,6 +71,8 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
     const [problem, setProblem] = useState<string | null>(null);
     const [confirm, setConfirm] = useState(false);
     const [confirmCloud, setConfirmCloud] = useState(false);
+    const [showProfiles, setShowProfiles] = useState(false);
+    const profileCount = useLibrary((state) => (record === undefined ? 0 : state.profiles.filter((profile) => profile.gamedataId === record.id).length));
     const [shot, setShot] = useState(0);
     const [busy, setBusy] = useState(false);
 
@@ -215,7 +218,8 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
     const current = shots[Math.min(shot, shots.length - 1)] ?? null;
 
     return (
-        <div className="details-layer">
+        <>
+        <div className="details-layer" inert={showProfiles}>
             <div className="details-scrim" onClick={onClose} aria-hidden="true" />
             <div ref={panel} className="details" role="dialog" aria-modal="true" aria-label={name}>
                 <div className="details__gallery">
@@ -380,11 +384,16 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                             ) : listed !== undefined ? (
                                 <Prompt action="extra" label="Delete from cloud" global icon={<TrashIcon />} disabled={!online} onPress={() => setConfirmCloud(true)} />
                             ) : null}
+                            {record?.status === 'ready' && profileCount > 0 ? (
+                                <Prompt action="view" label={profileCount > 1 ? `Profiles · ${profileCount}` : 'Profiles'} global onPress={() => setShowProfiles(true)} />
+                            ) : null}
                             <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />
                         </>
                     )}
                 </PromptBar>
             </div>
         </div>
+        {showProfiles && record !== undefined ? <ProfilesSheet record={record} onClose={() => setShowProfiles(false)} /> : null}
+        </>
     );
 }

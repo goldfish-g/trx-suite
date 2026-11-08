@@ -296,6 +296,7 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                         lastPlayed={(record) =>
                             profiles.filter((profile) => profile.gamedataId === record.id).map((profile) => profile.lastPlayedAt).find((when) => when !== null) ?? null
                         }
+                        profilesOf={(record) => profiles.filter((profile) => profile.gamedataId === record.id).length}
                     />
                 )}
             </div>
@@ -443,13 +444,14 @@ interface InstalledGridProps {
     levelInfo: ReturnType<typeof useLibrary.getState>['levelInfo'];
     progress: ReturnType<typeof useImports.getState>['progress'];
     lastPlayed(record: GameDataRecord): string | null;
+    profilesOf(record: GameDataRecord): number;
     onOpen(record: GameDataRecord): void;
     onOpenCloud(level: CloudLevel): void;
     onBrowse(): void;
     onAdd(): void;
 }
 
-function InstalledGrid({ records, cloudLevels, cloudIndex, game, levelInfo, progress, lastPlayed, onOpen, onOpenCloud, onBrowse, onAdd }: InstalledGridProps) {
+function InstalledGrid({ records, cloudLevels, cloudIndex, game, levelInfo, progress, lastPlayed, profilesOf, onOpen, onOpenCloud, onBrowse, onAdd }: InstalledGridProps) {
     if (records.length === 0 && cloudLevels.length === 0) {
         return (
             <div className="custom__empty">
@@ -479,6 +481,7 @@ function InstalledGrid({ records, cloudLevels, cloudIndex, game, levelInfo, prog
                             progress={progress[record.id]}
                             lastPlayed={lastPlayed(record)}
                             inCloud={cloudLevelOf(cloudIndex, record) !== undefined}
+                            profiles={profilesOf(record)}
                             onDetails={() => onOpen(record)}
                         />
                     ))}

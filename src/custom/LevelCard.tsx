@@ -116,10 +116,12 @@ interface InstalledCardProps {
     lastPlayed: string | null;
     /** Whether the cloud lists it, which keeps it when it goes from here. */
     inCloud?: boolean;
+    /** How many profiles play it; more than one are named on the card. */
+    profiles?: number;
     onDetails(): void;
 }
 
-export function InstalledCard({ record, info, progress, lastPlayed, inCloud = false, onDetails }: InstalledCardProps) {
+export function InstalledCard({ record, info, progress, lastPlayed, inCloud = false, profiles = 0, onDetails }: InstalledCardProps) {
     const [confirm, setConfirm] = useState(false);
     const cover = useObjectUrl(info?.cover);
     const facts: Facts = info?.details ?? { name: record.name, authors: [], rating: null, difficulty: null, duration: null };
@@ -140,6 +142,7 @@ export function InstalledCard({ record, info, progress, lastPlayed, inCloud = fa
                 ) : null}
                 {formatBytes(record.sizeBytes)}
                 {lastPlayed !== null ? ` · played ${formatWhen(lastPlayed)}` : ' · not played yet'}
+                {profiles > 1 ? ` · ${profiles} profiles` : ''}
                 {record.convert === true && record.convertedWith !== CONVERTER_VERSION ? (
                     <span className="level-card__fresh">New conversion available</span>
                 ) : null}

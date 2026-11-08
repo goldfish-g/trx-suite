@@ -1,24 +1,21 @@
 // One official game: play it and manage its saves when it's in the library;
 // otherwise download it, unlock it, or bring the files of your own copy.
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAccount } from '../../account/store';
 import { removeGameData, retryImport } from '../../gamedata/imports';
 import type { GameDataRecord } from '../../gamedata/types';
 import { describeProgress, describeSource } from '../../library/describe';
 import { useLibrary } from '../../library/store';
-import { deleteProfileEverywhere, useCloud } from '../../cloud/sync';
+import { useCloud } from '../../cloud/sync';
 import { cloudProfilesOf } from '../../cloud/view';
-import { renameProfile } from '../../profiles/store';
-import type { ProfileRecord } from '../../profiles/types';
-import { formatBytes, formatWhen } from '../../ui/format';
+import { ProfileRow } from '../../profiles/ProfileRow';
+import { formatBytes } from '../../ui/format';
 import { CloudIcon, DownloadIcon, LockIcon, PlayIcon, PlusIcon, TrashIcon } from '../../ui/icons';
 import { GameText } from '../../ui/GameText';
 import { ProgressBar } from '../../ui/ProgressBar';
-import { Prompt } from '../../ui/Prompt';
-import { Row } from '../../ui/Row';
 import { Sheet } from '../../ui/Sheet';
-import { describeError, downloadGame, importOwnCopy, inspectPicked, newGameProfile, playGame, playProfile } from '../actions';
+import { describeError, downloadGame, importOwnCopy, inspectPicked, newGameProfile, playGame } from '../actions';
 import { FilePicker } from '../FilePicker';
 import type { ItemStatus, RingItem } from '../items';
 
@@ -269,96 +266,6 @@ function Installed({
                 )}
             </section>
         </>
-    );
-}
-
-function ProfileRow({
-    profile,
-    editing,
-    onEdit,
-    onDone,
-}: {
-    profile: ProfileRecord;
-    editing: boolean;
-    onEdit(): void;
-    onDone(): void;
-}) {
-    const [name, setName] = useState(profile.name);
-    const [confirmDelete, setConfirmDelete] = useState(false);
-    const cloudAccount = useCloud((state) => state.account);
-    // Its saves are one set on every device signed in to this cloud.
-    const synced = profile.cloud !== undefined && profile.cloud.account === cloudAccount;
-    useEffect(() => setName(profile.name), [profile.name]);
-    const save = () => {
-        const trimmed = name.trim();
-        if (trimmed !== '' && trimmed !== profile.name) void renameProfile(profile.id, trimmed);
-        onDone();
-    };
-    const cancel = () => {
-        setName(profile.name);
-        onDone();
-    };
-
-    if (editing) {
-        return (
-            <Row
-                prompts={
-                    <>
-                        <Prompt variant="row" action="confirm" label="Save" onPress={save} />
-                        <Prompt variant="row" action="back" label="Cancel" onPress={cancel} />
-                    </>
-                }
-            >
-                <input
-                    className="field__input"
-                    value={name}
-                    autoFocus
-                    maxLength={60}
-                    aria-label="Profile name"
-                    onChange={(event) => setName(event.target.value)}
-                />
-            </Row>
-        );
-    }
-    if (confirmDelete) {
-        return (
-            <Row
-                className="row--confirm"
-                prompts={
-                    <>
-                        <Prompt variant="row" action="confirm" label="Delete" className="prompt--danger" onPress={() => void deleteProfileEverywhere(profile)} />
-                        <Prompt variant="row" action="back" label="Keep" onPress={() => setConfirmDelete(false)} />
-                    </>
-                }
-            >
-                <span className="row__title">
-                    {synced ? `Delete ${profile.name} and its saves here, in the cloud and on your other devices?` : `Delete ${profile.name} and its saves?`}
-                </span>
-            </Row>
-        );
-    }
-    return (
-        <Row
-            label={profile.name}
-            prompts={
-                <>
-                    <Prompt variant="row" action="confirm" label="Play" icon={<PlayIcon />} onPress={() => playProfile(profile)} />
-                    <Prompt variant="row" action="alternate" label="Rename" onPress={onEdit} />
-                    <Prompt variant="row" action="extra" label="Delete" icon={<TrashIcon />} onPress={() => setConfirmDelete(true)} />
-                </>
-            }
-        >
-            <span className="row__title">{profile.name}</span>
-            <span className="row__meta">
-                Played {formatWhen(profile.lastPlayedAt)} · engine {profile.engineVersion}
-                {synced ? (
-                    <span className="row__cloud" title="Its saves are in your cloud">
-                        <CloudIcon />
-                        In the cloud
-                    </span>
-                ) : null}
-            </span>
-        </Row>
     );
 }
 
