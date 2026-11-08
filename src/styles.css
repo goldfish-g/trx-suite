@@ -1296,12 +1296,14 @@ html[data-input='touch'] .play__prompts .prompt--primary {
     box-shadow: var(--frame-lit), 0 0 0 var(--e) #000;
 }
 
-.prompt--chip {
+/* The account chip carries the player's names, of any length: a name too
+   long for it loses whole words, not half a letter. The other chips are
+   the app's own words, always shown whole. */
+.topbar__account {
     max-width: min(46vw, 320px);
 }
 
-/* A name too long for its chip loses whole words, not half a letter. */
-.prompt--chip .gt {
+.topbar__account .gt {
     height: calc(var(--gu) * 18);
     overflow: hidden;
     white-space: normal;

@@ -550,5 +550,5 @@ function AccountPrompt({ onPress }: { onPress(): void }) {
     const me = useAccount((state) => state.me);
     const accounts = me?.accounts ?? [];
     const label = accounts.length === 0 ? 'Sign in' : accounts.map((account) => account.name).join(' · ');
-    return <Prompt action="extra" label={label} variant="chip" global icon={<UserIcon />} onPress={onPress} />;
+    return <Prompt action="extra" label={label} variant="chip" className="topbar__account" global icon={<UserIcon />} onPress={onPress} />;
 }
