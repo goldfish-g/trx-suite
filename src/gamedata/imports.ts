@@ -4,7 +4,7 @@
 // page: a download carries on from where it stopped.
 
 import { create } from 'zustand';
-import { convertLevel } from '../custom/convert';
+import { CONVERTER_VERSION, convertLevel } from '../custom/convert';
 import type { EngineNumber } from '../games/catalog';
 import { DamagedArchiveError, readArchive, type ArchiveEntry } from '../lib/archive';
 import { newId } from '../lib/db';
@@ -148,6 +148,8 @@ async function bringIn(record: GameDataRecord, input: ImportInput, signal: Abort
     const planned = planLayout(entries, target);
     const total = planned.reduce((sum, file) => sum + file.entry.size, 0);
     let done = 0;
+    // From here the files from before make way: going back to them is over.
+    if (record.replacing !== undefined) await updateGameData(id, { replacing: { ...record.replacing, filesGone: true } });
     await deleteGameDataFiles(id);
     report(id, { phase: 'unpacking', done, total, notice: null });
     for (const file of planned) {
@@ -165,6 +167,9 @@ async function bringIn(record: GameDataRecord, input: ImportInput, signal: Abort
         fileCount: planned.length,
         engine: target.engine,
         extendsMod: target.extendsMod,
+        convertedWith: record.convert === true ? CONVERTER_VERSION : undefined,
+        replacing: undefined,
+        reimportError: undefined,
     });
 }
 
@@ -186,6 +191,20 @@ async function run(record: GameDataRecord, input: ImportInput, signal: AbortSign
     } catch (error) {
         if (signal.aborted) return;
         console.error(`[imports] ${record.name}:`, error);
+        // Fetching a level that played again: it stays as it was while its files do.
+        const fresh = await getGameData(id).catch(() => undefined);
+        if (fresh?.replacing !== undefined && fresh.replacing.filesGone !== true) {
+            await discardPartial(resumeKey(id)).catch(() => {});
+            await updateGameData(id, {
+                status: 'ready',
+                error: undefined,
+                source: fresh.replacing.source,
+                sizeBytes: fresh.replacing.sizeBytes,
+                replacing: undefined,
+                reimportError: describe(error),
+            });
+            return;
+        }
         await deleteGameDataFiles(id).catch(() => {});
         // Damaged bytes are no use to a retry, which then downloads afresh.
         if (error instanceof DamagedArchiveError) await discardPartial(resumeKey(id)).catch(() => {});
@@ -237,6 +256,51 @@ export async function retryImport(id: string): Promise<void> {
     if (record === undefined || record.source.kind === 'upload') return;
     await updateGameData(id, { status: 'importing', error: undefined });
     start({ ...record, status: 'importing' }, { kind: 'download' });
+}
+
+/**
+ * Fetches a record's files again, into the same record, so the profiles that
+ * play it keep their saves: to convert it again after a fix to the
+ * converter, or to bring in a newer version of its archive (`next`). Its
+ * files stay until the new ones are ready to take their place, and if the
+ * download or the conversion fails, they are kept.
+ */
+export async function redownloadGameData(id: string, next?: { source: GameDataSource; sizeBytes: number }): Promise<void> {
+    if (running.has(id)) return;
+    const record = await getGameData(id);
+    if (record === undefined || record.source.kind === 'upload' || record.status === 'importing') return;
+    const patch: Partial<GameDataRecord> = {
+        status: 'importing',
+        error: undefined,
+        reimportError: undefined,
+        source: next?.source ?? record.source,
+        // The size of the archive, which the record no longer knows once unpacked.
+        sizeBytes: next?.sizeBytes ?? 0,
+        // A failed record has no files to go back to.
+        replacing: record.status === 'ready' ? { source: record.source, sizeBytes: record.sizeBytes } : undefined,
+    };
+    await discardPartial(resumeKey(id));
+    await updateGameData(id, patch);
+    start({ ...record, ...patch }, { kind: 'download' });
+}
+
+/**
+ * Stops fetching a record's files again. The record keeps the files from
+ * before where they are still whole; where they had already made way, it is
+ * left failed, to try again. Either way it stays, with its profiles.
+ */
+export async function cancelRedownload(id: string): Promise<void> {
+    running.get(id)?.abort(new DOMException('The download was stopped.', 'AbortError'));
+    running.delete(id);
+    report(id, null);
+    await discardPartial(resumeKey(id));
+    const record = await getGameData(id);
+    if (record?.replacing === undefined) return;
+    if (record.replacing.filesGone !== true) {
+        await updateGameData(id, { status: 'ready', source: record.replacing.source, sizeBytes: record.replacing.sizeBytes, replacing: undefined });
+    } else {
+        await updateGameData(id, { status: 'failed', error: 'Downloading it again was stopped. Try again to finish.', replacing: undefined });
+    }
 }
 
 /** Removes game data, stopping its import first if one is running. */

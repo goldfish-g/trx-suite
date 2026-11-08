@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CustomLevelDetails, CustomLevelSummary } from '../../shared/api.ts';
 import { baseModOf } from '../engine/files';
-import { retryImport, useImports } from '../gamedata/imports';
+import { cancelRedownload, retryImport, useImports } from '../gamedata/imports';
 import type { GameDataRecord } from '../gamedata/types';
 import { findGame } from '../games/catalog';
 import { pushLayer } from '../input/controller';
@@ -17,7 +17,8 @@ import { GameText } from '../ui/GameText';
 import { ChevronLeft, ChevronRight, DownloadIcon, ExternalIcon, PlayIcon, TrashIcon } from '../ui/icons';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt, PromptBar } from '../ui/Prompt';
-import { installFromTrcustoms, playCustomLevel, removeCustomLevel } from './actions';
+import { installFromTrcustoms, playCustomLevel, redownloadCustomLevel, removeCustomLevel } from './actions';
+import { CONVERTER_VERSION } from './convert';
 import { fetchLevelDetails } from './api';
 import { Description } from './Description';
 import { Shot, useObjectUrl } from './LevelCard';
@@ -165,7 +166,13 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
     if (record !== undefined && record.status === 'ready') {
         facts.push(['In your library', `${formatBytes(record.sizeBytes)} · ${describeSource(record.source)}`]);
     }
-    const newer = record?.source.kind === 'trcustoms' && level?.file !== null && level?.file !== undefined && level.file.version > record.source.version;
+    const source = record?.source;
+    const newerFile = source?.kind === 'trcustoms' && level?.file != null && level.file.version > source.version ? level.file : null;
+    const sameFile = source?.kind === 'trcustoms' && level?.file != null && level.file.id === source.fileId ? level.file : undefined;
+    // A level converted by another converter than this one may lack its fixes.
+    const stale = record?.convert === true && record.status === 'ready' && record.convertedWith !== CONVERTER_VERSION;
+    const canRedownload = record !== undefined && record.status === 'ready' && record.source.kind !== 'upload';
+    const replacing = record?.status === 'importing' && record.replacing !== undefined;
 
     const name = level?.name ?? record?.name ?? 'Custom level';
     const by = level !== undefined ? authorsLine(level) : null;
@@ -232,7 +239,21 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
                             start without it.
                         </p>
                     ) : null}
-                    {newer ? <p className="notice">TRCustoms has a newer version of it. Delete this one and download it again to update.</p> : null}
+                    {replacing ? <p className="details__note">Downloading it again. Your saves stay, and so does the level you had if this fails.</p> : null}
+                    {record?.reimportError !== undefined ? (
+                        <p className="notice notice--error">Downloading it again failed: {record.reimportError} The level you had stays as it was.</p>
+                    ) : null}
+                    {newerFile !== null && record?.status === 'ready' && source?.kind === 'trcustoms' ? (
+                        <p className="notice">
+                            TRCustoms has version {newerFile.version} of it; you have version {source.version}. Updating keeps your saves, though a save
+                            in a level the author has changed since may not load.
+                        </p>
+                    ) : stale ? (
+                        <p className="notice">
+                            It was converted by an older version of the converter. Download it again to convert it with the fixes made since; your saves
+                            stay.
+                        </p>
+                    ) : null}
                     {problem !== null ? <p className="notice notice--error">{problem}</p> : null}
 
                     {facts.length > 0 ? (
@@ -270,7 +291,21 @@ export function LevelDetails({ summary, recordId, onClose }: Props) {
                             {details?.pageUrl !== undefined ? (
                                 <Prompt action="alternate" label="TRCustoms page" global icon={<ExternalIcon />} onPress={() => window.open(details.pageUrl, '_blank', 'noopener')} />
                             ) : null}
-                            {record !== undefined ? (
+                            {canRedownload && record !== undefined ? (
+                                <Prompt
+                                    action="menu"
+                                    label={newerFile !== null ? `Update to version ${newerFile.version}` : 'Re-download'}
+                                    variant={newerFile !== null || stale ? undefined : 'quiet'}
+                                    className={newerFile !== null || stale ? 'prompt--accent' : undefined}
+                                    global
+                                    icon={<DownloadIcon />}
+                                    disabled={busy}
+                                    onPress={() => void run(() => redownloadCustomLevel(record, newerFile ?? sameFile, details))}
+                                />
+                            ) : null}
+                            {replacing && record !== undefined ? (
+                                <Prompt action="extra" label="Stop" global onPress={() => void run(() => cancelRedownload(record.id))} />
+                            ) : record !== undefined ? (
                                 <Prompt action="extra" label={record.status === 'importing' ? 'Stop' : 'Delete'} global icon={<TrashIcon />} onPress={() => setConfirm(true)} />
                             ) : null}
                             <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />

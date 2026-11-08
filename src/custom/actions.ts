@@ -2,8 +2,8 @@
 // files, play them, and remove them. Each level gets a package of the
 // current TRX from the TRX Level Converter as it comes in.
 
-import type { CustomLevelDetails, CustomLevelSummary } from '../../shared/api.ts';
-import { importGameData, removeGameData } from '../gamedata/imports';
+import type { CustomLevelDetails, CustomLevelFile, CustomLevelSummary } from '../../shared/api.ts';
+import { importGameData, redownloadGameData, removeGameData } from '../gamedata/imports';
 import { LayoutError, loneLevelPath } from '../gamedata/layout';
 import { putLevelInfo } from '../gamedata/store';
 import type { GameDataRecord } from '../gamedata/types';
@@ -57,6 +57,27 @@ export async function installFromTrcustoms(level: CustomLevelSummary | CustomLev
     );
     void keepLevelInfo(record.id, level).catch((error: unknown) => console.warn('[custom] keeping the level’s details failed:', error));
     return record;
+}
+
+/**
+ * Downloads a level again and converts it anew, into the same place in the
+ * library, so its saves stay: after a fix to the converter, or, given a
+ * newer file of a TRCustoms level, to update it. What TRCustoms says about
+ * the level is refreshed too.
+ */
+export async function redownloadCustomLevel(record: GameDataRecord, file?: CustomLevelFile, details?: CustomLevelDetails): Promise<void> {
+    const { source } = record;
+    if (source.kind !== 'trcustoms') {
+        await redownloadGameData(record.id);
+        return;
+    }
+    const next = file ?? null;
+    await redownloadGameData(record.id, {
+        source: next === null ? source : { kind: 'trcustoms', levelId: source.levelId, fileId: next.id, version: next.version, url: next.url },
+        sizeBytes: next?.sizeBytes ?? 0,
+    });
+    const level = details ?? (await fetchLevelDetails(source.levelId).catch(() => null));
+    if (level !== null) void keepLevelInfo(record.id, level).catch(() => {});
 }
 
 /** The game level files were made for, from the first one that says. */

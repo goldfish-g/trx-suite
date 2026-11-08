@@ -2359,3 +2359,18 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
         display: none;
     }
 }
+
+/* A level the converter has had fixes for since it converted it. */
+.level-card__fresh {
+    display: block;
+    margin-top: 3px;
+    color: var(--accent-bright);
+    font-weight: 700;
+    text-shadow: 0 0 8px var(--glow), var(--shadow);
+}
+
+.details__note {
+    margin: 0 0 12px;
+    color: var(--ink-dim);
+    text-shadow: var(--shadow);
+}

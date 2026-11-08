@@ -44,6 +44,16 @@ export interface GameDataRecord {
     convert?: boolean;
     /** The official game a custom level builds on, from its gameflow's "extends". */
     extendsMod?: string;
+    /** Which converter made the files, as CONVERTER_VERSION gives it; set when a conversion succeeds. */
+    convertedWith?: string;
+    /**
+     * While the files of a record that played are fetched again: where they
+     * came from before, to go back to if that fails while they are still
+     * there. filesGone is set once they start making way for the new ones.
+     */
+    replacing?: { source: GameDataSource; sizeBytes: number; filesGone?: boolean };
+    /** Why fetching the files again failed; the files from before stayed. */
+    reimportError?: string;
     createdAt: string;
 }
 

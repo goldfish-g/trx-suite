@@ -1,5 +1,7 @@
 /// <reference types="vitest/config" />
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -17,6 +19,27 @@ const crossOriginIsolationHeaders = {
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
+// Which converter the page runs, as a hash of its source: a level converted
+// by another may lack fixes made since, and the custom levels screen offers
+// to convert it again.
+function converterVersion(): string {
+    const hash = createHash('sha256');
+    const walk = (dir: string): void => {
+        for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+            const path = join(dir, entry.name);
+            if (entry.isDirectory()) walk(path);
+            else hash.update(relative(root, path)).update(readFileSync(path));
+        }
+    };
+    try {
+        walk(join(root, 'converter/client/src/converter'));
+        walk(join(root, 'converter/client/src/templates'));
+    } catch {
+        return 'unknown';
+    }
+    return hash.digest('hex').slice(0, 12);
+}
+
 // Serving over https (needed on phones: threads want a secure context) when
 // a certificate is given.
 const https =
@@ -32,6 +55,7 @@ export default defineConfig({
         https,
     },
     preview: { headers: crossOriginIsolationHeaders },
+    define: { __CONVERTER_VERSION__: JSON.stringify(converterVersion()) },
     worker: { format: 'es' },
     // The converter's worker uses fflate. Found only once a level is converted,
     // it would make the dev server reload the page mid-import.

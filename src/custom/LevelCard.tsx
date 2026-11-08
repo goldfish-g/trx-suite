@@ -4,7 +4,7 @@
 
 import { useEffect, useState, type MouseEvent } from 'react';
 import type { CustomLevelSummary } from '../../shared/api.ts';
-import { retryImport, type ImportProgress } from '../gamedata/imports';
+import { cancelRedownload, retryImport, type ImportProgress } from '../gamedata/imports';
 import type { GameDataRecord, LevelInfoRecord } from '../gamedata/types';
 import { ENGINE_NAMES, type EngineNumber } from '../games/catalog';
 import { describeProgress } from '../library/describe';
@@ -14,6 +14,7 @@ import { CheckIcon, PlayIcon, TrashIcon } from '../ui/icons';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt } from '../ui/Prompt';
 import { playCustomLevel, removeCustomLevel } from './actions';
+import { CONVERTER_VERSION } from './convert';
 import { authorsLine, lengthLabel, ratingTone } from './labels';
 
 /** An object URL for a stored image, for as long as the card shows it. */
@@ -129,9 +130,14 @@ export function InstalledCard({ record, info, progress, lastPlayed, onDetails }:
             <span className="level-card__status">
                 {formatBytes(record.sizeBytes)}
                 {lastPlayed !== null ? ` · played ${formatWhen(lastPlayed)}` : ' · not played yet'}
+                {record.convert === true && record.convertedWith !== CONVERTER_VERSION ? (
+                    <span className="level-card__fresh">New conversion available</span>
+                ) : null}
             </span>
         );
     }
+    // Downloading a level that played again: stopping keeps the level and its saves.
+    const replacing = record.status === 'importing' && record.replacing !== undefined;
 
     const click = (event: MouseEvent<HTMLLIElement>) => {
         if (event.target instanceof Element && event.target.closest('button, a')) return;
@@ -161,7 +167,11 @@ export function InstalledCard({ record, info, progress, lastPlayed, onDetails }:
                             <Prompt variant="row" action="confirm" label="Try again" onPress={() => void retryImport(record.id)} />
                         ) : null}
                         <Prompt variant="row" action="alternate" label="Details" onPress={onDetails} />
-                        <Prompt variant="row" action="extra" label={record.status === 'importing' ? 'Cancel' : 'Delete'} icon={<TrashIcon />} onPress={() => setConfirm(true)} />
+                        {replacing ? (
+                            <Prompt variant="row" action="extra" label="Stop" onPress={() => void cancelRedownload(record.id)} />
+                        ) : (
+                            <Prompt variant="row" action="extra" label={record.status === 'importing' ? 'Cancel' : 'Delete'} icon={<TrashIcon />} onPress={() => setConfirm(true)} />
+                        )}
                     </>
                 )}
             </span>

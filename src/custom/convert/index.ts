@@ -6,6 +6,12 @@ import { readModMeta } from '../../games/detect';
 import type { ArchiveEntry } from '../../lib/archive';
 import type { ConvertFile, ConvertReply, ConvertRequest } from './protocol';
 
+/**
+ * The converter this build runs, by a hash of its source (vite.config.ts).
+ * A level converted by another may be missing fixes made since.
+ */
+export const CONVERTER_VERSION: string = __CONVERTER_VERSION__;
+
 export interface Converted {
     /** The package's files, at games/<modId>/…. */
     entries: ArchiveEntry[];
