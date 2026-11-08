@@ -35,14 +35,23 @@ export interface SessionOptions {
     onSwitchMod(mod: string): void;
 }
 
+/** Set once WebGL 2 worked on this device, so its absence later reads as a crash. */
+const WEBGL_WORKED_KEY = 'trx-suite:webgl-worked';
+
 /** What a browser must offer for the engine to run, or why it falls short. */
 export function checkBrowserSupport(): string | null {
     if (!window.crossOriginIsolated || typeof SharedArrayBuffer === 'undefined') {
         return 'The engine needs this page served over HTTPS with cross-origin isolation (the COOP and COEP headers).';
     }
     if (document.createElement('canvas').getContext('webgl2') === null) {
+        // Browsers switch WebGL off after their graphics process crashed,
+        // say when memory ran out, until they start afresh.
+        if (localStorage.getItem(WEBGL_WORKED_KEY) !== null) {
+            return 'The browser has switched WebGL off for now, which it does after a crash. Close the app completely and open it again. If that is not enough, force stop the app and the browser in the device’s settings for apps, then open it again.';
+        }
         return 'This browser or device does not offer WebGL 2, which the engine draws with.';
     }
+    localStorage.setItem(WEBGL_WORKED_KEY, '1');
     return null;
 }
 

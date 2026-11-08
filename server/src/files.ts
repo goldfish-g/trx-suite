@@ -113,10 +113,15 @@ export function parseRange(header: string | undefined, size: number): ByteRange 
     return { start, end: last === '' ? size - 1 : Math.min(Number(last), size - 1) };
 }
 
+/** What tells one version of a file from another: its size and when it changed. */
+export function versionTagOf(stats: Stats): string {
+    return `${stats.size.toString(16)}-${Math.floor(stats.mtimeMs).toString(16)}`;
+}
+
 function etagOf(stats: Stats): string {
     // Strong, so that If-Range can use it: a resumed download only continues
     // while the file is unchanged.
-    return `"${stats.size.toString(16)}-${Math.floor(stats.mtimeMs).toString(16)}"`;
+    return `"${versionTagOf(stats)}"`;
 }
 
 function stripWeak(tag: string): string {

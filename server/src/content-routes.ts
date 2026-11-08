@@ -9,10 +9,11 @@ import { isUnlocked } from '../../shared/games.ts';
 import type { Context } from './app.ts';
 import { catalogEntries, findArchive, findFlyby, flybyManifest } from './catalog.ts';
 import { HttpError, notFound } from './errors.ts';
-import { requestPath, resolveInside, sendFile, statFile } from './files.ts';
+import { requestPath, resolveInside, sendFile, statFile, versionTagOf } from './files.ts';
 import { ownershipOf, readAccounts } from './session.ts';
 
 const NO_CACHE = 'no-cache';
+const IMMUTABLE = 'public, max-age=31536000, immutable';
 
 async function engineVersions(enginesDir: string): Promise<string[]> {
     try {
@@ -63,7 +64,13 @@ export function registerContentRoutes(app: FastifyInstance, context: Context): v
         const path = resolveInside(config.enginesDir, requestPath(request).slice('/engines/'.length));
         const stats = path && (await statFile(path));
         if (!path || !stats) throw notFound();
-        return sendFile(request, reply, path, stats, { cacheControl: NO_CACHE });
+        // An address naming the file's version, ?v=, always means that file,
+        // so the browser may keep it, and Chrome with it the machine code it
+        // compiles from the engine's WebAssembly. Any other version, such as
+        // one from before the file changed, has to ask again.
+        const version = new URL(request.url, 'http://localhost').searchParams.get('v');
+        const current = version !== null && version.includes(versionTagOf(stats));
+        return sendFile(request, reply, path, stats, { cacheControl: current ? IMMUTABLE : NO_CACHE });
     });
 
     app.get('/flyby/manifest.json', async () => flybyManifest(await loadCatalog()));

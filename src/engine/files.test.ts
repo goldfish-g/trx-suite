@@ -146,3 +146,30 @@ describe('hideOtherGames', () => {
         ]);
     });
 });
+
+describe('GameFiles memory', () => {
+    it('fills a game with what it builds on, not with the expansions that build on it', async () => {
+        const { fs, read } = fakeFs();
+        const base = game('tr2', 2, ['games/tr2/levels/wall.tr2', 'games/tr2/music/track33.ogg']);
+        const gm = game('tr2-gm', 2, ['games/tr2-gm/levels/level1.tr2']);
+
+        const forBase = new GameFiles(fs, [base, gm]);
+        forBase.placeStandIns();
+        await forBase.use('tr2');
+        expect(read('/games/tr2/levels/wall.tr2')).toBe('tr2:games/tr2/levels/wall.tr2');
+        expect(read('/games/tr2-gm/levels/level1.tr2')).toBe('');
+
+        const forGm = new GameFiles(fakeFs().fs, [gm, base]);
+        expect(forGm.gamesFor('tr2-gm')?.map((staged) => staged.record.mod)).toEqual(['tr2-gm', 'tr2']);
+    });
+
+    it('hands each file over to the engine rather than copying it', async () => {
+        const owned: string[] = [];
+        const { fs } = fakeFs();
+        const staging: StagingFs = { ...fs, writeFile: (path, data, opts) => { if (opts?.canOwn) owned.push(path); fs.writeFile(path, data); } };
+        const staged = new GameFiles(staging, [game('tr1', 1, ['games/tr1/levels/gym.phd'])]);
+        staged.placeStandIns();
+        await staged.use('tr1');
+        expect(owned).toEqual(['/games/tr1/levels/gym.phd']);
+    });
+});

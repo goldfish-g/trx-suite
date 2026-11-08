@@ -2,7 +2,7 @@
 // version the server reports, so a build downloads once and starts even when
 // the network is down.
 
-import { downloadCached, type DownloadProgress, type RetryNotice } from '../lib/download';
+import { downloadCached, type CachedFile, type DownloadProgress, type RetryNotice } from '../lib/download';
 import type { CreateTrx } from './types';
 
 const CACHE_NAME = 'trx-engines';
@@ -33,6 +33,30 @@ const TYPES: Record<(typeof FILES)[number], string> = {
     'TRX.data': 'application/octet-stream',
 };
 
+/**
+ * Where the engine fetches its WebAssembly from: the address of the version,
+ * whenever the browser can fetch it there, else nowhere (null), for the copy
+ * in Cache Storage to play instead.
+ *
+ * Chrome keeps the machine code it compiles from a module, the optimized
+ * code of its hottest functions included, but only for one fetched from an
+ * http(s) address in its HTTP cache. Compiled afresh, the engine's largest
+ * functions take gigabytes to optimize while it starts, enough for a phone
+ * or a busy computer to give up the page ("Aw, Snap!"). With the code kept,
+ * that happens once per engine version, not on every start.
+ */
+async function cachedAddress(file: CachedFile): Promise<string | null> {
+    if (file.reachable) return file.url;
+    // Offline, the version's address works while the HTTP cache still has it.
+    try {
+        const response = await fetch(file.url, { cache: 'only-if-cached', mode: 'same-origin' });
+        await response.body?.cancel();
+        return response.ok ? file.url : null;
+    } catch {
+        return null;
+    }
+}
+
 export async function loadEngine(version: string, options: LoadEngineOptions = {}): Promise<LoadedEngine> {
     const received = new Map<string, DownloadProgress>();
     const reportTotal = () => {
@@ -45,9 +69,9 @@ export async function loadEngine(version: string, options: LoadEngineOptions = {
         options.onProgress?.({ received: done, total: received.size === FILES.length ? total : null });
     };
 
-    const blobs = await Promise.all(
-        FILES.map(async (name) => {
-            const blob = await downloadCached(`/engines/${version}/${name}`, {
+    const files = await Promise.all(
+        FILES.map((name) =>
+            downloadCached(`/engines/${version}/${name}`, {
                 cacheName: CACHE_NAME,
                 signal: options.signal,
                 onRetry: options.onRetry,
@@ -55,17 +79,16 @@ export async function loadEngine(version: string, options: LoadEngineOptions = {
                     received.set(name, progress);
                     reportTotal();
                 },
-            });
-            return new Blob([blob], { type: TYPES[name] });
-        }),
+                httpCache: name === 'TRX.wasm',
+            }),
+        ),
     );
-
-    const [adapterUrl, jsUrl, wasmUrl, dataUrl] = blobs.map((blob) => URL.createObjectURL(blob)) as [
-        string,
-        string,
-        string,
-        string,
-    ];
+    const [adapter, script, wasm, data] = files as [CachedFile, CachedFile, CachedFile, CachedFile];
+    const blobUrl = (file: CachedFile, name: (typeof FILES)[number]) => URL.createObjectURL(new Blob([file.blob], { type: TYPES[name] }));
+    const adapterUrl = blobUrl(adapter, 'trx-adapter.js');
+    const jsUrl = blobUrl(script, 'trx-engine.js');
+    const dataUrl = blobUrl(data, 'TRX.data');
+    const wasmUrl = (await cachedAddress(wasm)) ?? blobUrl(wasm, 'TRX.wasm');
     try {
         const module = (await import(/* @vite-ignore */ adapterUrl)) as { createTRX?: unknown };
         if (typeof module.createTRX !== 'function') {
@@ -77,7 +100,7 @@ export async function loadEngine(version: string, options: LoadEngineOptions = {
             wasmUrl,
             dataUrl,
             releaseStartupFiles() {
-                URL.revokeObjectURL(wasmUrl);
+                if (wasmUrl.startsWith('blob:')) URL.revokeObjectURL(wasmUrl);
                 URL.revokeObjectURL(dataUrl);
             },
         };

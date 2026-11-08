@@ -260,6 +260,18 @@ describe('/engines', () => {
         expect(js.headers['content-type']).toBe('text/javascript; charset=utf-8');
     });
 
+    it('lets the browser keep an engine file at the address of its version', async () => {
+        const head = await app.inject({ method: 'HEAD', url: '/engines/1.5.0/TRX.wasm' });
+        const version = [head.headers.etag, head.headers['last-modified'], head.headers['content-length']].join('|');
+        const kept = await app.inject({ url: `/engines/1.5.0/TRX.wasm?v=${encodeURIComponent(version)}` });
+        expect(kept.statusCode).toBe(200);
+        expect(kept.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+        // An address from before the file changed has to ask again.
+        const stale = await app.inject({ url: `/engines/1.5.0/TRX.wasm?v=${encodeURIComponent('"5-1"|Thu, 01 Jan 2026 00:00:00 GMT|5')}` });
+        expect(stale.headers['cache-control']).toBe('no-cache');
+        expect((await app.inject({ url: '/engines/1.5.0/TRX.wasm?v=unknown' })).headers['cache-control']).toBe('no-cache');
+    });
+
     it('stays inside the engines directory', async () => {
         for (const url of ['/engines/..%2Fcatalog.json', '/engines/%2e%2e/catalog.json', '/engines/1.5.0', '/engines/1.5.0/nope.js']) {
             expect((await app.inject({ url })).statusCode, url).toBe(404);

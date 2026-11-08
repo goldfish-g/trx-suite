@@ -10,7 +10,8 @@ import type { GameDataFile, GameDataRecord } from '../gamedata/types';
 /** The part of the engine's file system staging uses. */
 export interface StagingFs {
     mkdirTree(path: string): void;
-    writeFile(path: string, data: Uint8Array): void;
+    /** canOwn hands the buffer over instead of copying it, which the caller must not touch again. */
+    writeFile(path: string, data: Uint8Array, opts?: { canOwn?: boolean }): void;
     analyzePath(path: string): { exists: boolean };
     readdir(path: string): string[];
     unlink(path: string): void;
@@ -96,15 +97,24 @@ export class GameFiles {
 
     /**
      * The games a mod plays with: its own files, and the other games of its
-     * generation (TRX's engine version, as in --engine), which expansions and
-     * custom levels build on. Null for a mod this session knows nothing of,
-     * such as a lone level's.
+     * generation (TRX's engine version, as in --engine) that it builds on.
+     * An official game takes only the game it is an expansion of, if any:
+     * Unfinished Business needs Tomb Raider's title level, but Tomb Raider
+     * needs nothing of Unfinished Business, which would only fill memory as
+     * the level starts. Anything else, such as a custom level or the demo
+     * the engine carries, takes every game of its generation the session
+     * holds. Null for a mod this session knows nothing of, such as a lone
+     * level's.
      */
     gamesFor(mod: string): StagedGame[] | null {
         const named = this.games.filter((game) => game.record.mod === mod);
-        const engine: EngineNumber | undefined =
-            named[0]?.record.engine ?? GAMES.find((game) => game.mod === mod)?.engine;
+        const official = GAMES.find((game) => game.mod === mod);
+        const engine: EngineNumber | undefined = named[0]?.record.engine ?? official?.engine;
         if (engine === undefined) return null;
+        if (official !== undefined && named[0]?.record.layout === 'game') {
+            const base = official.requires ?? official.expansionOf;
+            return [...named, ...this.games.filter((game) => base !== undefined && game.record.mod === base && game.record.layout === 'game')];
+        }
         const sameEngine = this.games.filter(
             (game) => !named.includes(game) && game.record.layout === 'game' && game.record.engine === engine,
         );
@@ -132,7 +142,8 @@ export class GameFiles {
         for (const file of pending) {
             const path = absolute(file.path);
             this.fs.mkdirTree(path.slice(0, path.lastIndexOf('/')));
-            this.fs.writeFile(path, new Uint8Array(await file.blob.arrayBuffer()));
+            // Handed over, not copied: one copy of each file in memory as the level starts.
+            this.fs.writeFile(path, new Uint8Array(await file.blob.arrayBuffer()), { canOwn: true });
             this.filled.add(file.path);
             done += file.blob.size;
             onProgress?.(done, total);

@@ -26,7 +26,7 @@ export interface TrxCreateOptions {
 /** The part of Emscripten's FS object the shell uses. */
 export interface EngineFs {
     mkdirTree(path: string): void;
-    writeFile(path: string, data: Uint8Array): void;
+    writeFile(path: string, data: Uint8Array, opts?: { canOwn?: boolean }): void;
     symlink(target: string, path: string): void;
     analyzePath(path: string): { exists: boolean };
     readdir(path: string): string[];

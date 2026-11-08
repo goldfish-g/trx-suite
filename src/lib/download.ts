@@ -49,6 +49,12 @@ export interface DownloadOptions {
     signal?: AbortSignal;
     onProgress?: (progress: DownloadProgress) => void;
     onRetry?: (notice: RetryNotice) => void;
+    /**
+     * Lets the browser's HTTP cache keep the file, for an address that names
+     * its version. Other downloads bypass it, which would only hold a second
+     * copy.
+     */
+    httpCache?: boolean;
 }
 
 /** A failure that trying again cannot fix, such as a missing file. */
@@ -170,7 +176,7 @@ export async function download(url: string, options: DownloadOptions = {}): Prom
         try {
             poke();
             const headers: HeadersInit = received > 0 ? { Range: `bytes=${received}-` } : {};
-            const response = await fetch(url, { headers, cache: 'no-store', signal: guard.signal });
+            const response = await fetch(url, { headers, cache: options.httpCache === true ? 'default' : 'no-store', signal: guard.signal });
             if (response.status === 416 && total !== null && received === total) return;
             if (!response.ok) {
                 const retryable = response.status >= 500 || response.status === 408 || response.status === 429;
@@ -259,12 +265,22 @@ export interface CachedDownloadOptions extends Omit<DownloadOptions, 'resumeKey'
     cacheName: string;
 }
 
+export interface CachedFile {
+    blob: Blob;
+    /** The address of the version the blob holds, as `url?v=<version>`. */
+    url: string;
+    /** Whether the server answered, or the file is the last version kept. */
+    reachable: boolean;
+}
+
 /**
  * Downloads url like download does, and keeps the result in Cache Storage
  * under the version the server reports, so it downloads once per version.
- * When the server cannot be reached, the last version kept is used.
+ * When the server cannot be reached, the last version kept is used. With
+ * httpCache, the download goes to the version's own address, which the
+ * browser's HTTP cache may keep too.
  */
-export async function downloadCached(url: string, options: CachedDownloadOptions): Promise<Blob> {
+export async function downloadCached(url: string, options: CachedDownloadOptions): Promise<CachedFile> {
     const { cacheName, ...rest } = options;
     const absolute = new URL(url, location.href).href;
     const cache = await caches.open(cacheName).catch(() => null);
@@ -272,11 +288,12 @@ export async function downloadCached(url: string, options: CachedDownloadOptions
     const server = await fetchVersion(absolute);
 
     if (server === null && kept.length > 0) {
-        const response = await cache?.match(kept[kept.length - 1]!);
+        const last = kept[kept.length - 1]!;
+        const response = await cache?.match(last);
         if (response !== undefined) {
             const blob = await response.blob();
             rest.onProgress?.({ received: blob.size, total: blob.size });
-            return blob;
+            return { blob, url: last.url, reachable: false };
         }
     }
 
@@ -286,12 +303,12 @@ export async function downloadCached(url: string, options: CachedDownloadOptions
         const blob = await hit.blob();
         if (server?.size === undefined || blob.size === server.size) {
             rest.onProgress?.({ received: blob.size, total: blob.size });
-            return blob;
+            return { blob, url: key, reachable: server !== null };
         }
     }
 
     const resumeKey = `cache:${key}`;
-    const blob = await download(absolute, {
+    const blob = await download(rest.httpCache === true ? key : absolute, {
         ...rest,
         expectedSize: rest.expectedSize ?? server?.size,
         resumeKey,
@@ -307,5 +324,5 @@ export async function downloadCached(url: string, options: CachedDownloadOptions
         }
     }
     await discardPartial(resumeKey);
-    return blob;
+    return { blob, url: key, reachable: server !== null };
 }
