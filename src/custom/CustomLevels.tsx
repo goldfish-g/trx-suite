@@ -15,7 +15,7 @@ import { pushLayer, useInputDevice } from '../input/controller';
 import { focusables } from '../input/spatial';
 import { useLibrary } from '../library/store';
 import { GameText } from '../ui/GameText';
-import { PlusIcon, SearchIcon } from '../ui/icons';
+import { BackIcon, PlusIcon, SearchIcon, SortIcon } from '../ui/icons';
 import { Glyph, MoveHint, Prompt, PromptBar } from '../ui/Prompt';
 import { AddLevelSheet } from './AddLevelSheet';
 import { browseKey, hasMore, loadMore, SORTS, useBrowse, type BrowseQuery } from './browse';
@@ -111,8 +111,8 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
     };
 
     // The screen is a layer over the home screen; its panels are layers over it.
-    const actions = useRef({ stepGame, setSection, onClose });
-    actions.current = { stepGame, setSection, onClose };
+    const actions = useRef({ stepGame, setSection, onClose, cycleSort, section });
+    actions.current = { stepGame, setSection, onClose, cycleSort, section };
     useEffect(
         () =>
             pushLayer({
@@ -130,6 +130,17 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                             return true;
                         case 'next':
                             actions.current.stepGame(1);
+                            return true;
+                        // On TRCustoms, (X) orders the levels and (Y) searches them, as
+                        // the glyphs beside the order and the search box show. The
+                        // library's cards have (X) and (Y) prompts of their own.
+                        case 'alternate':
+                            if (actions.current.section !== 'browse') return false;
+                            actions.current.cycleSort();
+                            return true;
+                        case 'extra':
+                            if (actions.current.section !== 'browse') return false;
+                            search.current?.focus();
                             return true;
                         case 'back':
                             // Back leaves the search box before it leaves the screen.
@@ -163,6 +174,10 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
         return () => cancelAnimationFrame(frame);
     }, [section, shownGame, sort, query]);
 
+    const sortLabel = SORTS.find((entry) => entry.sort === sort)?.label ?? '';
+    const browseTotal = useBrowse((state) => (section === 'browse' && shownGame !== 4 ? state.lists[browseKey({ game: shownGame, sort, search: '' })]?.total : null));
+    const searchHint = `Search ${browseTotal !== null && browseTotal !== undefined ? `${browseTotal.toLocaleString()} ` : ''}levels`;
+
     const browseQuery: BrowseQuery | null = section === 'browse' && shownGame !== 4 ? { game: shownGame, sort, search: query } : null;
 
     const closeDetails = () => {
@@ -190,10 +205,11 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
             <header className="custom__header">
                 <div className="custom__tabs custom__tabs--sections" role="tablist" aria-label="Section">
                     <Glyph name="sectionPrevious" />
-                    <SectionTab label="Library" count={installed.length + cloudOnly.length} on={section === 'installed'} onPick={() => setSection('installed')} />
+                    <SectionTab label="Library" on={section === 'installed'} onPick={() => setSection('installed')} />
                     <SectionTab label="Browse" on={section === 'browse'} onPick={() => setSection('browse')} />
                     <Glyph name="sectionNext" />
                 </div>
+                {buttons ? null : <Prompt action="back" label="Back" global icon={<BackIcon />} onPress={onClose} className="custom__back" />}
                 <div className="custom__toolbar">
                     <div className="custom__tabs custom__tabs--games" role="tablist" aria-label="Game">
                         <Glyph name="previous" />
@@ -210,9 +226,6 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                                 onClick={() => setGame(candidate)}
                             >
                                 <GameText text={ENGINE_NAMES[candidate]} />
-                                {section === 'installed' ? (
-                                    <span className="game-tab__count">{installed.filter((record) => record.engine === candidate).length + cloudOnly.filter((level) => level.engine === candidate).length}</span>
-                                ) : null}
                             </button>
                         ))}
                         <Glyph name="next" />
@@ -227,7 +240,7 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                                     // (Y) goes here; the d-pad walks the levels.
                                     tabIndex={-1}
                                     className="custom__search-input"
-                                    placeholder={`Search ${ENGINE_NAMES[shownGame]} levels or authors`}
+                                    placeholder={searchHint}
                                     value={typed}
                                     onChange={(event) => setTyped(event.target.value)}
                                     onKeyDown={(event) => {
@@ -237,10 +250,14 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                                             requestAnimationFrame(focusFirstCard);
                                         }
                                     }}
-                                    aria-label="Search TRCustoms"
+                                    aria-label="Search TRCustoms by name or author"
+                                    title="Search by name or author"
                                     enterKeyHint="search"
                                 />
+                                <Glyph name="extra" />
                             </label>
+                            <div className="custom__sort">
+                            <Glyph name="alternate" />
                             <div className="choices custom__sorts" role="radiogroup" aria-label="Order">
                                 {SORTS.map((entry) => (
                                     <button
@@ -257,13 +274,16 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                                     </button>
                                 ))}
                             </div>
+                            <button type="button" className="choice choice--on custom__order" tabIndex={-1} onMouseDown={keepFocus} onClick={cycleSort} title="Order">
+                                <SortIcon />
+                                <span className="custom__order-name">Order</span>
+                                {sortLabel}
+                            </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="custom__tools">
-                            <button type="button" className="button custom__add" tabIndex={-1} onMouseDown={keepFocus} onClick={() => setAdding(true)}>
-                                <PlusIcon />
-                                <GameText text="Add from files" />
-                            </button>
+                            <Prompt action="menu" label="Add from files" global icon={<PlusIcon />} onPress={() => setAdding(true)} className="custom__add" />
                         </div>
                     )}
                 </div>
@@ -301,19 +321,13 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
                 )}
             </div>
 
-            <PromptBar className="custom__prompts">
-                <MoveHint name="horizontal" label="Choose" />
-                {section === 'browse' ? (
-                    <>
-                        <Prompt action="confirm" label="Details" />
-                        <Prompt action="alternate" label={`Order: ${SORTS.find((entry) => entry.sort === sort)?.label ?? ''}`} global onPress={cycleSort} />
-                        {buttons ? <Prompt action="extra" label="Search" global onPress={() => search.current?.focus()} /> : null}
-                    </>
-                ) : (
-                    buttons ? <Prompt action="menu" label="Add from files" global onPress={() => setAdding(true)} /> : null
-                )}
-                <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />
-            </PromptBar>
+            {buttons ? (
+                <PromptBar className="custom__prompts">
+                    <MoveHint name="horizontal" label="Choose" />
+                    {section === 'browse' ? <Prompt action="confirm" label="Details" /> : null}
+                    <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />
+                </PromptBar>
+            ) : null}
         </div>
 
             {opened !== null ? (
@@ -338,11 +352,10 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
     );
 }
 
-function SectionTab({ label, count, on, onPick }: { label: string; count?: number; on: boolean; onPick(): void }) {
+function SectionTab({ label, on, onPick }: { label: string; on: boolean; onPick(): void }) {
     return (
         <button type="button" role="tab" tabIndex={-1} onMouseDown={keepFocus} aria-selected={on} className={`section-tab ${on ? 'section-tab--on' : ''}`} onClick={onPick}>
             <GameText text={label} />
-            {count !== undefined && count > 0 ? <span className="section-tab__count">{count}</span> : null}
         </button>
     );
 }
@@ -396,9 +409,10 @@ function BrowseGrid({ query, scroller, gamedata, onOpen, onClearSearch }: Browse
     }, [arrived, key, scroller]);
     return (
         <>
-            {list?.total !== null && list?.total !== undefined && list.total > 0 ? (
+            {/* How many levels TRCustoms has is said in the search box; a search says how many it found. */}
+            {query.search !== '' && list?.total !== null && list?.total !== undefined && list.total > 0 ? (
                 <p className="custom__count">
-                    {list.total.toLocaleString()} {query.search !== '' ? `levels match “${query.search}”` : `${ENGINE_NAMES[query.game]} levels on TRCustoms`}
+                    {list.total.toLocaleString()} {list.total === 1 ? 'level matches' : 'levels match'} “{query.search}”
                 </p>
             ) : null}
             <ul className="level-grid">

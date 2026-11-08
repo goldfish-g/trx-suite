@@ -13,7 +13,7 @@ import { pushLayer } from '../input/controller';
 import { refreshLibrary, useLibrary } from '../library/store';
 import { applyUpdate, useInstall } from '../pwa/install';
 import { Stage } from '../stage/Stage';
-import { ChevronLeft, ChevronRight, GearIcon, LockIcon, UserIcon } from '../ui/icons';
+import { ChevronLeft, ChevronRight, GearIcon, LockIcon, UpdateIcon, UserIcon } from '../ui/icons';
 import { MoveHint, Prompt, PromptBar } from '../ui/Prompt';
 import { describeProgress } from '../library/describe';
 import { ProgressBar } from '../ui/ProgressBar';
@@ -130,7 +130,8 @@ export function HomeScreen() {
             ),
         );
 
-        // Badges ride along with the artifacts they belong to.
+        // Badges ride along with the artifacts they belong to: a game still
+        // downloading turns a wheel. A locked one says so by its stone look alone.
         stage.onFrame = (viewport) => {
             const badges = badgesRef.current;
             if (badges === null) return;
@@ -140,12 +141,12 @@ export function HomeScreen() {
                 const spot = ring.screenPosition(index, viewport);
                 const status = statusesRef.current[index];
                 // The front artifact's state is spelled out under it already.
-                if (index === front || spot === null || status === undefined || !(isLockedLook(status) || status.kind === 'importing')) {
+                if (index === front || spot === null || status === undefined || status.kind !== 'importing') {
                     badge.style.opacity = '0';
                     return;
                 }
                 badge.style.opacity = '1';
-                badge.style.transform = `translate(${spot.x}px, ${spot.y + spot.size * 0.8}px) translate(-50%, -50%)`;
+                badge.style.transform = `translate(${spot.x}px, ${spot.y + spot.size * 0.55}px) translate(-50%, -50%)`;
             });
         };
         stage.start();
@@ -372,7 +373,7 @@ export function HomeScreen() {
                 </div>
                 <div className="topbar__actions">
                     {updateReady ? (
-                        <Prompt action="view" label="Update ready · Restart" variant="chip" className="prompt--accent" global onPress={applyUpdate} />
+                        <Prompt action="view" label="Restart to update" variant="chip" className="prompt--accent" global icon={<UpdateIcon />} onPress={applyUpdate} />
                     ) : null}
                     <AccountPrompt onPress={() => setSheet({ kind: 'account' })} />
                     <Prompt action="menu" label="Settings" variant="chip" global icon={<GearIcon />} onPress={() => setSheet({ kind: 'settings' })} />
@@ -382,7 +383,7 @@ export function HomeScreen() {
             <div className="badges" ref={badgesRef} aria-hidden="true">
                 {RING_ITEMS.map((ringItem, index) => (
                     <span key={ringItem.key} className="badge">
-                        {statuses[index]?.kind === 'importing' ? <span className="badge__spinner" /> : <LockIcon />}
+                        {statuses[index]?.kind === 'importing' ? <span className="badge__spinner" /> : null}
                     </span>
                 ))}
             </div>
@@ -524,7 +525,7 @@ function Spotlight({ status, busy, problem, onPrimary, onDetails }: SpotlightPro
             ) : (
                 <p className={`spotlight__status spotlight__status--${status.kind}`}>
                     {status.kind === 'locked' ? <LockIcon /> : null}
-                    {statusLine(status)}
+                    <GameText text={statusLine(status)} />
                 </p>
             )}
             {problem !== null ? <p className="spotlight__problem">{problem}</p> : null}

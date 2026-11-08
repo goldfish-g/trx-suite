@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAccount } from '../../account/store';
 import { promptInstall, useInstall } from '../../pwa/install';
 import { formatBytes } from '../../ui/format';
-import { InstallIcon } from '../../ui/icons';
+import { DownloadIcon } from '../../ui/icons';
 import { GameText } from '../../ui/GameText';
 import { Sheet } from '../../ui/Sheet';
 import { setTheme, THEMES, useTheme } from '../../ui/theme';
@@ -50,7 +50,7 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                             </p>
                             <div className="sheet__actions">
                                 <button className="button button--primary" data-autofocus onClick={() => void promptInstall()}>
-                                    <InstallIcon />
+                                    <DownloadIcon />
                                     <GameText text="Install" />
                                 </button>
                             </div>

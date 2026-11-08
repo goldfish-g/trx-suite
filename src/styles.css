@@ -8,9 +8,13 @@
     --danger: #e8806a;
     --ok: #b4d48c;
     --text: 'Alegreya Variable', 'Alegreya', 'Book Antiqua', Palatino, Georgia, serif;
-    --shadow: 1px 1px 0 #000;
     /* Screen pixels per CSS pixel; src/ui/pixels.ts keeps it current. */
     --dpr: 1;
+    /* 1: the games' pixel art covers whole screen pixels, its size rounded to
+       them; 0, on screens whose pixels per CSS pixel fall between 1 and 2,
+       such as a laptop at 125 %: its size as asked, as rounding would be a
+       fifth off or more. src/ui/pixels.ts sets it. */
+    --snap: 1;
     /* One line of a frame, a whole number of screen pixels thick. */
     --e: calc(max(1, round(nearest, var(--dpr) * 1.25, 1)) / var(--dpr) * 1px);
     /* The games' etched frames: light outside and dark inside along the top
@@ -62,7 +66,7 @@
     --edge-lit-light: #fff0c4;
     --edge-lit-dark: #a8843c;
     --glow: rgba(232, 192, 112, 0.34);
-    --rule: var(--rule);
+    --rule: rgba(232, 192, 112, 0.26);
     --notice: rgba(128, 56, 16, 0.32);
     --box: rgba(0, 0, 0, 0.55);
     --box-heavy: rgba(0, 0, 0, 0.88);
@@ -157,7 +161,8 @@ select {
 }
 
 * {
-    scrollbar-color: var(--accent-dark) #000;
+    scrollbar-color: var(--edge-dim-light) transparent;
+    scrollbar-width: thin;
 }
 
 .sr-only {
@@ -173,8 +178,11 @@ select {
 }
 
 .icon {
-    width: 1em;
-    height: 1em;
+    /* Twelve pixels square, each as many whole screen pixels as a pixel of
+       the lettering beside it. */
+    --iu: calc((var(--snap) * max(1, round(nearest, var(--gs) * var(--dpr), 1)) / var(--dpr) + (1 - var(--snap)) * var(--gs)) * 1px);
+    width: calc(12 * var(--iu));
+    height: calc(12 * var(--iu));
     flex: none;
     fill: currentColor;
     shape-rendering: crispEdges;
@@ -186,14 +194,13 @@ select {
    below, is how many screen pixels each pixel of the font covers, rounded
    to a whole number so the letters stay sharp. */
 .gt {
-    --gu: calc(max(1, round(nearest, var(--gs) * var(--dpr), 1)) / var(--dpr) * 1px);
+    --gu: calc((var(--snap) * max(1, round(nearest, var(--gs) * var(--dpr), 1)) / var(--dpr) + (1 - var(--snap)) * var(--gs)) * 1px);
     /* TRX leaves half a pixel between letters: rounded down, as screen pixels allow. */
-    --gl: calc(round(down, max(1, round(nearest, var(--gs) * var(--dpr), 1)) * 0.5, 1) / var(--dpr) * 1px);
+    --gl: calc((var(--snap) * round(down, max(1, round(nearest, var(--gs) * var(--dpr), 1)) * 0.5, 1) / var(--dpr) + (1 - var(--snap)) * var(--gs) * 0.5) * 1px);
     display: inline-block;
     max-width: 100%;
     vertical-align: middle;
     line-height: calc(var(--gu) * 18);
-    filter: drop-shadow(var(--gu) var(--gu) 0 rgba(0, 0, 0, 0.6));
 }
 
 .gt__word {
@@ -217,11 +224,13 @@ select {
     image-rendering: pixelated;
 }
 
-.gt__g:last-child {
+.gt__g:last-child,
+.gt__g:has(+ .gt__space) {
     margin-right: calc((var(--a) - var(--w) - var(--l)) * var(--gu));
 }
 
 .gt__space {
+    flex: none;
     display: inline-block;
     width: calc(var(--gu) * 6 + var(--gl));
 }
@@ -233,7 +242,6 @@ select {
     font-size: calc(var(--gu) * 14);
     font-weight: 700;
     filter: none;
-    text-shadow: var(--gu) var(--gu) 0 #000;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -242,7 +250,7 @@ select {
 /* ------------------------------------------------------------ focus */
 
 :focus-visible {
-    outline: var(--e) solid var(--accent-bright);
+    outline: var(--e) solid var(--edge-lit-light);
     outline-offset: calc(var(--e) * 2);
 }
 
@@ -253,8 +261,8 @@ select {
     align-items: center;
     justify-content: center;
     gap: 0.5em;
-    min-height: 44px;
-    padding: 0.5em 1.1em;
+    min-height: 40px;
+    padding: 0.3em 0.9em;
     border: 0;
     border-radius: 0;
     background: var(--box);
@@ -291,13 +299,15 @@ select {
 
 .button--large {
     --gs: 1.5;
-    min-height: 56px;
-    padding: 0.6em 2em;
+    min-height: 52px;
+    padding: 0.4em 1.6em;
 }
 
-.button--small {
-    min-height: 36px;
-    padding: 0.3em 0.75em;
+@media (max-height: 500px) {
+    .button--large {
+        --gs: 1;
+        min-height: 44px;
+    }
 }
 
 .button--quiet {
@@ -309,65 +319,6 @@ select {
 .button--danger {
     box-shadow: var(--frame-danger);
     color: var(--danger);
-}
-
-.icon-button {
-    display: inline-grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border: 0;
-    border-radius: 0;
-    background: var(--box);
-    box-shadow: var(--frame-dim);
-    color: var(--accent);
-    cursor: pointer;
-}
-
-.icon-button:hover {
-    box-shadow: var(--frame);
-}
-
-.chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5em;
-    max-width: min(46vw, 320px);
-    min-height: 44px;
-    padding: 0.4em 1em;
-    border: 0;
-    border-radius: 0;
-    background: var(--box);
-    box-shadow: var(--frame-dim);
-    color: var(--accent);
-    cursor: pointer;
-}
-
-.chip:hover {
-    box-shadow: var(--frame);
-}
-
-.chip--accent {
-    box-shadow: var(--frame);
-}
-
-.chip__label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.key {
-    display: inline-block;
-    min-width: 1.9em;
-    padding: 0.05em 0.45em;
-    border: 1px solid #000;
-    background: #b9c8b4;
-    box-shadow: inset -1px -1px 0 #7d9484;
-    color: #101810;
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-align: center;
 }
 
 /* ------------------------------------------------------------ home */
@@ -394,14 +345,15 @@ select {
     cursor: grabbing;
 }
 
-/* Keeps text readable over any level: dark edges, a darker floor for the titles. */
+/* Keeps text readable over any level: corners a little darker, and a darker
+   floor under the titles; the middle of the screen stays as the level is. */
 .home__shade {
     position: absolute;
     inset: 0;
     pointer-events: none;
     background:
-        radial-gradient(ellipse 85% 70% at 50% 42%, transparent 35%, rgba(0, 0, 0, 0.6) 100%),
-        linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 18%, transparent 52%, rgba(0, 0, 0, 0.85) 100%);
+        radial-gradient(ellipse 130% 120% at 50% 45%, transparent 62%, rgba(0, 0, 0, 0.32) 100%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, transparent 16%, transparent 56%, rgba(0, 0, 0, 0.66) 100%);
 }
 
 .home__webgl {
@@ -409,7 +361,6 @@ select {
     inset: 40% 10% auto;
     text-align: center;
     color: var(--ink-dim);
-    text-shadow: var(--shadow);
 }
 
 .topbar {
@@ -447,7 +398,6 @@ select {
     font-variant: small-caps;
     letter-spacing: 0.12em;
     color: var(--ink-dim);
-    text-shadow: var(--shadow);
 }
 
 .spotlight {
@@ -475,7 +425,6 @@ select {
     font-variant: small-caps;
     letter-spacing: 0.2em;
     color: var(--accent);
-    text-shadow: var(--shadow);
 }
 
 .spotlight__title {
@@ -486,13 +435,13 @@ select {
 }
 
 .spotlight__status {
+    --gs: 1;
     display: inline-flex;
     align-items: center;
     gap: 0.5em;
     margin: 0 0 6px;
     color: var(--ink);
     font-size: 1.05rem;
-    text-shadow: var(--shadow);
 }
 
 .spotlight__status--installed {
@@ -577,11 +526,6 @@ select {
     transition: opacity 200ms linear;
 }
 
-.badge .icon {
-    width: 14px;
-    height: 14px;
-}
-
 /* Turns in eight steps, like the games' own loading wheels. */
 .badge__spinner {
     width: 14px;
@@ -635,7 +579,6 @@ select {
     color: var(--ink-dim);
     font-size: 0.95rem;
     font-style: italic;
-    text-shadow: var(--shadow);
     cursor: pointer;
     text-align: right;
 }
@@ -647,7 +590,6 @@ select {
     height: 6px;
     margin: 0 10px 2px 0;
     background: var(--accent-dark);
-    box-shadow: 1px 1px 0 #000;
     transform: rotate(45deg);
     vertical-align: middle;
 }
@@ -680,12 +622,15 @@ select {
         padding-right: 0.65em;
     }
 
-    /* Settings shows only its gear, or its button; the word stays for screen readers. */
-    .topbar .prompt--chip[data-action='menu'] {
+    /* Settings and the update show only their icons, or their buttons; the
+       words stay for screen readers. */
+    .topbar .prompt--chip[data-action='menu'],
+    .topbar .prompt--chip[data-action='view'] {
         min-width: 44px;
     }
 
-    .topbar .prompt--chip[data-action='menu'] .prompt__label {
+    .topbar .prompt--chip[data-action='menu'] .prompt__label,
+    .topbar .prompt--chip[data-action='view'] .prompt__label {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -707,6 +652,48 @@ select {
 
     .hints {
         justify-content: center;
+    }
+}
+
+/* A phone on its side: the titles shrink to the bottom, under the ring. */
+@media (max-height: 500px) {
+    .topbar {
+        padding-top: calc(10px + var(--safe-top));
+    }
+
+    .brand__line {
+        display: none;
+    }
+
+    .spotlight {
+        bottom: calc(40px + var(--safe-bottom));
+        gap: 4px;
+    }
+
+    .spotlight__eyebrow {
+        display: none;
+    }
+
+    .spotlight__title {
+        --gs: 2;
+    }
+
+    .spotlight__status {
+        margin: 0 0 2px;
+        font-size: 0.95rem;
+    }
+
+    .spotlight .prompt--primary {
+        --gs: 1;
+        min-height: 44px;
+    }
+
+    .hints {
+        padding-bottom: calc(8px + var(--safe-bottom));
+    }
+
+    .ring-nav {
+        top: 30%;
     }
 }
 
@@ -733,8 +720,10 @@ select {
     flex-direction: column;
     width: min(460px, 100%);
     height: 100%;
+    /* Everything inside stays within the frame: nothing scrolls over it. */
+    padding: calc(var(--e) * 2);
     background: var(--box-heavy);
-    box-shadow: var(--frame), -24px 0 0 rgba(0, 0, 0, 0.25);
+    box-shadow: var(--frame), 0 0 0 var(--e) #000;
     animation: slide-in 220ms var(--ease);
     user-select: text;
     -webkit-user-select: text;
@@ -749,9 +738,17 @@ select {
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: calc(22px + var(--safe-top)) 24px 14px;
-    border-bottom: var(--e) solid var(--accent-dark);
-    box-shadow: 0 var(--e) 0 var(--rule);
+    padding: calc(20px + var(--safe-top)) calc(20px + var(--safe-right)) 14px 22px;
+    border-bottom: var(--e) solid var(--edge-dim-dark);
+    box-shadow: 0 var(--e) 0 var(--edge-dim-light);
+}
+
+.sheet__titles {
+    min-width: 0;
+}
+
+.sheet__back {
+    flex: none;
 }
 
 .sheet__eyebrow {
@@ -760,7 +757,6 @@ select {
     font-variant: small-caps;
     letter-spacing: 0.18em;
     color: var(--accent);
-    text-shadow: var(--shadow);
 }
 
 .sheet__title {
@@ -769,16 +765,25 @@ select {
     line-height: 1;
 }
 
+/* A long name, such as a custom level's, in smaller letters. */
+.sheet__title--long {
+    --gs: 1.5;
+}
+
 .sheet__body {
     flex: 1;
     overflow-y: auto;
-    padding: 8px 24px calc(28px + var(--safe-bottom));
+    padding: 4px calc(22px + var(--safe-right)) 20px 22px;
     overscroll-behavior: contain;
+}
+
+.sheet__body:last-child {
+    padding-bottom: calc(20px + var(--safe-bottom));
 }
 
 .sheet__section {
     padding: 18px 0;
-    border-bottom: var(--e) dashed var(--rule);
+    border-bottom: var(--e) solid var(--rule);
 }
 
 .sheet__section:last-child {
@@ -796,7 +801,6 @@ select {
 .sheet__text {
     margin: 0 0 12px;
     color: var(--ink);
-    text-shadow: var(--shadow);
 }
 
 .sheet__text--quiet {
@@ -809,6 +813,12 @@ select {
     flex-wrap: wrap;
     gap: 10px;
     margin-top: 6px;
+}
+
+.sheet__prompts {
+    padding: 10px calc(18px + var(--safe-right)) calc(12px + var(--safe-bottom)) 18px;
+    border-top: var(--e) solid var(--edge-dim-dark);
+    box-shadow: inset 0 var(--e) 0 var(--edge-dim-light);
 }
 
 @keyframes slide-in {
@@ -831,6 +841,7 @@ select {
     }
 }
 
+/* A phone held upright: the panel comes up from the bottom. */
 @media (max-width: 720px) {
     .sheet-layer {
         align-items: flex-end;
@@ -841,12 +852,37 @@ select {
         width: 100%;
         height: auto;
         max-height: 88dvh;
-        box-shadow: var(--frame), 0 -24px 0 rgba(0, 0, 0, 0.25);
         animation: slide-up 220ms var(--ease);
     }
 
     .sheet__header {
-        padding-top: 20px;
+        padding-top: 18px;
+    }
+}
+
+/* A phone on its side: little height, so a slimmer heading. */
+@media (max-height: 500px) {
+    .sheet__header {
+        align-items: center;
+        padding-top: calc(10px + var(--safe-top));
+        padding-bottom: 10px;
+    }
+
+    .sheet__eyebrow {
+        margin-bottom: 2px;
+        font-size: 0.85rem;
+    }
+
+    .sheet__title {
+        --gs: 1.5;
+    }
+
+    .sheet__title--long {
+        --gs: 1;
+    }
+
+    .sheet__section {
+        padding: 12px 0;
     }
 }
 
@@ -862,7 +898,6 @@ select {
     box-shadow: var(--frame-dim);
     color: var(--ink);
     font-size: 0.97rem;
-    text-shadow: var(--shadow);
 }
 
 .notice .icon {
@@ -934,7 +969,6 @@ select {
     margin: 0 0 6px;
     color: var(--accent);
     font-weight: 700;
-    text-shadow: var(--shadow);
 }
 
 .picker {
@@ -972,8 +1006,8 @@ select {
     border-radius: 0;
     background: #000;
     box-shadow:
-        inset var(--e) var(--e) 0 var(--accent-dark),
-        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--accent);
+        inset var(--e) var(--e) 0 var(--edge-dark),
+        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--edge-light);
     color: var(--accent-bright);
     font-weight: 600;
 }
@@ -1003,7 +1037,7 @@ select {
 .account__avatar {
     width: 44px;
     height: 44px;
-    box-shadow: 0 0 0 var(--e) var(--accent-dark), 0 0 0 calc(var(--e) * 2) #000;
+    box-shadow: 0 0 0 var(--e) var(--edge-dim-light), 0 0 0 calc(var(--e) * 2) #000;
     image-rendering: pixelated;
 }
 
@@ -1011,7 +1045,6 @@ select {
     margin: 0;
     color: var(--accent);
     font-weight: 700;
-    text-shadow: var(--shadow);
 }
 
 .store-mark {
@@ -1049,7 +1082,7 @@ select {
     overflow: hidden;
     background: #000;
     box-shadow:
-        0 0 0 var(--e) #5a5a5a,
+        0 0 0 var(--e) var(--edge-dim-light),
         0 0 0 calc(var(--e) * 2) #000;
 }
 
@@ -1078,7 +1111,6 @@ select {
     color: var(--ink-dim);
     font-size: 0.95rem;
     text-align: center;
-    text-shadow: var(--shadow);
 }
 
 /* ------------------------------------------------------------ play */
@@ -1126,7 +1158,6 @@ select {
 .play__error {
     margin: 0;
     color: #ffd6cc;
-    text-shadow: var(--shadow);
 }
 
 .play__actions {
@@ -1173,7 +1204,7 @@ select {
 /* A gamepad or a keyboard drives the menus: the focus must be unmissable. */
 html[data-input='gamepad'] :focus:not(.play__canvas),
 html[data-input='keyboard'] :focus:not(.play__canvas) {
-    outline: var(--e) solid var(--accent-bright);
+    outline: var(--e) solid var(--edge-lit-light);
     outline-offset: calc(var(--e) * 2);
 }
 
@@ -1187,8 +1218,8 @@ html[data-input='touch'] :focus {
     align-items: center;
     justify-content: center;
     gap: 0.5em;
-    min-height: 44px;
-    padding: 0.4em 1em 0.4em 0.6em;
+    min-height: 40px;
+    padding: 0.3em 0.85em 0.3em 0.5em;
     border: 0;
     border-radius: 0;
     background: var(--box);
@@ -1201,7 +1232,7 @@ html[data-input='touch'] :focus {
 
 html[data-input='mouse'] .prompt,
 html[data-input='touch'] .prompt {
-    padding-left: 1em;
+    padding-left: 0.85em;
 }
 
 .prompt:hover:not(:disabled) {
@@ -1219,11 +1250,6 @@ html[data-input='touch'] .prompt {
     cursor: default;
 }
 
-.prompt .icon {
-    width: 1em;
-    height: 1em;
-}
-
 .prompt__label {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1238,15 +1264,29 @@ html[data-input='touch'] .prompt {
 }
 
 .prompt--primary {
-    --gs: 1.5;
-    min-height: 56px;
-    padding: 0.4em 1.8em 0.4em 0.9em;
+    padding-right: 1.2em;
     background: var(--plate);
     box-shadow: var(--frame), 0 0 0 var(--e) #000;
 }
 
 html[data-input='mouse'] .prompt--primary,
 html[data-input='touch'] .prompt--primary {
+    padding-left: 1.2em;
+}
+
+/* The main action of the home screen, under the game's name, and of the
+   screen before a game starts: bigger. */
+.spotlight .prompt--primary,
+.play__prompts .prompt--primary {
+    --gs: 1.5;
+    min-height: 54px;
+    padding: 0.4em 1.8em 0.4em 0.9em;
+}
+
+html[data-input='mouse'] .spotlight .prompt--primary,
+html[data-input='touch'] .spotlight .prompt--primary,
+html[data-input='mouse'] .play__prompts .prompt--primary,
+html[data-input='touch'] .play__prompts .prompt--primary {
     padding-left: 2em;
     padding-right: 2em;
 }
@@ -1283,7 +1323,7 @@ html[data-input='touch'] .prompt--primary {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px 14px;
+    gap: 8px 10px;
 }
 
 .prompt-bar__end {
@@ -1301,7 +1341,7 @@ html[data-input='touch'] .prompt--primary {
 }
 
 .glyph {
-    --gu: calc(max(1, round(nearest, var(--gi) * var(--dpr), 1)) / var(--dpr) * 1px);
+    --gu: calc((var(--snap) * max(1, round(nearest, var(--gi) * var(--dpr), 1)) / var(--dpr) + (1 - var(--snap)) * var(--gi)) * 1px);
     flex: none;
     display: inline-block;
     width: calc(var(--w) * var(--gu));
@@ -1314,11 +1354,6 @@ html[data-input='touch'] .prompt--primary {
 .glyph--art {
     background-image: var(--art);
     background-size: calc(256 * var(--gu)) auto;
-}
-
-.glyph--keyboard {
-    /* Keycaps are wide already: Return is fifty pixels across. */
-    --gi: 1;
 }
 
 /* A button TRX has no icon for, drawn like its keycaps. */
@@ -1355,7 +1390,8 @@ html[data-input='touch'] .prompt--primary {
 }
 
 .row:hover,
-.row:focus-within {
+html[data-input='gamepad'] .row:focus-within,
+html[data-input='keyboard'] .row:focus-within {
     background: var(--selected);
     box-shadow: var(--frame);
 }
@@ -1375,7 +1411,6 @@ html[data-input='touch'] .prompt--primary {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-shadow: var(--shadow);
 }
 
 .row__meta {
@@ -1451,28 +1486,6 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     margin: 0;
     color: #ffd6cc;
     font-size: 0.97rem;
-    text-shadow: var(--shadow);
-}
-
-.sheet__header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-}
-
-.sheet__body {
-    padding-bottom: 20px;
-}
-
-.sheet__prompts {
-    padding: 12px 20px calc(14px + var(--safe-bottom));
-    border-top: var(--e) solid var(--accent-dark);
-    box-shadow: inset 0 var(--e) 0 var(--rule);
-    background: rgba(0, 0, 0, 0.6);
-}
-
-.sheet__prompts .prompt--hint {
-    background: none;
 }
 
 .play__gate {
@@ -1539,16 +1552,17 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 
 /* ------------------------------------------------------------ custom levels */
 
-/* src/custom: Installed and Browse, over the level flying by. Every box is
-   half see-through, so the level stays in sight; the lettering and the
-   screenshots are solid. The ring and the home screen's own text step aside. */
+/* src/custom: Library and Browse, over the level flying by. A bar along the
+   top holds the tabs and tools, the cards sit in their own boxes, and the
+   level stays in sight between them. The ring and the home screen's own text
+   step aside. */
 
 .home--custom .home__ui {
     visibility: hidden;
 }
 
 .home--custom .home__shade {
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, transparent 30%, transparent 70%, rgba(0, 0, 0, 0.45) 100%);
+    background: rgba(0, 0, 0, 0.25);
 }
 
 .custom {
@@ -1557,18 +1571,25 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     z-index: 40;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0, rgba(0, 0, 0, 0.12) 190px, rgba(0, 0, 0, 0.12) calc(100% - 120px), rgba(0, 0, 0, 0.6) 100%);
     animation: fade 180ms linear;
     user-select: none;
     -webkit-user-select: none;
 }
 
+/* The bar: Library and Browse in the middle, Back in the corner for a mouse
+   or a finger; the games and the tools under them. */
 .custom__header {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-areas:
+        '. sections back'
+        'toolbar toolbar toolbar';
     align-items: center;
-    gap: 12px;
-    padding: calc(16px + var(--safe-top)) calc(20px + var(--safe-right)) 12px calc(20px + var(--safe-left));
+    gap: 10px 16px;
+    padding: calc(12px + var(--safe-top)) calc(20px + var(--safe-right)) 12px calc(20px + var(--safe-left));
+    background: var(--box-heavy);
+    border-bottom: var(--e) solid var(--edge-dim-dark);
+    box-shadow: 0 var(--e) 0 var(--edge-dim-light);
 }
 
 .custom__tabs {
@@ -1577,9 +1598,28 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     gap: 6px;
 }
 
-.custom__tabs--sections .glyphs,
-.custom__tabs--games .glyphs {
-    margin: 0 6px;
+.custom__tabs--sections {
+    grid-area: sections;
+}
+
+.custom__tabs .glyphs {
+    margin: 0 4px;
+}
+
+.custom__back {
+    grid-area: back;
+    justify-self: end;
+}
+
+.custom__toolbar {
+    grid-area: toolbar;
+    justify-self: center;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 18px;
+    width: min(1480px, 100%);
 }
 
 .section-tab,
@@ -1587,27 +1627,26 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
     border: 0;
     border-radius: 0;
     background: none;
     color: var(--ink-dim);
     font: inherit;
     cursor: pointer;
-    opacity: 0.62;
+    opacity: 0.6;
     transition: opacity 120ms linear;
 }
 
 .section-tab {
     --gs: 2;
-    min-height: 54px;
-    padding: 6px 22px 8px;
+    min-height: 50px;
+    padding: 6px 20px 8px;
 }
 
 .game-tab {
     --gs: 1.5;
-    min-height: 42px;
-    padding: 4px 16px 6px;
+    min-height: 40px;
+    padding: 4px 14px 6px;
 }
 
 .section-tab:hover,
@@ -1626,51 +1665,38 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     box-shadow: var(--frame-dim);
 }
 
-.section-tab__count,
-.game-tab__count {
-    min-width: 1.6em;
-    padding: 0 0.4em;
-    background: rgba(0, 0, 0, 0.6);
-    box-shadow: var(--frame-dim);
-    color: var(--accent-bright);
-    font-size: 0.8rem;
-    font-weight: 700;
-    line-height: 1.6;
-    text-align: center;
-    text-shadow: var(--shadow);
-}
-
-.custom__toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px 18px;
-    width: min(1480px, 100%);
-}
-
 .custom__tools {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px 12px;
 }
 
+/* Sunk into the bar, as the games' text boxes are. */
 .custom__search {
     display: flex;
     align-items: center;
     gap: 8px;
     min-height: 40px;
     padding: 0 10px;
-    background: rgba(0, 0, 0, 0.6);
+    background: #000;
     box-shadow:
-        inset var(--e) var(--e) 0 var(--accent-dark),
-        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--accent);
+        inset var(--e) var(--e) 0 var(--edge-dark),
+        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--edge-light);
     color: var(--accent);
 }
 
+.custom__search:focus-within {
+    box-shadow:
+        inset var(--e) var(--e) 0 var(--edge-lit-dark),
+        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--edge-lit-light);
+}
+
 .custom__search-input {
-    width: min(42vw, 280px);
+    flex: 1;
+    width: min(42vw, 300px);
+    min-width: 0;
     min-height: 38px;
     border: 0;
     background: none;
@@ -1688,27 +1714,58 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     outline: none;
 }
 
-.custom__search:focus-within {
-    box-shadow: var(--frame-lit);
+.custom__search-input::-webkit-search-cancel-button {
+    filter: grayscale(1) brightness(1.6);
+}
+
+.custom__sort {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .custom__sorts .choice {
     min-height: 40px;
 }
 
+/* One button that steps through the orders, where every choice would not fit. */
+.custom__order {
+    display: none;
+    align-items: baseline;
+    gap: 0.5em;
+    min-height: 40px;
+    white-space: nowrap;
+}
+
+.custom__order-name {
+    color: var(--ink-faint);
+    font-size: 0.85rem;
+    font-variant: small-caps;
+    letter-spacing: 0.08em;
+}
+
+@media (max-width: 1199px), (max-height: 500px) {
+    .custom__sorts {
+        display: none;
+    }
+
+    .custom__order {
+        display: inline-flex;
+    }
+}
+
 .custom__body {
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 6px calc(20px + var(--safe-right)) 24px calc(20px + var(--safe-left));
+    padding: 16px calc(20px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(20px + var(--safe-left));
     scroll-padding: 16px;
 }
 
 .custom__count {
     width: min(1480px, 100%);
-    margin: 0 auto 10px;
+    margin: 0 auto 12px;
     color: var(--ink-dim);
     font-size: 0.92rem;
-    text-shadow: var(--shadow);
 }
 
 .custom__empty {
@@ -1717,15 +1774,183 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     align-items: center;
     gap: 10px;
     width: min(560px, 100%);
-    margin: 48px auto;
+    margin: 32px auto;
     padding: 20px 24px;
-    background: var(--box);
+    background: var(--box-heavy);
     box-shadow: var(--frame-dim);
     text-align: center;
 }
 
 .custom__prompts {
-    padding: 12px calc(20px + var(--safe-right)) calc(14px + var(--safe-bottom)) calc(20px + var(--safe-left));
+    padding: 10px calc(20px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(20px + var(--safe-left));
+    background: var(--box-heavy);
+    border-top: var(--e) solid var(--edge-dim-dark);
+    box-shadow: inset 0 var(--e) 0 var(--edge-dim-light);
+}
+
+.custom__subhead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 14px;
+    width: min(1480px, 100%);
+    margin: 24px auto 12px;
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.custom__subhead:first-child {
+    margin-top: 0;
+}
+
+.custom__subnote {
+    padding: 2px 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--ink-dim);
+    font-size: 0.9rem;
+}
+
+/* A phone held upright: the bar keeps to what fits. */
+@media (max-width: 640px) {
+    .custom__header {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'sections back'
+            'toolbar toolbar';
+        gap: 8px 10px;
+        padding: calc(8px + var(--safe-top)) calc(12px + var(--safe-right)) 10px calc(12px + var(--safe-left));
+    }
+
+    .custom__tabs--sections {
+        justify-self: start;
+    }
+
+    .section-tab {
+        --gs: 1.5;
+        min-height: 42px;
+        padding: 4px 12px 6px;
+    }
+
+    .game-tab {
+        --gs: 1;
+        min-height: 38px;
+        padding: 4px 12px;
+    }
+
+    .custom__toolbar {
+        gap: 8px;
+    }
+
+    .custom__tools {
+        flex: 1 1 100%;
+        flex-wrap: nowrap;
+    }
+
+    .custom__search {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .custom__search-input {
+        width: 100%;
+    }
+
+    .custom__body {
+        padding-left: calc(12px + var(--safe-left));
+        padding-right: calc(12px + var(--safe-right));
+    }
+}
+
+/* A phone on its side: everything in one bar, if it fits, so the levels get the height. */
+@media (max-height: 500px) {
+    .custom__header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 10px;
+        padding: calc(6px + var(--safe-top)) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
+    }
+
+    .custom__toolbar {
+        display: contents;
+    }
+
+    .custom__tabs--sections {
+        order: 1;
+    }
+
+    .custom__tabs--games {
+        order: 2;
+    }
+
+    .custom__tools {
+        order: 3;
+        flex: 1 1 0;
+        flex-wrap: nowrap;
+        min-width: 200px;
+    }
+
+    .custom__back {
+        order: 4;
+    }
+
+    .custom__search {
+        flex: 1;
+        min-width: 160px;
+    }
+
+    .custom__search-input {
+        width: 100%;
+    }
+
+    /* Order and Back say what they are with their icons. */
+    .custom__order-name {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
+    .custom__back .prompt__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
+    .custom__back {
+        min-width: 44px;
+        padding-left: 0.7em;
+        padding-right: 0.7em;
+    }
+
+    .section-tab {
+        --gs: 1;
+        min-height: 38px;
+        padding: 4px 10px 5px;
+    }
+
+    .game-tab {
+        --gs: 1;
+        min-height: 38px;
+        padding: 4px 10px 5px;
+    }
+
+    .custom__tabs .glyphs {
+        margin: 0;
+    }
+
+    .custom__body {
+        padding-top: 10px;
+        padding-bottom: calc(12px + var(--safe-bottom));
+    }
+
+    .custom__prompts {
+        padding-top: 6px;
+        padding-bottom: calc(6px + var(--safe-bottom));
+    }
 }
 
 /* ------------------------------------------------------------ level cards */
@@ -1733,7 +1958,7 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 .level-grid {
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 16px;
     width: min(1480px, 100%);
     margin: 0 auto;
@@ -1745,7 +1970,7 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background: var(--box);
+    background: var(--box-heavy);
     box-shadow: var(--frame-dim);
     color: var(--ink);
     cursor: pointer;
@@ -1753,12 +1978,14 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 }
 
 .level-card:hover,
-.level-card:focus-within {
-    background: var(--selected), rgba(0, 0, 0, 0.45);
+html[data-input='gamepad'] .level-card:focus-within,
+html[data-input='keyboard'] .level-card:focus-within {
+    background: var(--selected), var(--box-heavy);
     box-shadow: var(--frame);
 }
 
-.level-card:focus-within {
+html[data-input='gamepad'] .level-card:focus-within,
+html[data-input='keyboard'] .level-card:focus-within {
     transform: translateY(-2px);
 }
 
@@ -1787,17 +2014,16 @@ html[data-input='keyboard'] .level-card:focus {
 
 html[data-input='gamepad'] .level-card:focus-within,
 html[data-input='keyboard'] .level-card:focus-within {
-    box-shadow: var(--frame-lit), 0 0 0 var(--e) #000, 0 0 18px var(--glow);
+    box-shadow: var(--frame-lit), 0 0 0 var(--e) #000;
 }
 
+/* A screenshot, inside the card's frame. */
 .shot {
     position: relative;
     aspect-ratio: 4 / 3;
     overflow: hidden;
-    margin: calc(var(--e) * 3);
-    margin-bottom: 0;
+    margin: calc(var(--e) * 3) calc(var(--e) * 3) 0;
     background: #000;
-    box-shadow: 0 0 0 var(--e) #000;
 }
 
 .shot img {
@@ -1832,7 +2058,6 @@ html[data-input='keyboard'] .level-card:focus-within {
     font-size: 1.05rem;
     font-weight: 700;
     line-height: 1.2;
-    text-shadow: var(--shadow);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -1845,7 +2070,6 @@ html[data-input='keyboard'] .level-card:focus-within {
     font-size: 0.88rem;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-shadow: var(--shadow);
 }
 
 .level-card__facts {
@@ -1859,7 +2083,6 @@ html[data-input='keyboard'] .level-card:focus-within {
 
 .level-card__meta {
     color: var(--ink);
-    text-shadow: var(--shadow);
 }
 
 .level-card__badge {
@@ -1870,23 +2093,28 @@ html[data-input='keyboard'] .level-card:focus-within {
     align-items: center;
     gap: 5px;
     padding: 2px 8px 3px;
-    background: rgba(0, 0, 0, 0.82);
+    background: rgba(0, 0, 0, 0.85);
     box-shadow: var(--frame-dim);
     color: var(--accent-bright);
     font-size: 0.82rem;
     font-weight: 700;
-    text-shadow: var(--shadow);
 }
 
 .level-card__badge .icon {
-    width: 0.9em;
-    height: 0.9em;
     color: var(--ok);
 }
 
 .level-card__badge--failed {
     box-shadow: var(--frame-danger);
     color: var(--danger);
+}
+
+.level-card__badge--cloud {
+    color: var(--ink);
+}
+
+.level-card__badge--cloud .icon {
+    color: var(--accent-bright);
 }
 
 .level-card__foot {
@@ -1902,6 +2130,27 @@ html[data-input='keyboard'] .level-card:focus-within {
     color: var(--danger);
 }
 
+/* A level the converter has had fixes for since it converted it. */
+.level-card__fresh {
+    display: block;
+    margin-top: 3px;
+    color: var(--accent-bright);
+    font-weight: 700;
+}
+
+/* Cloud saves: levels and profiles kept with the Steam account. */
+.level-card__cloud {
+    display: inline-flex;
+    margin-right: 6px;
+    vertical-align: -0.12em;
+    color: var(--accent-bright);
+}
+
+/* Not on this device yet: the screenshot waits in the dark. */
+.level-card--cloud .shot img {
+    filter: grayscale(0.6) brightness(0.75);
+}
+
 .level-card__prompts {
     display: flex;
     flex-wrap: wrap;
@@ -1914,11 +2163,27 @@ html[data-input='keyboard'] .level-card:focus-within {
     flex-basis: 100%;
     color: #ffd6cc;
     font-weight: 700;
-    text-shadow: var(--shadow);
 }
 
 .level-card--confirm {
     box-shadow: var(--frame-danger);
+}
+
+/* A card's lesser actions show only their icons to a mouse or a finger. */
+html[data-input='mouse'] .level-card .prompt--iconic .prompt__label,
+html[data-input='touch'] .level-card .prompt--iconic .prompt__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+html[data-input='mouse'] .level-card .prompt--iconic,
+html[data-input='touch'] .level-card .prompt--iconic {
+    min-width: 38px;
+    padding-left: 0.6em;
+    padding-right: 0.6em;
 }
 
 /* On a gamepad or keyboard a card shows its prompts only while it has the focus. */
@@ -1929,12 +2194,10 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
 
 .rating {
     font-weight: 700;
-    text-shadow: var(--shadow);
 }
 
 .rating--best {
     color: var(--accent-bright);
-    text-shadow: 0 0 8px var(--glow), var(--shadow);
 }
 
 .rating--good {
@@ -1963,7 +2226,6 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     gap: 10px;
     min-height: 72px;
     color: var(--ink-dim);
-    text-shadow: var(--shadow);
 }
 
 .level-grid__spinner {
@@ -1972,6 +2234,94 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     background: conic-gradient(var(--accent) 0 12.5%, transparent 0 25%, var(--accent) 0 37.5%, transparent 0 50%, var(--accent) 0 62.5%, transparent 0 75%, var(--accent) 0 87.5%, transparent 0);
     border-radius: 50%;
     animation: spin 0.9s steps(8) infinite;
+}
+
+@media (max-width: 640px) {
+    .level-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+    }
+
+    .level-card__text {
+        padding: 8px 9px 10px;
+    }
+
+    .level-card__name {
+        font-size: 0.95rem;
+    }
+
+    .level-card__foot {
+        padding: 0 9px 8px;
+    }
+
+    .level-card__prompts {
+        padding: 0 8px 8px;
+    }
+}
+
+/* A phone on its side: cards lie down, the screenshot beside the text, so
+   whole cards fit in the height. */
+@media (max-height: 500px) {
+    .level-grid {
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: 10px;
+    }
+
+    .level-card,
+    .level-card__face {
+        display: grid;
+        grid-template-columns: 136px minmax(0, 1fr);
+        grid-auto-rows: auto;
+        align-content: start;
+    }
+
+    .level-card__face {
+        grid-column: 1 / -1;
+    }
+
+    .level-card .shot {
+        grid-row: 1 / span 2;
+        align-self: start;
+        margin: calc(var(--e) * 3);
+    }
+
+    .level-card__text {
+        grid-column: 2;
+        padding: 8px 10px 6px;
+    }
+
+    .level-card__name {
+        font-size: 0.98rem;
+    }
+
+    .level-card__foot {
+        grid-column: 2;
+        padding: 0 10px 6px;
+    }
+
+    .level-card__prompts {
+        grid-column: 1 / -1;
+        padding: 0 8px 8px;
+        margin-top: 0;
+    }
+
+    .level-card__badge {
+        top: 6px;
+        right: auto;
+        left: 6px;
+    }
+}
+
+@media (min-width: 1500px) and (min-height: 850px) {
+    .custom__header,
+    .custom__prompts,
+    .details__prompts {
+        --gi: 2;
+    }
+
+    .level-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
 }
 
 /* ------------------------------------------------------------ level details */
@@ -1992,35 +2342,74 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
 .details-scrim {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.45);
     animation: fade 160ms linear;
 }
 
+/* Under a level's details only the level flying by shows, not the cards. */
+.custom--covered > * {
+    visibility: hidden;
+}
+
+/* The screenshots beside what TRCustoms says about the level, the prompts
+   along the bottom; all of it inside the frame. */
 .details {
     position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
-    grid-template-areas:
-        'gallery info'
-        'prompts prompts';
+    display: flex;
+    flex-direction: column;
     width: min(1240px, 100%);
     height: min(780px, 100%);
-    background: var(--box);
+    padding: calc(var(--e) * 2);
+    background: var(--box-heavy);
     box-shadow: var(--frame), 0 0 0 var(--e) #000;
     animation: rise 200ms var(--ease);
     user-select: text;
     -webkit-user-select: text;
 }
 
+.details__main {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+}
+
+/* The screenshot takes its own shape, as large as the column allows, with
+   its strip of thumbnails right under it, the two together in the middle. */
 .details__gallery {
-    grid-area: gallery;
     position: relative;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 10px;
     min-height: 0;
-    padding: 14px;
+    padding: 16px;
+}
+
+.details__shot {
+    flex: 0 1 auto;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    aspect-ratio: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.details__shot img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 0 0 var(--e) #000;
+}
+
+/* Until a screenshot comes, or without one, the box keeps the games' shape. */
+.details__shot:not(:has(img)) {
+    aspect-ratio: 4 / 3;
 }
 
 .details__turn {
@@ -2032,11 +2421,11 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     height: 56px;
     border: 0;
     border-radius: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.7);
     box-shadow: var(--frame-dim);
     color: var(--accent);
     cursor: pointer;
-    opacity: 0.75;
+    opacity: 0.8;
 }
 
 .details__turn:hover {
@@ -2064,7 +2453,7 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     flex: none;
     width: 92px;
     aspect-ratio: 4 / 3;
-    padding: 0;
+    padding: calc(var(--e) * 2);
     border: 0;
     border-radius: 0;
     background: #000;
@@ -2086,11 +2475,10 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
 }
 
 .details__info {
-    grid-area: info;
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 18px 22px 18px 8px;
+    padding: 20px 24px 20px 8px;
 }
 
 .details__eyebrow {
@@ -2099,14 +2487,18 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     font-variant: small-caps;
     letter-spacing: 0.18em;
     color: var(--accent);
-    text-shadow: var(--shadow);
 }
 
 .details__title {
     --gs: 2;
-    margin: 0 0 8px;
+    margin: 0 0 10px;
     font-size: 0;
     line-height: 0;
+}
+
+/* A long name, as many custom levels have, in smaller letters. */
+.details__title--long {
+    --gs: 1.5;
 }
 
 .details__title .gt--plain {
@@ -2117,7 +2509,6 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
 .details__by {
     margin: 0 0 6px;
     color: var(--ink-dim);
-    text-shadow: var(--shadow);
 }
 
 .details__rating {
@@ -2129,13 +2520,18 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     margin: 0 0 12px;
 }
 
+.details__note {
+    margin: 0 0 12px;
+    color: var(--ink-dim);
+}
+
 .details__facts {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 4px 14px;
     margin: 0 0 16px;
     padding: 12px 14px;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(0, 0, 0, 0.45);
     box-shadow: var(--frame-dim);
 }
 
@@ -2152,7 +2548,6 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
 .details__fact dd {
     margin: 0;
     color: var(--ink);
-    text-shadow: var(--shadow);
 }
 
 .details__loading {
@@ -2160,23 +2555,84 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
 }
 
 .details__prompts {
-    grid-area: prompts;
-    padding: 12px 20px 14px;
-    border-top: var(--e) solid var(--accent-dark);
-    box-shadow: inset 0 var(--e) 0 var(--rule);
-    background: rgba(0, 0, 0, 0.45);
+    container: prompts / inline-size;
+    flex: none;
+    padding: 10px 16px 12px;
+    border-top: var(--e) solid var(--edge-dim-dark);
+    box-shadow: inset 0 var(--e) 0 var(--edge-dim-light);
 }
 
 .details__ask {
     color: #ffd6cc;
     font-weight: 700;
-    text-shadow: var(--shadow);
+}
+
+/* Too little room for every name: the lesser actions keep only their icons;
+   on a phone always, on a bigger screen when there are five actions or more. */
+@container prompts (max-width: 999px) {
+    html[data-input='mouse'] .details__prompts:has(> :nth-child(5)) .prompt--iconic .prompt__label,
+    html[data-input='touch'] .details__prompts:has(> :nth-child(5)) .prompt--iconic .prompt__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
+    html[data-input='mouse'] .details__prompts:has(> :nth-child(5)) .prompt--iconic,
+    html[data-input='touch'] .details__prompts:has(> :nth-child(5)) .prompt--iconic {
+        min-width: 44px;
+        padding-left: 0.7em;
+        padding-right: 0.7em;
+    }
+}
+
+@container prompts (max-width: 560px) {
+    html[data-input='mouse'] .details__prompts .prompt--iconic .prompt__label,
+    html[data-input='touch'] .details__prompts .prompt--iconic .prompt__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
+    html[data-input='mouse'] .details__prompts .prompt--iconic,
+    html[data-input='touch'] .details__prompts .prompt--iconic {
+        min-width: 44px;
+        padding-left: 0.7em;
+        padding-right: 0.7em;
+    }
+}
+
+/* A phone: the main action takes what the others leave, Back only its icon. */
+@container prompts (max-width: 480px) {
+    html[data-input='mouse'] .details__prompts .prompt--primary,
+    html[data-input='touch'] .details__prompts .prompt--primary {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    html[data-input='mouse'] .details__back .prompt__label,
+    html[data-input='touch'] .details__back .prompt__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
+    html[data-input='mouse'] .details__back,
+    html[data-input='touch'] .details__back {
+        min-width: 44px;
+        padding-left: 0.7em;
+        padding-right: 0.7em;
+    }
 }
 
 .description {
     color: var(--ink);
     line-height: 1.5;
-    text-shadow: var(--shadow);
     overflow-wrap: anywhere;
 }
 
@@ -2198,224 +2654,128 @@ html[data-input='keyboard'] .level-card:not(:focus-within) .level-card__prompts 
     color: var(--accent-bright);
 }
 
-.description__empty {
-    color: var(--ink-faint);
-    font-style: italic;
-}
-
-@media (max-width: 860px) {
-    .details {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1fr) auto;
-        grid-template-areas:
-            'gallery'
-            'info'
-            'prompts';
-        height: 100%;
-    }
-
-    .details__gallery {
-        padding-bottom: 0;
-    }
-
-    .details__shot img {
-        max-height: 38dvh;
-    }
-
-    .details__info {
-        padding: 12px 16px;
-    }
-}
-
-@media (max-width: 640px) {
-    .custom__header {
-        gap: 8px;
-        padding-top: calc(10px + var(--safe-top));
-    }
-
-    .section-tab {
-        --gs: 1.5;
-        min-height: 44px;
-        padding: 4px 14px 6px;
-    }
-
-    .game-tab {
-        --gs: 1;
-        min-height: 38px;
-        padding: 4px 12px;
-    }
-
-    .custom__toolbar {
-        justify-content: center;
-    }
-
-    .custom__search-input {
-        width: 100%;
-    }
-
-    .custom__search {
-        flex: 1 1 100%;
-    }
-
-    .level-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 10px;
-    }
-
-    .level-card__text {
-        padding: 8px 9px 10px;
-    }
-
-    .level-card__name {
-        font-size: 0.95rem;
-    }
-
-    .details-layer {
-        padding: 0;
-    }
-}
-
-@media (min-width: 1500px) and (min-height: 850px) {
-    .section-tab {
-        --gs: 3;
-    }
-
-    .game-tab {
-        --gs: 2;
-    }
-
-    .custom__header,
-    .custom__prompts,
-    .details__prompts {
-        --gi: 2;
-    }
-
-    .level-grid {
-        grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-    }
-
-    .details__title {
-        --gs: 3;
-    }
-}
-
-/* Under a level's details only the level flying by shows, not the cards. */
-.custom--covered > * {
-    visibility: hidden;
-}
-
-/* The screenshot takes its own shape, as large as the column allows, with
-   its strip of thumbnails right under it, the two together in the middle. */
-.details__gallery {
-    justify-content: center;
-}
-
-.details__shot {
-    margin: 0;
-    flex: 0 1 auto;
-    width: 100%;
-    min-height: 0;
-    aspect-ratio: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    box-shadow: none;
-}
-
-.details__shot img {
-    width: auto;
-    height: auto;
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    box-shadow: 0 0 0 var(--e) #000;
-}
-
-/* Until a screenshot comes, or without one, the box keeps the games' shape. */
-.details__shot:not(:has(img)) {
-    aspect-ratio: 4 / 3;
-}
-
 .description hr {
     height: 0;
     margin: 1.1em 0;
     border: 0;
-    border-top: var(--e) solid var(--accent-dark);
-    box-shadow: 0 var(--e) 0 var(--rule);
+    border-top: var(--e) solid var(--edge-dim-dark);
+    box-shadow: 0 var(--e) 0 var(--edge-dim-light);
 }
 
 .description blockquote {
     margin: 0 0 0.9em;
     padding: 0.4em 0 0.4em 0.9em;
-    border-left: calc(var(--e) * 2) solid var(--accent-dark);
+    border-left: calc(var(--e) * 2) solid var(--edge-dim-light);
     background: rgba(0, 0, 0, 0.25);
     color: var(--ink-dim);
 }
 
-/* A phone orders the levels with the Order prompt, which keeps the header short. */
-@media (max-width: 640px) {
-    .custom__sorts {
-        display: none;
+.description__empty {
+    color: var(--ink-faint);
+    font-style: italic;
+}
+
+/* Upright screens, and narrow ones: the screenshots above the text, and the
+   two scroll together, so the text gets the height as it is read. */
+@media (max-aspect-ratio: 1/1) and (max-width: 1099px), (max-width: 599px) {
+    .details__main {
+        display: block;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .details__gallery {
+        padding: 12px 12px 0;
+    }
+
+    .details__shot img {
+        max-height: 36dvh;
+    }
+
+    .details__info {
+        overflow: visible;
+        padding: 14px 16px 16px;
     }
 }
 
-/* A level the converter has had fixes for since it converted it. */
-.level-card__fresh {
-    display: block;
-    margin-top: 3px;
-    color: var(--accent-bright);
-    font-weight: 700;
-    text-shadow: 0 0 8px var(--glow), var(--shadow);
+/* Short screens: a smaller heading and thumbnails, closer to the edges. */
+@media (max-height: 500px) {
+    .details-layer {
+        padding: calc(6px + var(--safe-top)) calc(8px + var(--safe-right)) calc(6px + var(--safe-bottom)) calc(8px + var(--safe-left));
+    }
+
+    .details__gallery {
+        gap: 6px;
+        padding: 10px;
+    }
+
+    .details__thumb {
+        width: 60px;
+    }
+
+    .details__turn {
+        top: calc(50% - 44px);
+        width: 32px;
+        height: 44px;
+    }
+
+    .details__turn--left {
+        left: 14px;
+    }
+
+    .details__turn--right {
+        right: 14px;
+    }
+
+    .details__info {
+        padding: 12px 16px 12px 4px;
+    }
+
+    .details__title {
+        --gs: 1.5;
+    }
+
+    .details__title--long {
+        --gs: 1;
+    }
+
+    .details__prompts {
+        padding: 6px 10px 8px;
+    }
 }
 
-.details__note {
-    margin: 0 0 12px;
-    color: var(--ink-dim);
-    text-shadow: var(--shadow);
+/* A phone: the panel is the whole screen. */
+@media (max-width: 640px) {
+    .details-layer {
+        padding: 0;
+    }
+
+    .details {
+        height: 100%;
+    }
+
+    .details__prompts {
+        gap: 8px;
+    }
 }
 
-/* Cloud saves: levels and profiles kept with the Steam account. */
-.level-card__cloud {
-    display: inline-flex;
-    margin-right: 6px;
-    vertical-align: -0.12em;
-    color: var(--accent-bright);
+/* A big screen: a bigger panel. */
+@media (min-width: 1500px) and (min-height: 850px) {
+    .details__title {
+        --gs: 3;
+    }
+
+    .details {
+        width: min(1480px, 100%);
+        height: min(920px, 100%);
+    }
+
+    .details__title--long {
+        --gs: 2;
+    }
 }
 
-.level-card__badge--cloud {
-    color: var(--ink);
-}
-
-.level-card__badge--cloud .icon {
-    color: var(--accent-bright);
-}
-
-/* Not on this device yet: the screenshot waits in the dark. */
-.level-card--cloud .shot img {
-    filter: grayscale(0.6) brightness(0.75);
-}
-
-.custom__subhead {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 6px 14px;
-    width: min(1480px, 100%);
-    margin: 22px auto 10px;
-    font-size: 1rem;
-    font-weight: 400;
-    text-shadow: var(--shadow);
-}
-
-.custom__subhead:first-child {
-    margin-top: 0;
-}
-
-.custom__subnote {
-    color: var(--ink-dim);
-    font-size: 0.9rem;
-}
+/* ------------------------------------------------------------ odds and ends */
 
 .row__cloud {
     display: inline-flex;

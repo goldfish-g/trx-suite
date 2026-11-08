@@ -183,7 +183,7 @@ export function InstalledCard({ record, info, progress, lastPlayed, inCloud = fa
                         {replacing ? (
                             <Prompt variant="row" action="extra" label="Stop" onPress={() => void cancelRedownload(record.id)} />
                         ) : (
-                            <Prompt variant="row" action="extra" label={record.status === 'importing' ? 'Cancel' : 'Delete'} icon={<TrashIcon />} onPress={() => setConfirm(true)} />
+                            <Prompt variant="row" action="extra" label={record.status === 'importing' ? 'Cancel' : 'Delete'} iconic icon={<TrashIcon />} onPress={() => setConfirm(true)} />
                         )}
                     </>
                 )}
@@ -280,7 +280,7 @@ export function CloudCard({ level, profiles, lastPlayed, onDetails, onAddFiles }
                             />
                         )}
                         {source.kind === 'trcustoms' ? <Prompt variant="row" action="alternate" label="Details" onPress={onDetails} /> : null}
-                        <Prompt variant="row" action="extra" label="Delete from cloud" icon={<TrashIcon />} disabled={!online} onPress={() => setConfirm(true)} />
+                        <Prompt variant="row" action="extra" label="Delete from cloud" iconic icon={<TrashIcon />} disabled={!online} onPress={() => setConfirm(true)} />
                     </>
                 )}
             </span>

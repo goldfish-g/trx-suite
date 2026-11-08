@@ -118,12 +118,17 @@ interface PromptProps {
     icon?: ReactNode;
     className?: string;
     title?: string;
+    /**
+     * With a mouse or a finger, where room is short, only its icon shows (the
+     * styles say where); its name stays as a tooltip and for screen readers.
+     */
+    iconic?: boolean;
 }
 
-export function Prompt({ action, label, onPress, global, disabled, variant, icon, className, title }: PromptProps) {
+export function Prompt({ action, label, onPress, global, disabled, variant, icon, className, title, iconic }: PromptProps) {
     const device = useInputDevice((state) => state.device);
     const pointer = device === 'mouse' || device === 'touch';
-    const classes = ['prompt', variant ? `prompt--${variant}` : '', className ?? ''].filter(Boolean).join(' ');
+    const classes = ['prompt', variant ? `prompt--${variant}` : '', iconic ? 'prompt--iconic' : '', className ?? ''].filter(Boolean).join(' ');
     if (onPress === undefined) {
         if (pointer) return null;
         return (
@@ -148,7 +153,7 @@ export function Prompt({ action, label, onPress, global, disabled, variant, icon
             data-global={global ? '' : undefined}
             disabled={disabled}
             tabIndex={-1}
-            title={title}
+            title={title ?? (iconic && pointer && typeof label === 'string' ? label : undefined)}
             onClick={click}
         >
             {pointer ? icon : <Glyph name={action} />}

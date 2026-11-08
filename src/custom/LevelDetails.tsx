@@ -14,7 +14,7 @@ import { describeProgress, describeSource } from '../library/describe';
 import { useLibrary } from '../library/store';
 import { formatBytes } from '../ui/format';
 import { GameText } from '../ui/GameText';
-import { ChevronLeft, ChevronRight, DownloadIcon, ExternalIcon, PlayIcon, TrashIcon } from '../ui/icons';
+import { BackIcon, ChevronLeft, ChevronRight, DownloadIcon, ExternalIcon, PlayIcon, ProfilesIcon, TrashIcon } from '../ui/icons';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt, PromptBar } from '../ui/Prompt';
 import { useAccount } from '../account/store';
@@ -46,6 +46,7 @@ export function installedCopy(gamedata: readonly GameDataRecord[], levelId: numb
 export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Props) {
     const panel = useRef<HTMLDivElement>(null);
     const info = useRef<HTMLDivElement>(null);
+    const main = useRef<HTMLDivElement>(null);
     const { gamedata, levelInfo } = useLibrary();
     const progress = useImports((state) => state.progress);
     const cloudIndex = useCloud((state) => state.index);
@@ -115,9 +116,12 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                         turn(1);
                         return true;
                     case 'up':
-                    case 'down':
-                        info.current?.scrollBy({ top: action === 'up' ? -160 : 160, behavior: 'smooth' });
+                    case 'down': {
+                        // The text scrolls on its own beside the screenshots, or with them on a narrow screen.
+                        const scroller = [info.current, main.current].find((element) => element !== null && element.scrollHeight > element.clientHeight + 1);
+                        scroller?.scrollBy({ top: action === 'up' ? -160 : 160, behavior: 'smooth' });
                         return true;
+                    }
                     case 'back':
                         if (confirmRef.current) {
                             setConfirm(false);
@@ -222,6 +226,7 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
         <div className="details-layer" inert={showProfiles}>
             <div className="details-scrim" onClick={onClose} aria-hidden="true" />
             <div ref={panel} className="details" role="dialog" aria-modal="true" aria-label={name}>
+                <div className="details__main" ref={main}>
                 <div className="details__gallery">
                     <Shot src={current} engine={engine} className="details__shot" />
                     {shots.length > 1 ? (
@@ -253,7 +258,7 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
 
                 <div className="details__info" ref={info}>
                     <p className="details__eyebrow">{engine !== null ? gameTitle(engine) : 'Custom level'}{level?.engineName && engine === null ? ` · ${level.engineName}` : ''}</p>
-                    <h2 className="details__title">
+                    <h2 className={`details__title ${name.length > 24 ? 'details__title--long' : ''}`}>
                         <GameText text={name} />
                     </h2>
                     {by !== null ? <p className="details__by">{by}</p> : null}
@@ -317,6 +322,7 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                     ) : null}
                     {details !== undefined ? <Description text={details.description} /> : levelId !== null && problem === null ? <p className="details__loading">Loading the description…</p> : null}
                 </div>
+                </div>
 
                 <PromptBar className="details__prompts">
                     {confirmCloud && listed !== undefined ? (
@@ -363,7 +369,7 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                         <>
                             {primary}
                             {details?.pageUrl !== undefined ? (
-                                <Prompt action="alternate" label="TRCustoms page" global icon={<ExternalIcon />} onPress={() => window.open(details.pageUrl, '_blank', 'noopener')} />
+                                <Prompt action="alternate" label="TRCustoms page" global iconic icon={<ExternalIcon />} onPress={() => window.open(details.pageUrl, '_blank', 'noopener')} />
                             ) : null}
                             {canRedownload && record !== undefined ? (
                                 <Prompt
@@ -372,6 +378,7 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                                     variant={newerFile !== null || stale ? undefined : 'quiet'}
                                     className={newerFile !== null || stale ? 'prompt--accent' : undefined}
                                     global
+                                    iconic={newerFile === null && !stale}
                                     icon={<DownloadIcon />}
                                     disabled={busy}
                                     onPress={() => void run(() => redownloadCustomLevel(record, newerFile ?? sameFile, details))}
@@ -380,14 +387,14 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                             {replacing && record !== undefined ? (
                                 <Prompt action="extra" label="Stop" global onPress={() => void run(() => cancelRedownload(record.id))} />
                             ) : record !== undefined ? (
-                                <Prompt action="extra" label={record.status === 'importing' ? 'Stop' : 'Delete'} global icon={<TrashIcon />} onPress={() => setConfirm(true)} />
+                                <Prompt action="extra" label={record.status === 'importing' ? 'Stop' : 'Delete'} global iconic icon={<TrashIcon />} onPress={() => setConfirm(true)} />
                             ) : listed !== undefined ? (
-                                <Prompt action="extra" label="Delete from cloud" global icon={<TrashIcon />} disabled={!online} onPress={() => setConfirmCloud(true)} />
+                                <Prompt action="extra" label="Delete from cloud" global iconic icon={<TrashIcon />} disabled={!online} onPress={() => setConfirmCloud(true)} />
                             ) : null}
                             {record?.status === 'ready' && profileCount > 0 ? (
-                                <Prompt action="view" label={profileCount > 1 ? `Profiles · ${profileCount}` : 'Profiles'} global onPress={() => setShowProfiles(true)} />
+                                <Prompt action="view" label={profileCount > 1 ? `Profiles · ${profileCount}` : 'Profiles'} global iconic icon={<ProfilesIcon />} onPress={() => setShowProfiles(true)} />
                             ) : null}
-                            <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />
+                            <Prompt action="back" label="Back" global icon={<BackIcon />} onPress={onClose} className="prompt-bar__end details__back" />
                         </>
                     )}
                 </PromptBar>

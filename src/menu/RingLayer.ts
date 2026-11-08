@@ -25,28 +25,11 @@ interface Slot {
 
 const VERTICAL_FOV = 34;
 
-function haloTexture(): THREE.CanvasTexture {
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 128;
-    const context = canvas.getContext('2d')!;
-    const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gradient.addColorStop(0, 'rgba(255, 196, 120, 0.55)');
-    gradient.addColorStop(0.35, 'rgba(255, 160, 80, 0.18)');
-    gradient.addColorStop(1, 'rgba(255, 140, 60, 0)');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 128, 128);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-}
-
 export class RingLayer implements Layer {
     readonly scene = new THREE.Scene();
     readonly camera = new THREE.PerspectiveCamera(VERTICAL_FOV, 1, 0.1, 100);
 
     private readonly slots: Slot[] = [];
-    private readonly halo: THREE.Mesh;
-    private readonly haloTex: THREE.CanvasTexture;
     private environment: THREE.Texture | null = null;
     /** Whether every model's shaders are built. */
     private compiled = false;
@@ -73,20 +56,6 @@ export class RingLayer implements Layer {
         rim.position.set(-5, 3, -4);
         const fill = new THREE.HemisphereLight(0xfff1dc, 0x1a1410, 0.35);
         this.scene.add(key, rim, fill);
-
-        this.haloTex = haloTexture();
-        this.halo = new THREE.Mesh(
-            new THREE.PlaneGeometry(1, 1),
-            new THREE.MeshBasicMaterial({
-                map: this.haloTex,
-                transparent: true,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false,
-                toneMapped: false,
-            }),
-        );
-        this.halo.renderOrder = -1;
-        this.scene.add(this.halo);
     }
 
     get count(): number {
@@ -168,8 +137,10 @@ export class RingLayer implements Layer {
         this.camera.aspect = viewport.aspect;
         this.camera.fov = VERTICAL_FOV;
         this.camera.position.set(0, 0.55, portrait ? 10.2 : 7.4);
-        // Aim below the ring so it sits in the upper part, leaving room for titles.
-        this.camera.lookAt(0, portrait ? -0.95 : -0.62, 0);
+        // Aim below the ring so it sits in the upper part, leaving room for titles;
+        // further below on a phone on its side, whose titles take more of the height.
+        const wide = viewport.aspect > 1.9;
+        this.camera.lookAt(0, portrait ? -0.95 : wide ? -0.9 : -0.62, 0);
         this.camera.updateProjectionMatrix();
 
         const n = this.slots.length;
@@ -196,16 +167,6 @@ export class RingLayer implements Layer {
             slot.group.rotation.y = -angle * 0.6 + slot.spin;
             slot.artifact?.update(dt, { selected: slot.focus > 0.5, locked: slot.locked, time: this.time });
         });
-
-        const chosen = this.slots[front];
-        if (chosen !== undefined) {
-            this.halo.position.copy(chosen.group.position);
-            this.halo.position.z -= 0.8;
-            this.halo.quaternion.copy(this.camera.quaternion);
-            const size = 3.6 * chosen.group.scale.x * (chosen.locked ? 0.55 : 1);
-            this.halo.scale.setScalar(size);
-            (this.halo.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.65 * chosen.focus;
-        }
     }
 
     render(renderer: THREE.WebGLRenderer): void {
@@ -264,9 +225,6 @@ export class RingLayer implements Layer {
 
     dispose(): void {
         for (const slot of this.slots) slot.artifact?.dispose();
-        this.halo.geometry.dispose();
-        (this.halo.material as THREE.Material).dispose();
-        this.haloTex.dispose();
         this.environment?.dispose();
     }
 }

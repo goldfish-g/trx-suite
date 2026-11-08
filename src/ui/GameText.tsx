@@ -4,7 +4,7 @@
 // stays sharp). Text the font has no glyphs for, such as a name in another
 // script, is set in the text font instead, whole.
 
-import { Fragment, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { SHEETS, type Sheet } from './gameArt/sheets';
 import { useTheme } from './theme';
 
@@ -21,11 +21,13 @@ export function GameText({ text, className }: { text: string; className?: string
         <span className={`gt ${className ?? ''}`}>
             <span className="sr-only">{text}</span>
             <span className="gt__line" aria-hidden="true">
+                {/* A space goes at the end of its word, so a line that wraps
+                    never starts with one. */}
                 {words.map((word, index) => (
-                    <Fragment key={index}>
-                        {index > 0 ? <span className="gt__space" /> : null}
-                        {word !== '' ? <span className="gt__word">{[...word].map((char, i) => glyph(sheet, char, i))}</span> : null}
-                    </Fragment>
+                    <span key={index} className="gt__word">
+                        {[...word].map((char, i) => glyph(sheet, char, i))}
+                        {index < words.length - 1 ? <span className="gt__space" /> : null}
+                    </span>
                 ))}
             </span>
         </span>

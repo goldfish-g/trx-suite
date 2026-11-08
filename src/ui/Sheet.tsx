@@ -1,9 +1,11 @@
 // A panel that slides over the menu: from the right on wide screens, from
 // the bottom on phones. The d-pad and arrow keys walk its controls, (A)
-// presses the focused one, and (B) goes back; its prompts sit along the bottom.
+// presses the focused one, and (B) goes back; its prompts sit along the
+// bottom. With a mouse or a finger, Back is a button up in the panel's
+// corner, and the bottom row shows only for prompts of the panel's own.
 
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
-import { pushLayer } from '../input/controller';
+import { pushLayer, useInputDevice } from '../input/controller';
 import { focusFirst } from '../input/spatial';
 import { GameText } from './GameText';
 import { Prompt, PromptBar } from './Prompt';
@@ -24,6 +26,7 @@ export function Sheet({ title, eyebrow, onClose, children, wide, prompts }: Prop
     const titleId = useId();
     const closeRef = useRef(onClose);
     closeRef.current = onClose;
+    const pointer = useInputDevice((state) => state.device === 'mouse' || state.device === 'touch');
 
     useEffect(() => {
         const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -67,17 +70,22 @@ export function Sheet({ title, eyebrow, onClose, children, wide, prompts }: Prop
                 onKeyDown={onKeyDown}
             >
                 <header className="sheet__header">
-                    {eyebrow ? <p className="sheet__eyebrow">{eyebrow}</p> : null}
-                    <h2 className="sheet__title" id={titleId}>
-                        <GameText text={title} />
-                    </h2>
+                    <div className="sheet__titles">
+                        {eyebrow ? <p className="sheet__eyebrow">{eyebrow}</p> : null}
+                        <h2 className={`sheet__title ${title.length > 16 ? 'sheet__title--long' : ''}`} id={titleId}>
+                            <GameText text={title} />
+                        </h2>
+                    </div>
+                    {pointer ? <Prompt action="back" label="Back" global onPress={onClose} className="sheet__back" /> : null}
                 </header>
                 <div className="sheet__body">{children}</div>
-                <PromptBar className="sheet__prompts">
-                    <Prompt action="confirm" label="Select" />
-                    {prompts}
-                    <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />
-                </PromptBar>
+                {!pointer || prompts !== undefined ? (
+                    <PromptBar className="sheet__prompts">
+                        <Prompt action="confirm" label="Select" />
+                        {prompts}
+                        {pointer ? null : <Prompt action="back" label="Back" global onPress={onClose} className="prompt-bar__end" />}
+                    </PromptBar>
+                ) : null}
             </div>
         </div>
     );
