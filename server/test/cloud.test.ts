@@ -115,7 +115,7 @@ describe('the cloud', () => {
         const early = await app.inject({
             method: 'PUT',
             url: `/api/cloud/saves/${id}/tr1`,
-            payload: { baseRev: 0, files: { 'saves/save_tr1_00.dat': { hash, size: save.length, mtime: 1000 } } },
+            payload: { baseRev: 0, files: { 'saves/tr1/save_tr1_00.dat': { hash, size: save.length, mtime: 1000 } } },
             cookies: lara,
         });
         expect(early.statusCode).toBe(400);
@@ -135,11 +135,11 @@ describe('the cloud', () => {
         const put = await app.inject({
             method: 'PUT',
             url: `/api/cloud/saves/${id}/tr1`,
-            payload: { baseRev: 0, files: { 'saves/save_tr1_00.dat': { hash, size: 1, mtime: 1000 } } },
+            payload: { baseRev: 0, files: { 'saves/tr1/save_tr1_00.dat': { hash, size: 1, mtime: 1000 } } },
             cookies: lara,
         });
         expect(put.statusCode).toBe(200);
-        expect(put.json<CloudSaves>()).toMatchObject({ rev: 1, files: { 'saves/save_tr1_00.dat': { hash, size: save.length, mtime: 1000 } } });
+        expect(put.json<CloudSaves>()).toMatchObject({ rev: 1, files: { 'saves/tr1/save_tr1_00.dat': { hash, size: save.length, mtime: 1000 } } });
 
         // A second device that had not seen revision 1 is told so.
         const stale = await app.inject({
@@ -152,7 +152,7 @@ describe('the cloud', () => {
         expect(stale.json<SavesConflict>().saves.rev).toBe(1);
 
         // Paths stay inside saves/.
-        for (const path of ['cfg/TR1X.json5', 'saves/../x', 'saves/a/b', '../saves/x']) {
+        for (const path of ['cfg/TR1X.json5', 'saves/../x', 'saves/tr1/../../x', 'saves/a/b/c/d/e', 'saves', 'saves/tr1/', '../saves/x']) {
             const response = await app.inject({
                 method: 'PUT',
                 url: `/api/cloud/saves/${id}/tr1`,

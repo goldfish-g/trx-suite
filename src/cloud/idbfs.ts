@@ -61,7 +61,7 @@ function savesRange(root: string): IDBKeyRange {
     return IDBKeyRange.bound(`${root}/saves/`, `${root}/saves/￿`);
 }
 
-/** The save files of a storage: the files straight in its saves/ directory. */
+/** The save files of a storage: the files in its saves/ directory, where TRX keeps a directory per game. */
 export async function readSaveFiles(root: string): Promise<SaveFileData[]> {
     const db = await open(root);
     try {
@@ -94,8 +94,15 @@ export async function writeSaveFiles(root: string, writes: readonly SaveFileData
         const tx = db.transaction(STORE, 'readwrite');
         const finished = done(tx);
         const store = tx.objectStore(STORE);
-        const dir = `${root}/saves`;
-        if ((await request(store.get(dir))) === undefined) store.put({ timestamp: new Date(), mode: DIR_MODE } satisfies IdbfsEntry, dir);
+        // The engine reads a file in only once its directory is there: saves/, and the game's own in it.
+        const dirs = new Set<string>();
+        for (const file of writes) {
+            const parts = file.path.split('/').slice(0, -1);
+            parts.forEach((_, index) => dirs.add(`${root}/${parts.slice(0, index + 1).join('/')}`));
+        }
+        for (const dir of [...dirs].sort()) {
+            if ((await request(store.get(dir))) === undefined) store.put({ timestamp: new Date(), mode: DIR_MODE } satisfies IdbfsEntry, dir);
+        }
         for (const file of writes) {
             store.put({ timestamp: new Date(file.mtime), mode: FILE_MODE, contents: file.bytes } satisfies IdbfsEntry, `${root}/${file.path}`);
         }

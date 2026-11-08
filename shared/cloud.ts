@@ -137,8 +137,12 @@ export interface SavesConflict {
     saves: CloudSaves;
 }
 
-/** Where a save file's path must lead: a file straight in saves/. */
-export const CLOUD_SAVE_PATH = /^saves\/(?!\.\.?$)[^/\\\0]{1,120}$/;
+/**
+ * Where a save file's path must lead: a file in saves/, a few directories
+ * deep at most. TRX keeps each game's saves in a directory of its own there,
+ * named after the game: saves/tr2/save_tr2_00.dat.
+ */
+export const CLOUD_SAVE_PATH = /^saves(?:\/(?!\.\.?(?:\/|$))[^/\\\0]{1,120}){1,4}$/;
 export const CLOUD_HASH = /^[0-9a-f]{64}$/;
 /** Profile ids are UUIDs the page makes. */
 export const CLOUD_PROFILE_ID = /^[A-Za-z0-9-]{8,64}$/;
