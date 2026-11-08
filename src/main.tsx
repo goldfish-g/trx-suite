@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import '@fontsource-variable/alegreya/wght.css';
 import '@fontsource-variable/alegreya/wght-italic.css';
 import { installInput } from './input/controller';
+import { noteArrival } from './play/pages';
 import { registerServiceWorker } from './pwa/install';
 import { keepScreenOn } from './pwa/wakeLock';
 import { trackPixelRatio } from './ui/pixels';
@@ -15,6 +16,7 @@ import './styles.css';
 const HomeScreen = lazy(() => import('./menu/HomeScreen').then((module) => ({ default: module.HomeScreen })));
 const PlayScreen = lazy(() => import('./play/PlayScreen').then((module) => ({ default: module.PlayScreen })));
 
+noteArrival();
 installInput();
 registerServiceWorker();
 keepScreenOn();

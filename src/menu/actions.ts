@@ -10,6 +10,7 @@ import type { GameDataRecord } from '../gamedata/types';
 import { ENGINE_NAMES } from '../games/catalog';
 import { detectGame, type Detection } from '../games/detect';
 import { ArchiveError, readArchive, readFolder, type ArchiveEntry } from '../lib/archive';
+import { openGame } from '../play/pages';
 import { createProfile, listProfiles } from '../profiles/store';
 import type { ProfileRecord } from '../profiles/types';
 
@@ -50,7 +51,7 @@ export async function profilesOf(gamedataId: string): Promise<ProfileRecord[]> {
 
 /** Starts the engine on a profile. Each session is a page of its own, for a fresh engine. */
 export function playProfile(profile: ProfileRecord): void {
-    location.assign(`/play/${profile.id}`);
+    openGame(`/play/${profile.id}`);
 }
 
 /** Makes a new set of saves for a game. */

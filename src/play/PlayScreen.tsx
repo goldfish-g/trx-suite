@@ -7,6 +7,7 @@ import { formatBytes } from '../ui/format';
 import { GameText } from '../ui/GameText';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt, PromptBar } from '../ui/Prompt';
+import { leaveGame } from './pages';
 
 type ScreenState = SessionStage | { kind: 'loading' } | { kind: 'error'; message: string };
 
@@ -22,8 +23,9 @@ async function enterFullscreen(): Promise<void> {
     }
 }
 
+/** Back to the menu, which takes this page's place (see pages.ts). */
 function leave(): void {
-    location.assign('/');
+    leaveGame();
 }
 
 /** Starts the game from the gate, full screen on a phone. */
