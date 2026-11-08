@@ -206,7 +206,7 @@ select {
 .gt__word {
     display: inline-flex;
     align-items: flex-start;
-    height: calc(var(--gu) * 18);
+    min-height: calc(var(--gu) * 18);
     vertical-align: top;
 }
 
@@ -233,6 +233,14 @@ select {
     flex: none;
     display: inline-block;
     width: calc(var(--gu) * 6 + var(--gl));
+}
+
+/* In a title, a word wider than the line, such as a file name, goes on over
+   the next rather than out of its box. */
+.details__title .gt__word,
+.sheet__title .gt__word {
+    flex-wrap: wrap;
+    max-width: 100%;
 }
 
 /* Text the font cannot draw, such as a name in another script. */
@@ -1332,6 +1340,45 @@ html[data-input='touch'] .play__prompts .prompt--primary {
     margin-left: auto;
 }
 
+/* With a gamepad or keyboard, every prompt says which button does what, as
+   the games' own prompts do: its glyph and its name, no box, whether it is
+   only a hint ("Select") or also a button for a mouse or a finger ("Back").
+   One that brings something new, such as an update, keeps the games' glow
+   behind it, without a frame. */
+html[data-input='gamepad'] .prompt,
+html[data-input='keyboard'] .prompt,
+html[data-input='gamepad'] .prompt:hover:not(:disabled),
+html[data-input='keyboard'] .prompt:hover:not(:disabled) {
+    padding-left: 0.2em;
+    padding-right: 0.2em;
+    background: none;
+    box-shadow: none;
+}
+
+html[data-input='gamepad'] .prompt.prompt--accent,
+html[data-input='keyboard'] .prompt.prompt--accent {
+    padding-left: 0.6em;
+    padding-right: 0.6em;
+    background: var(--selected);
+}
+
+/* Without boxes, prompts need room between them to read apart. */
+html[data-input='gamepad'] .prompt-bar,
+html[data-input='keyboard'] .prompt-bar,
+html[data-input='gamepad'] .spotlight__prompts,
+html[data-input='keyboard'] .spotlight__prompts,
+html[data-input='gamepad'] .topbar__actions,
+html[data-input='keyboard'] .topbar__actions {
+    column-gap: 24px;
+}
+
+html[data-input='gamepad'] .row__prompts,
+html[data-input='keyboard'] .row__prompts,
+html[data-input='gamepad'] .level-card__prompts,
+html[data-input='keyboard'] .level-card__prompts {
+    column-gap: 16px;
+}
+
 /* ------------------------------------------------------------ glyphs */
 
 /* TRX's own button icons, sized with the prompt's lettering. */
@@ -1627,6 +1674,8 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 .section-tab,
 .game-tab {
     position: relative;
+    /* Never narrower than the name: a full bar wraps instead. */
+    flex: none;
     display: inline-flex;
     align-items: center;
     border: 0;
@@ -1675,24 +1724,52 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     gap: 8px 12px;
 }
 
-/* Sunk into the bar, as the games' text boxes are. */
+/* Where there is room: the games on the left, the search box in the
+   middle, the order (or Add from files) on the right, each apart. */
+@media (min-width: 641px) and (min-height: 501px) {
+    .custom__toolbar {
+        display: grid;
+        /* The sides as wide as each other, so the search box is in the middle,
+           but never narrower than what they hold. */
+        grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+        column-gap: 24px;
+    }
+
+    .custom__tools {
+        display: contents;
+    }
+
+    .custom__tabs--games {
+        grid-column: 1;
+        justify-self: start;
+    }
+
+    .custom__search {
+        grid-column: 2;
+        min-width: 0;
+    }
+
+    .custom__sort,
+    .custom__add {
+        grid-column: 3;
+        justify-self: end;
+    }
+}
+
+/* Framed like the buttons beside it, lit while it is typed in. */
 .custom__search {
     display: flex;
     align-items: center;
     gap: 8px;
     min-height: 40px;
     padding: 0 10px;
-    background: #000;
-    box-shadow:
-        inset var(--e) var(--e) 0 var(--edge-dark),
-        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--edge-light);
+    background: var(--box-heavy);
+    box-shadow: var(--frame-dim);
     color: var(--accent);
 }
 
 .custom__search:focus-within {
-    box-shadow:
-        inset var(--e) var(--e) 0 var(--edge-lit-dark),
-        inset calc(var(--e) * -1) calc(var(--e) * -1) 0 var(--edge-lit-light);
+    box-shadow: var(--frame);
 }
 
 .custom__search-input {
@@ -1812,6 +1889,23 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     font-size: 0.9rem;
 }
 
+/* A narrow phone held upright: Back says what it is with its arrow alone. */
+@media (max-width: 480px) {
+    .custom__back .prompt__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+    }
+
+    .custom__back {
+        min-width: 44px;
+        padding-left: 0.7em;
+        padding-right: 0.7em;
+    }
+}
+
 /* A phone held upright: the bar keeps to what fits. */
 @media (max-width: 640px) {
     .custom__header {
@@ -1869,7 +1963,7 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 6px 10px;
+        gap: 6px 8px;
         padding: calc(6px + var(--safe-top)) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left));
     }
 
@@ -1885,11 +1979,14 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
         order: 2;
     }
 
+    /* Never narrower than the search box and the order need, which would
+       push them over the tabs: a bar too full wraps instead. */
     .custom__tools {
         order: 3;
-        flex: 1 1 0;
+        flex: 1 1 auto;
         flex-wrap: nowrap;
-        min-width: 200px;
+        gap: 8px;
+        min-width: min-content;
     }
 
     .custom__back {
@@ -1898,11 +1995,12 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 
     .custom__search {
         flex: 1;
-        min-width: 160px;
+        min-width: 124px;
     }
 
+    /* As wide as the box leaves it, so the box asks for no more than its minimum. */
     .custom__search-input {
-        width: 100%;
+        width: 0;
     }
 
     /* Order and Back say what they are with their icons. */
