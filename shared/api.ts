@@ -146,6 +146,11 @@ export interface CustomLevelPage {
 }
 
 /** GET /flyby/manifest.json: the levels every player gets for the background. */
+/** The sounds of each game's menus, for the app's menus in that game's look: name to address. */
+export interface MenuSoundsManifest {
+    looks: Partial<Record<'tr1' | 'tr2' | 'tr3', Record<string, string>>>;
+}
+
 export interface FlybyManifest {
     levels: FlybyLevel[];
 }
@@ -158,6 +163,8 @@ export interface FlybyLevel {
     name: string;
     /** The official game it comes from. */
     mod: string;
+    /** Where to fetch the main theme of that game, for the menu to play. */
+    music?: string;
 }
 
 /** GET /ring/manifest.json: the game objects the server can show on the ring, by ring item. */

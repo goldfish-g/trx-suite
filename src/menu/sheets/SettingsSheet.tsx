@@ -1,7 +1,9 @@
-// The app's own settings: installing it, storage, motion, and where things come from.
+// The app's own settings: installing it, its look and sound, storage, motion,
+// and where things come from.
 
 import { useEffect, useState } from 'react';
 import { useAccount } from '../../account/store';
+import { setEffectsVolume, setMusicVolume, useSoundSettings, VOLUME_LEVELS, type VolumeLevel } from '../../audio/output';
 import { promptInstall, useInstall } from '../../pwa/install';
 import { formatBytes } from '../../ui/format';
 import { DownloadIcon } from '../../ui/icons';
@@ -21,6 +23,7 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
     const [storage, setStorage] = useState<Storage | null>(null);
     const [motion, setMotion] = useState(reducedMotionChoice);
     const theme = useTheme((state) => state.theme);
+    const sound = useSoundSettings();
     const signedIn = useAccount((state) => state.me?.accounts.some((account) => account.provider === 'steam') ?? false);
 
     useEffect(() => {
@@ -89,6 +92,18 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                         </button>
                     ))}
                 </div>
+            </section>
+
+            <section className="sheet__section">
+                <h3 className="sheet__heading">
+                    <GameText text="Sound" />
+                </h3>
+                <p className="sheet__text sheet__text--quiet">
+                    The music is the main theme of the game whose level flies by; the sounds are those of the menus of the game in the look
+                    above.
+                </p>
+                <VolumeChoice label="Music" value={sound.music} onPick={setMusicVolume} />
+                <VolumeChoice label="Sound effects" value={sound.effects} onPick={setEffectsVolume} />
             </section>
 
             <section className="sheet__section">
@@ -164,5 +179,26 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
                 </p>
             </section>
         </Sheet>
+    );
+}
+
+function VolumeChoice({ label, value, onPick }: { label: string; value: VolumeLevel; onPick(level: VolumeLevel): void }) {
+    return (
+        <div className="field">
+            <span className="field__label">{label}</span>
+            <div className="choices" role="radiogroup" aria-label={label}>
+                {VOLUME_LEVELS.map((entry) => (
+                    <button
+                        key={entry.level}
+                        className={`choice ${value === entry.level ? 'choice--on' : ''}`}
+                        role="radio"
+                        aria-checked={value === entry.level}
+                        onClick={() => onPick(entry.level)}
+                    >
+                        <GameText text={entry.label} />
+                    </button>
+                ))}
+            </div>
+        </div>
     );
 }

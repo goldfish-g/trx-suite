@@ -11,6 +11,7 @@ import type { CloudIndex, CloudLevel } from '../../shared/cloud.ts';
 import type { GameDataRecord } from '../gamedata/types';
 import { useImports } from '../gamedata/imports';
 import { ENGINE_NAMES, type EngineNumber } from '../games/catalog';
+import { playEffect } from '../audio/effects';
 import { pushLayer, useInputDevice } from '../input/controller';
 import { focusables } from '../input/spatial';
 import { useLibrary } from '../library/store';
@@ -89,6 +90,21 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
     const shownGame: EngineNumber = games.includes(game) ? game : 1;
 
     useEffect(() => remember(SECTION_KEY, section), [section]);
+    // A tab turns over like a page, by trigger, bumper, click or tap.
+    const shownTab = useRef(`${section}:${shownGame}`);
+    useEffect(() => {
+        const tab = `${section}:${shownGame}`;
+        if (shownTab.current === tab) return;
+        shownTab.current = tab;
+        playEffect('tab');
+    }, [section, shownGame]);
+    // A new order sounds however it was picked: a click, (X) or F.
+    const shownSort = useRef(sort);
+    useEffect(() => {
+        if (shownSort.current === sort) return;
+        shownSort.current = sort;
+        playEffect('press');
+    }, [sort]);
     useEffect(() => remember(GAME_KEY, game), [game]);
     useEffect(() => remember(SORT_KEY, sort), [sort]);
 
@@ -117,6 +133,8 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
         () =>
             pushLayer({
                 root: () => root.current,
+                // Going from level to level is light, not the sound of an item opening.
+                moveSound: 'browse',
                 onAction: (action) => {
                     switch (action) {
                         case 'sectionPrevious':

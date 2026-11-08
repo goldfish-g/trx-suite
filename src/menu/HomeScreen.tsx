@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { refreshAccount, useAccount } from '../account/store';
+import { nextTheme, playEffect, showTheme, startMenuAudio } from '../audio';
 import { startCloudSync } from '../cloud/sync';
 import { FlybyLayer } from '../flyby/FlybyLayer';
 import { loadPreparedLevel } from '../flyby/load';
@@ -91,6 +92,9 @@ export function HomeScreen() {
         document.title = 'TRX';
     }, []);
 
+    // The theme of the game flying by, and the menu's sound effects.
+    useEffect(() => startMenuAudio(), []);
+
     // The stage and the ring live as long as the screen.
     useEffect(() => {
         const canvas = canvasRef.current!;
@@ -174,6 +178,8 @@ export function HomeScreen() {
                 try {
                     const choice = await candidate.load();
                     if (choice === null || cancelled) continue;
+                    // A level of another game is coming: its music fades out while the level loads.
+                    nextTheme(choice.theme);
                     // Routes planned ahead for this very file, when it is one of the official games' own.
                     const planned = await plannedRoutes(choice.mod, choice.fileName, choice.bytes.length).catch(() => null);
                     if (cancelled) return;
@@ -184,6 +190,7 @@ export function HomeScreen() {
                     if (prepared.routes.length === 0) continue;
                     stageRef.current.setBackground(new FlybyLayer(prepared, { reducedMotion: reducedMotion() }));
                     setCaption(choice.caption);
+                    showTheme(choice.theme);
                     rememberFlyby(choice.key);
                     return;
                 } catch (error) {
@@ -205,6 +212,14 @@ export function HomeScreen() {
     useEffect(() => {
         if (stageRef.current !== null) stageRef.current.showForeground = !customOpen;
     }, [customOpen]);
+
+    // Each turn of the ring knocks, however it was turned.
+    const shownSelection = useRef(selected);
+    useEffect(() => {
+        if (shownSelection.current === selected) return;
+        shownSelection.current = selected;
+        playEffect('turn');
+    }, [selected]);
 
     useEffect(() => {
         try {

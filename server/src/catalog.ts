@@ -7,6 +7,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { CatalogEntry, FlybyManifest, LinkedAccount } from '../../shared/api.ts';
 import { OFFICIAL_GAMES, findOfficialGame, isUnlocked, type OfficialGame } from '../../shared/games.ts';
 import { statFile } from './files.ts';
+import { findServerTheme, themeUrl } from './themes.ts';
 import { ownershipOf } from './session.ts';
 
 export interface FlybySource {
@@ -137,10 +138,14 @@ export function flybyUrl(level: FlybySource): string {
 /** The listed flyby levels whose files are on disk. */
 export async function flybyManifest(catalog: Catalog): Promise<FlybyManifest> {
     const present = await Promise.all(catalog.flyby.map(async (level) => ((await statFile(level.path)) ? level : null)));
+    const levels = present.filter((level) => level !== null);
     return {
-        levels: present
-            .filter((level) => level !== null)
-            .map((level) => ({ url: flybyUrl(level), file: level.file, name: level.name, mod: level.mod })),
+        levels: await Promise.all(
+            levels.map(async (level) => {
+                const theme = await findServerTheme(catalog, level.mod).catch(() => null);
+                return { url: flybyUrl(level), file: level.file, name: level.name, mod: level.mod, ...(theme === null ? {} : { music: themeUrl(level.mod, theme) }) };
+            }),
+        ),
     };
 }
 

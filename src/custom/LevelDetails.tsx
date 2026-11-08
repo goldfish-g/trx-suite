@@ -9,6 +9,7 @@ import { baseModOf } from '../engine/files';
 import { cancelRedownload, retryImport, useImports } from '../gamedata/imports';
 import type { GameDataRecord } from '../gamedata/types';
 import { findGame } from '../games/catalog';
+import { playEffect } from '../audio/effects';
 import { pushLayer } from '../input/controller';
 import { describeProgress, describeSource } from '../library/describe';
 import { useLibrary } from '../library/store';
@@ -94,7 +95,10 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
     const storedCover = useObjectUrl(stored?.cover);
     const shots = details?.screenshots.length ? details.screenshots : [level?.cover ?? storedCover].filter((url): url is string => url !== null);
     const shotCount = Math.max(1, shots.length);
-    const turn = (step: number) => setShot((current) => (current + step + shotCount) % shotCount);
+    const turn = (step: number) => {
+        if (shotCount > 1) playEffect('browse');
+        setShot((current) => (current + step + shotCount) % shotCount);
+    };
 
     // The panel is a layer of its own over the screen: (B) comes back here.
     const closeRef = useRef(onClose);

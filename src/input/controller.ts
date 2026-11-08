@@ -14,6 +14,7 @@
 //      confirm presses the focused control, and back closes the layer.
 
 import { create } from 'zustand';
+import { playEffect, type Effect } from '../audio/effects';
 import { focusables, moveFocus } from './spatial';
 
 export type MenuAction =
@@ -103,6 +104,8 @@ export interface Layer {
      * the layer. Off for screens driven by prompts alone, like the ring.
      */
     keepFocus?: boolean;
+    /** The sound of the focus moving, such as going from level to level; none without it. */
+    moveSound?: Effect;
 }
 
 const layers: Layer[] = [];
@@ -157,7 +160,7 @@ function route(layer: Layer, action: MenuAction, repeat: boolean): boolean {
     if (root === null) return true;
 
     if (DIRECTIONS.has(action)) {
-        if (layer.keepFocus !== false) moveFocus(root, action as 'left' | 'right' | 'up' | 'down');
+        if (layer.keepFocus !== false && moveFocus(root, action as 'left' | 'right' | 'up' | 'down') && layer.moveSound !== undefined) playEffect(layer.moveSound);
         return true;
     }
     if (repeat) return true;
@@ -173,8 +176,9 @@ function route(layer: Layer, action: MenuAction, repeat: boolean): boolean {
 
     if (action === 'confirm' && focused !== null && focused.matches('button, a[href], [role="button"], input[type="checkbox"]')) {
         press(focused);
-    } else if (action === 'back') {
-        layer.onBack?.();
+    } else if (action === 'back' && layer.onBack !== undefined) {
+        playEffect('back');
+        layer.onBack();
     }
     return true;
 }

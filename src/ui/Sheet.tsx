@@ -32,7 +32,8 @@ export function Sheet({ title, eyebrow, onClose, children, wide, prompts }: Prop
         const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         // Wait a frame so the panel's content has rendered.
         const frame = requestAnimationFrame(() => focusFirst(panel.current));
-        const pop = pushLayer({ root: () => panel.current, onBack: () => closeRef.current() });
+        // Going from button to button makes the light sound of going from level to level.
+        const pop = pushLayer({ root: () => panel.current, onBack: () => closeRef.current(), moveSound: 'browse' });
         return () => {
             cancelAnimationFrame(frame);
             pop();

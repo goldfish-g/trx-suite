@@ -46,6 +46,17 @@ menu, store sign-in and offline support.
   custom levels. Games the player has not unlocked show theirs turned to
   stone. Without the games on the server, the ring draws artifacts of its
   own.
+- **The games' own sound.** The menu plays the main theme of the game whose
+  level flies by (`shared/themes.ts`: the title screens' tracks, but The
+  Last Revelation's main theme rather than its title screen's ambience),
+  out of the player's copy of the game, or from the server with the levels
+  it shows everyone. Changing to a game with another theme fades the music
+  out while the next level loads. Tomb Raider III's and The Last
+  Revelation's ADPCM is turned into PCM in a worker (`src/audio/wav.ts`).
+  The menus make the sounds of the menus of the game whose look they wear,
+  as TRX's menus use them: the ring's rotate sound, choose, spin-out and
+  the passport's page; the server reads them out of each game's title level
+  and MAIN.SFX (`server/src/sounds.ts`). Settings → Sound sets both volumes.
 - **Built for a gamepad.** Every action is a button prompt, such as "(A)
   Play" or "(B) Back", showing the glyph of the device in hand: Xbox,
   PlayStation or Nintendo buttons, or keys (Enter, Esc, F, R, M, V, Q/E). The

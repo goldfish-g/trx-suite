@@ -23,6 +23,7 @@ import { HttpError, notFound } from './errors.ts';
 import { requestPath, resolveInside, sendFile, statFile } from './files.ts';
 import { createLoginStore, type LoginStore } from './logins.ts';
 import { createRingModels, type RingModelSet } from './ring.ts';
+import { createMenuSounds, type MenuSoundSet } from './sounds.ts';
 import { registerTrcustomsRoutes } from './trcustoms.ts';
 import type { Fetch } from './upstream.ts';
 
@@ -41,10 +42,11 @@ export interface Context {
     loadCatalog: LoadCatalog;
     logins: LoginStore;
     ringModels: (catalog: Catalog) => Promise<RingModelSet>;
+    menuSounds: (catalog: Catalog) => Promise<MenuSoundSet>;
 }
 
 /** Paths the page's client-side routes must never shadow. */
-const SERVER_PATHS = /^\/(?:api|auth|engines|flyby|ring)(?:\/|$)/;
+const SERVER_PATHS = /^\/(?:api|auth|engines|flyby|ring|sfx)(?:\/|$)/;
 const API_PATHS = /^\/api(?:\/|$)/;
 /** Vite fingerprints everything under /assets, so a name never changes meaning. */
 const IMMUTABLE = 'public, max-age=31536000, immutable';
@@ -133,6 +135,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
         loadCatalog: createCatalogStore(config.dataDir, app.log),
         logins: createLoginStore(deps.now),
         ringModels: createRingModels(app.log),
+        menuSounds: createMenuSounds(app.log),
     };
     registerContentRoutes(app, context);
     registerAccountRoutes(app, context);

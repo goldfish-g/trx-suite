@@ -350,6 +350,8 @@ interface Body {
     flybyCameras: FlybyCamera[];
     /** TR1's palette, which comes near the end of the file. */
     palette8: Uint8Array | null;
+    /** Where the reader stopped. */
+    end: number;
 }
 
 /**
@@ -492,7 +494,7 @@ function readBody(r: Reader, engine: LevelEngine, tub: boolean): Body {
         palette8 = r.take(768);
     }
 
-    return { rooms, floorData, meshes, meshTree, frames, moveables, statics, objectTextures, items, flybyCameras, palette8 };
+    return { rooms, floorData, meshes, meshTree, frames, moveables, statics, objectTextures, items, flybyCameras, palette8, end: r.pos };
 }
 
 /** Swaps flat-coloured faces for textured ones on the palette tile. */
@@ -566,7 +568,8 @@ export async function parseLevel(bytes: Uint8Array, fileName = ''): Promise<Leve
         if (tiles32.length < mainCount * TILE_BYTES) throw new LevelFormatError('The level has fewer tiles than it says.');
         const tileCount = mainCount + misc.length / TILE_BYTES;
         const tiles = tilesFrom32Bit(concat([tiles32.subarray(0, mainCount * TILE_BYTES), misc]), tileCount);
-        return { engine, tiles, tileCount, ...withoutPalette(level) };
+        const { end: _end, ...rest } = withoutPalette(level);
+        return { engine, tiles, tileCount, ...rest };
     }
 
     let tiles8: Uint8Array;
@@ -610,11 +613,13 @@ export async function parseLevel(bytes: Uint8Array, fileName = ''): Promise<Leve
         swatches = paletteTile((i) => [palette[i * 4]!, palette[i * 4 + 1]!, palette[i * 4 + 2]!]);
     }
     resolveColouredFaces(level.meshes, level.objectTextures, engine, paletteIndex);
+    const { end, ...rest } = withoutPalette(level);
     return {
         engine,
         tiles: concat([tiles!, swatches]),
         tileCount: tileCount + 1,
-        ...withoutPalette(level),
+        ...rest,
+        tailOffset: end,
     };
 }
 

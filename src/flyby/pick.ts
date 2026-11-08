@@ -4,6 +4,7 @@
 
 import type { FlybyLevel, FlybyManifest } from '../../shared/api.ts';
 import { findOfficialGame, OFFICIAL_GAMES } from '../../shared/games.ts';
+import { libraryTheme, serverTheme, type MenuTheme } from '../audio/themes';
 import { getGameDataFile, listGameData, listGameDataPaths } from '../gamedata/store';
 import { LEVEL_TITLES } from '../games/levels';
 import { isScenic } from './scenic';
@@ -16,6 +17,8 @@ export interface FlybyChoice {
     /** "Lara's Home · Tomb Raider III", for the caption. */
     caption: string;
     key: string;
+    /** The main theme of its game, for the menu to play while it flies by. */
+    theme: MenuTheme | null;
 }
 
 const LAST_KEY = 'trx-suite:last-flyby';
@@ -46,7 +49,9 @@ async function libraryCandidates(): Promise<Candidate[][]> {
     );
     const perGame: Candidate[][] = [];
     for (const record of records) {
-        const paths = (await listGameDataPaths(record.id)).filter((path) => {
+        const files = await listGameDataPaths(record.id);
+        const theme = libraryTheme(record.id, record.mod, files);
+        const paths = files.filter((path) => {
             const name = path.slice(path.lastIndexOf('/') + 1);
             return path.includes('/levels/') && isScenic(name, record.mod);
         });
@@ -59,7 +64,7 @@ async function libraryCandidates(): Promise<Candidate[][]> {
                     async load() {
                         const blob = await getGameDataFile(record.id, path);
                         if (blob === undefined) return null;
-                        return { bytes: new Uint8Array(await blob.arrayBuffer()), fileName, mod: record.mod, caption: caption(record.mod, fileName), key };
+                        return { bytes: new Uint8Array(await blob.arrayBuffer()), fileName, mod: record.mod, caption: caption(record.mod, fileName), key, theme };
                     },
                 };
             }),
@@ -84,6 +89,7 @@ async function serverCandidates(): Promise<Candidate[]> {
                 mod: level.mod,
                 caption: `${level.name} · ${findOfficialGame(level.mod)?.title ?? ''}`.replace(/ · $/, ''),
                 key: `${level.mod}/${level.file}`,
+                theme: level.music === undefined ? null : serverTheme(level.mod, level.music),
             };
         },
     }));

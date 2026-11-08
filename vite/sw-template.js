@@ -28,6 +28,7 @@ self.addEventListener('install', (event) => {
             await cache.addAll(PRECACHE.map((url) => new Request(url, { cache: 'reload' })));
             await cacheFlybyLevels().catch((error) => console.warn('[sw] background levels not cached:', error));
             await cacheRingModels().catch((error) => console.warn('[sw] ring models not cached:', error));
+            await cacheMenuSounds().catch((error) => console.warn('[sw] menu sounds not cached:', error));
         })(),
     );
 });
@@ -57,6 +58,27 @@ async function cacheFlybyLevels() {
         if (typeof level.url !== 'string' || (await cache.match(level.url))) continue;
         const file = await fetch(level.url);
         if (file.ok) await cache.put(level.url, file);
+    }
+    // And the theme of each one's game, which the menu plays with it.
+    for (const level of manifest.levels ?? []) {
+        if (typeof level.music !== 'string' || (await cache.match(level.music))) continue;
+        const file = await fetch(level.music);
+        if (file.ok) await cache.put(level.music, file);
+    }
+}
+
+async function cacheMenuSounds() {
+    const cache = await caches.open(RUNTIME);
+    const response = await fetch('/sfx/manifest.json', { cache: 'no-store' });
+    if (!response.ok) return;
+    await cache.put('/sfx/manifest.json', response.clone());
+    const manifest = await response.json();
+    for (const sounds of Object.values(manifest.looks ?? {})) {
+        for (const url of Object.values(sounds ?? {})) {
+            if (typeof url !== 'string' || (await cache.match(url))) continue;
+            const file = await fetch(url);
+            if (file.ok) await cache.put(url, file);
+        }
     }
 }
 
@@ -137,14 +159,14 @@ self.addEventListener('fetch', (event) => {
     // Sign-in, the catalog and game downloads need the server, and the app
     // keeps its own copies of what it must know offline.
     if (path.startsWith('/api/') || path.startsWith('/auth/')) return;
-    if (path === '/engines/manifest.json' || path === '/flyby/manifest.json' || path === '/ring/manifest.json') {
+    if (path === '/engines/manifest.json' || path === '/flyby/manifest.json' || path === '/ring/manifest.json' || path === '/sfx/manifest.json') {
         event.respondWith(networkFirst(request));
         return;
     }
     // Engine builds are large; the app stores them itself, resumably.
     if (path.startsWith('/engines/')) return;
     // Flyby levels and ring models: their names change when they do.
-    if (path.startsWith('/flyby/') || path.startsWith('/ring/')) {
+    if (path.startsWith('/flyby/') || path.startsWith('/ring/') || path.startsWith('/sfx/')) {
         event.respondWith(cacheFirst(request, RUNTIME));
         return;
     }

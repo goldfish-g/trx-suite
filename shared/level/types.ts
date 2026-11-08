@@ -170,4 +170,9 @@ export interface Level {
     flybyCameras: FlybyCamera[];
     /** Floor data: what each square does (slopes, portals, triggers, climbable walls), indexed by Sector.floorData. */
     floorData: Uint16Array;
+    /**
+     * TR1–3: where in the file what this reader leaves out begins, the
+     * sound tables among it (shared/level/sounds.ts). TR4 keeps them elsewhere.
+     */
+    tailOffset?: number;
 }

@@ -11,6 +11,7 @@ import { catalogEntries, findArchive, findFlyby, flybyManifest } from './catalog
 import { HttpError, notFound } from './errors.ts';
 import { requestPath, resolveInside, sendFile, statFile, versionTagOf } from './files.ts';
 import { ownershipOf, readAccounts } from './session.ts';
+import { findServerTheme, readTheme } from './themes.ts';
 
 const NO_CACHE = 'no-cache';
 const IMMUTABLE = 'public, max-age=31536000, immutable';
@@ -81,6 +82,9 @@ export function registerContentRoutes(app: FastifyInstance, context: Context): v
         void loadCatalog()
             .then((catalog) => context.ringModels(catalog))
             .catch((error: unknown) => app.log.warn(`ring models: ${(error as Error).message}`));
+        void loadCatalog()
+            .then((catalog) => context.menuSounds(catalog))
+            .catch((error: unknown) => app.log.warn(`menu sounds: ${(error as Error).message}`));
     });
 
     app.get('/ring/manifest.json', async (_request, reply) => {
@@ -93,6 +97,32 @@ export function registerContentRoutes(app: FastifyInstance, context: Context): v
         const json = (await context.ringModels(await loadCatalog())).files.get(request.params.file);
         if (json === undefined) throw notFound();
         return reply.header('cache-control', 'public, max-age=31536000, immutable').type('application/json').send(json);
+    });
+
+    // The sounds of each game's menus, for the app's menus in its look.
+    app.get('/sfx/manifest.json', async (_request, reply) => {
+        reply.header('cache-control', NO_CACHE);
+        return (await context.menuSounds(await loadCatalog())).manifest;
+    });
+
+    // Each file's name carries a hash of its contents, so it never changes.
+    app.get<{ Params: { file: string } }>('/sfx/:file', async (request, reply) => {
+        const wav = (await context.menuSounds(await loadCatalog())).files.get(request.params.file);
+        if (wav === undefined) throw notFound();
+        return reply.header('cache-control', IMMUTABLE).type('audio/wav').send(Buffer.from(wav));
+    });
+
+    // The main theme of a game whose levels fly by for everyone, to play with them.
+    app.get<{ Params: { mod: string } }>('/flyby/theme/:mod', async (request, reply) => {
+        const catalog = await loadCatalog();
+        const { mod } = request.params;
+        const source = catalog.flyby.some((level) => level.mod === mod) ? await findServerTheme(catalog, mod) : null;
+        if (source === null) throw notFound();
+        const version = new URL(request.url, 'http://localhost').searchParams.get('v');
+        return reply
+            .header('cache-control', version === source.tag ? IMMUTABLE : NO_CACHE)
+            .type(source.type)
+            .send(Buffer.from(await readTheme(source)));
     });
 
     app.get<{ Params: { mod: string; file: string } }>('/flyby/:mod/:file', async (request, reply) => {

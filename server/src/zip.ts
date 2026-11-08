@@ -76,3 +76,18 @@ export async function readZipEntry(path: string, entry: ZipEntry): Promise<Uint8
         await file.close();
     }
 }
+
+/** Part of one file's contents, read without the rest when the file is stored uncompressed. */
+export async function readZipRange(path: string, entry: ZipEntry, start: number, length: number): Promise<Uint8Array> {
+    if (entry.method !== 0) return (await readZipEntry(path, entry)).subarray(start, start + length);
+    const file = await open(path, 'r');
+    try {
+        const header = await readAt(file, entry.localHeader, 30);
+        if (header.readUInt32LE(0) !== 0x04034b50) throw new Error(`${path}: damaged entry ${entry.path}.`);
+        const data = entry.localHeader + 30 + header.readUInt16LE(26) + header.readUInt16LE(28);
+        const end = Math.min(entry.size, start + length);
+        return new Uint8Array(await readAt(file, data + start, Math.max(0, end - start)));
+    } finally {
+        await file.close();
+    }
+}
