@@ -1,17 +1,17 @@
-// The screen the app opens on: who made the games playable here, where
+// The screen the app opens on: who made the games playable here and where
 // problems go (to this app's maker, never to the level authors or to
-// LostArtefacts), and where the code lives. The player presses Continue to
-// reach the menu, and that press is also what lets the browser start the
-// menu's music. The level flies by behind it meanwhile.
+// LostArtefacts). Source opens a panel of where the code lives. The player
+// presses Continue to reach the menu, and that press is also what lets the
+// browser start the menu's music. The level flies by behind it meanwhile.
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { pushLayer } from '../input/controller';
 import { GameText } from '../ui/GameText';
+import { ExternalIcon } from '../ui/icons';
 import { Prompt } from '../ui/Prompt';
+import { Sheet } from '../ui/Sheet';
 
-const MAINTAINER = 'goldfish-g';
 const ISSUES_URL = 'https://github.com/goldfish-g/trx-suite/issues';
-const PROFILE_URL = 'https://github.com/goldfish-g';
 
 interface Repo {
     name: string;
@@ -22,29 +22,25 @@ interface Repo {
 }
 
 const REPOS: readonly Repo[] = [
-    { name: 'trx-suite', what: 'this app: the menus, downloads, saves and flybys', url: 'https://github.com/goldfish-g/trx-suite' },
+    { name: 'trx-suite', what: 'This app: the menus, downloads, saves and flybys.', url: 'https://github.com/goldfish-g/trx-suite' },
     {
         name: 'TRX, for the browser',
-        what: 'my WebGL build of the engine',
+        what: 'My WebGL build of the engine.',
         url: 'https://github.com/goldfish-g/TRX',
         branch: 'feature/webgl-build-pr',
     },
     {
         name: 'trx-update-tool',
-        what: 'brings custom levels made for older TRX up to date',
+        what: 'Brings custom levels made for older TRX up to date.',
         url: 'https://github.com/goldfish-g/trx-update-tool',
         branch: 'fix/lzma-and-templates',
     },
-    { name: 'trx-webgl-shell', what: 'the plain web shell the engine builds are tested in', url: 'https://github.com/goldfish-g/trx-webgl-shell' },
-    { name: 'TRX', what: 'the engine itself, by LostArtefacts', url: 'https://github.com/LostArtefacts/TRX' },
+    { name: 'trx-webgl-shell', what: 'The plain web shell the engine builds are tested in.', url: 'https://github.com/goldfish-g/trx-webgl-shell' },
+    { name: 'TRX', what: 'The engine itself, by LostArtefacts.', url: 'https://github.com/LostArtefacts/TRX' },
 ];
 
 function hrefOf(repo: Repo): string {
     return repo.branch === undefined ? repo.url : `${repo.url}/tree/${repo.branch}`;
-}
-
-function shown(url: string): string {
-    return url.replace(/^https:\/\//, '');
 }
 
 function Link({ href, children }: { href: string; children: ReactNode }) {
@@ -55,10 +51,34 @@ function Link({ href, children }: { href: string; children: ReactNode }) {
     );
 }
 
+/** Where the code lives, one stop per repository for the d-pad. */
+function SourceSheet({ onClose }: { onClose(): void }) {
+    return (
+        <Sheet title="Source" eyebrow="Where the code lives" onClose={onClose}>
+            <ul className="list source">
+                {REPOS.map((repo) => (
+                    <li key={repo.url}>
+                        <a className="list__row source__repo" href={hrefOf(repo)} target="_blank" rel="noreferrer noopener">
+                            <span className="list__main">
+                                <span className="list__title">{repo.name}</span>
+                                <span className="source__what">{repo.what}</span>
+                                <span className="list__meta source__url">{repo.url.replace(/^https:\/\//, '')}</span>
+                                {repo.branch !== undefined ? <span className="list__meta source__url">Branch {repo.branch}</span> : null}
+                            </span>
+                            <ExternalIcon />
+                        </a>
+                    </li>
+                ))}
+            </ul>
+        </Sheet>
+    );
+}
+
 export function StartScreen({ onContinue }: { onContinue(): void }) {
     const panel = useRef<HTMLDivElement>(null);
     const done = useRef(onContinue);
     done.current = onContinue;
+    const [source, setSource] = useState(false);
 
     // (A), Enter or Start continues (the prompt answers (A) and Enter); nothing
     // else in the menu answers until then. A click on it sounds like the games' choose.
@@ -78,13 +98,7 @@ export function StartScreen({ onContinue }: { onContinue(): void }) {
 
     return (
         <div className="start-layer">
-            <div
-                ref={panel}
-                className="start"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="start-title"
-            >
+            <div ref={panel} className="start" role="dialog" aria-modal="true" aria-labelledby="start-title" inert={source}>
                 <div className="start__body">
                     <header className="start__header">
                         <h1 className="start__title" id="start-title">
@@ -124,36 +138,10 @@ export function StartScreen({ onContinue }: { onContinue(): void }) {
                         <p className="start__text">
                             <strong>Please don’t contact level builders or LostArtefacts</strong> about problems you find here.
                         </p>
-                        <div className="start__contacts">
-                            <a className="button" href={ISSUES_URL} target="_blank" rel="noreferrer noopener">
-                                <GameText text="Report a problem" />
-                            </a>
-                            <a className="button" href={PROFILE_URL} target="_blank" rel="noreferrer noopener">
-                                <GameText text={`${MAINTAINER} on GitHub`} />
-                            </a>
-                        </div>
-                        <p className="start__text start__text--quiet">
-                            Problems go to <Link href={ISSUES_URL}>{shown(ISSUES_URL)}</Link>; I’m{' '}
-                            <Link href={PROFILE_URL}>{shown(PROFILE_URL)}</Link>.
-                        </p>
-                    </section>
-
-                    <section className="start__section">
-                        <h2 className="start__heading">
-                            <GameText text="The code" />
-                        </h2>
-                        <ul className="start__repos">
-                            {REPOS.map((repo) => (
-                                <li key={repo.url} className="start__repo">
-                                    <span className="start__repo-name">{repo.name}</span>
-                                    <span className="start__repo-what">{repo.what}</span>
-                                    <Link href={hrefOf(repo)}>
-                                        {shown(repo.url)}
-                                        {repo.branch !== undefined ? <span className="start__branch"> · {repo.branch}</span> : null}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
+                        <a className="button start__report" href={ISSUES_URL} target="_blank" rel="noreferrer noopener">
+                            <GameText text="Report a problem" />
+                            <ExternalIcon />
+                        </a>
                     </section>
 
                     <p className="start__legal">
@@ -163,9 +151,11 @@ export function StartScreen({ onContinue }: { onContinue(): void }) {
                 </div>
 
                 <footer className="start__footer">
+                    <Prompt action="extra" label="Source" global onPress={() => setSource(true)} className="start__source" />
                     <Prompt action="confirm" label="Continue" variant="primary" global onPress={() => done.current()} className="start__continue" />
                 </footer>
             </div>
+            {source ? <SourceSheet onClose={() => setSource(false)} /> : null}
         </div>
     );
 }

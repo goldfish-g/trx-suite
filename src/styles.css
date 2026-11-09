@@ -788,12 +788,6 @@ select {
     margin: 0 0 10px;
 }
 
-.start__text--quiet {
-    color: var(--ink-dim);
-    font-size: 0.92rem;
-    overflow-wrap: anywhere;
-}
-
 .start strong {
     color: var(--accent-bright);
     font-weight: 700;
@@ -802,26 +796,17 @@ select {
 /* The part every player has to see: in a box of its own. */
 .start__section--problems {
     margin: 2px 0 14px;
-    padding: 14px 18px 4px;
+    padding: 14px 18px 16px;
     border-top: 0;
     background: var(--notice);
     box-shadow: var(--frame-dim);
 }
 
-.start__section--problems + .start__section {
-    border-top: 0;
-    padding-top: 0;
+.start__report {
+    margin-top: 4px;
 }
 
-.start__contacts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 4px 0 12px;
-}
-
-.start__credits,
-.start__repos {
+.start__credits {
     margin: 0;
     padding: 0;
     list-style: none;
@@ -844,49 +829,16 @@ select {
     transform: rotate(45deg);
 }
 
-.start__repos {
-    display: grid;
-    gap: 10px 24px;
-}
-
-.start__repo {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-content: start;
-    padding-left: 12px;
-    border-left: calc(var(--e) * 2) solid var(--edge-dim-light);
-    line-height: 1.35;
-}
-
-.start__repo-name {
-    color: var(--accent);
-    font-weight: 700;
-}
-
-.start__repo-what {
-    color: var(--ink-dim);
-    font-size: 0.92rem;
-}
-
 .start__link {
     color: var(--accent);
     text-decoration: underline;
     text-decoration-color: var(--edge-dim-light);
     text-underline-offset: 0.18em;
-    overflow-wrap: anywhere;
 }
 
 .start__link:hover {
     color: var(--accent-bright);
     text-decoration-color: currentColor;
-}
-
-.start__repo .start__link {
-    font-size: 0.92rem;
-}
-
-.start__branch {
-    color: var(--ink-faint);
 }
 
 .start__legal {
@@ -896,31 +848,64 @@ select {
     text-align: center;
 }
 
+/* Continue in the middle, Source at the start of the row; on a narrow
+   screen Continue moves over to keep clear of Source. */
 .start__footer {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
     padding: 12px 18px 14px;
     border-top: var(--e) solid var(--edge-dim-dark);
     box-shadow: inset 0 var(--e) 0 var(--edge-dim-light);
 }
 
+.start__source {
+    justify-self: start;
+}
+
 .start__continue {
-    --gs: 1.5;
-    min-height: 54px;
-    padding: 0.4em 1.8em 0.4em 0.9em;
+    grid-column: 2;
 }
 
-html[data-input='mouse'] .start__continue,
-html[data-input='touch'] .start__continue {
-    padding-left: 2.4em;
-    padding-right: 2.4em;
+/* The repositories, in the Source panel over the start screen. With text
+   behind it rather than a level, the panel is not see-through. */
+.start-layer .sheet {
+    background-color: #000;
 }
 
-/* On a wide screen the repositories go two by two. */
-@media (min-width: 760px) and (min-height: 640px) {
-    .start__repos {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+.source__repo {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.source__repo:hover,
+html[data-input='gamepad'] .source__repo:focus,
+html[data-input='keyboard'] .source__repo:focus {
+    background: var(--selected);
+    box-shadow: var(--frame);
+}
+
+.source__repo .list__title {
+    color: var(--accent);
+}
+
+.source__repo .list__main {
+    gap: 2px;
+}
+
+.source__repo > .icon {
+    color: var(--accent);
+}
+
+.source__what {
+    color: var(--ink-dim);
+    font-size: 0.95rem;
+}
+
+.source__url {
+    overflow-wrap: anywhere;
 }
 
 /* A phone held upright: the box fills the screen. */
@@ -970,7 +955,7 @@ html[data-input='touch'] .start__continue {
         padding-bottom: 8px;
     }
 
-    .start__continue {
+    .start .start__footer .prompt--primary {
         --gs: 1;
         min-height: 44px;
     }
@@ -1553,10 +1538,11 @@ html[data-input='touch'] .prompt--primary {
     padding-left: 1.2em;
 }
 
-/* The main action of the home screen, under the game's name, and of the
-   screen before a game starts: bigger. */
+/* The main action of the home screen, under the game's name, of the start
+   screen and of the screen before a game starts: bigger. */
 .spotlight .prompt--primary,
-.play__prompts .prompt--primary {
+.play__prompts .prompt--primary,
+.start__footer .prompt--primary {
     --gs: 1.5;
     min-height: 54px;
     padding: 0.4em 1.8em 0.4em 0.9em;
@@ -1565,7 +1551,9 @@ html[data-input='touch'] .prompt--primary {
 html[data-input='mouse'] .spotlight .prompt--primary,
 html[data-input='touch'] .spotlight .prompt--primary,
 html[data-input='mouse'] .play__prompts .prompt--primary,
-html[data-input='touch'] .play__prompts .prompt--primary {
+html[data-input='touch'] .play__prompts .prompt--primary,
+html[data-input='mouse'] .start__footer .prompt--primary,
+html[data-input='touch'] .start__footer .prompt--primary {
     padding-left: 2em;
     padding-right: 2em;
 }
