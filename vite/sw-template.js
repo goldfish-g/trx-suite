@@ -15,6 +15,7 @@ const PRECACHE = __PRECACHE__;
 const SHELL = `trx-suite-shell-${VERSION}`;
 const RUNTIME = 'trx-suite-runtime';
 const NAVIGATION_TIMEOUT_MS = 4000;
+const MANIFEST_TIMEOUT_MS = 2500;
 const ISOLATION = {
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Embedder-Policy': 'require-corp',
@@ -128,18 +129,40 @@ async function cacheFirst(request, cacheName) {
     return withIsolation(response);
 }
 
-async function networkFirst(request) {
-    try {
-        const response = await fetch(request, { cache: 'no-store' });
+/**
+ * The manifests: the server's latest when it answers in time, else the copy
+ * kept from last time. A connection that hangs rather than fails (a VPN with
+ * nothing behind it, Wi-Fi without the internet) must not hold the menu up
+ * until it gives up on the ring's objects and draws its own; and a proxy
+ * answering for a server that is down (an error page) is no answer either.
+ * A late answer still refreshes the copy for next time.
+ */
+async function networkFirst(event) {
+    const { request } = event;
+    const network = fetch(request, { cache: 'no-store' }).then(async (response) => {
         if (response.ok) {
             const cache = await caches.open(RUNTIME);
             await cache.put(request, response.clone());
         }
-        return withIsolation(response);
-    } catch (error) {
-        const cached = await caches.match(request, { cacheName: RUNTIME });
-        if (cached !== undefined) return withIsolation(cached);
-        throw error;
+        return response;
+    });
+    event.waitUntil(network.catch(() => undefined));
+    const kept = () => caches.match(request, { cacheName: RUNTIME });
+    let timer;
+    const late = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('the server is slow to answer')), MANIFEST_TIMEOUT_MS);
+    });
+    try {
+        const response = await Promise.race([network, late]);
+        if (response.ok) return withIsolation(response);
+        return withIsolation((await kept()) ?? response);
+    } catch {
+        const copy = await kept();
+        if (copy !== undefined) return withIsolation(copy);
+        // Nothing kept yet: the server's answer, whenever it comes.
+        return withIsolation(await network);
+    } finally {
+        clearTimeout(timer);
     }
 }
 
@@ -160,7 +183,7 @@ self.addEventListener('fetch', (event) => {
     // keeps its own copies of what it must know offline.
     if (path.startsWith('/api/') || path.startsWith('/auth/')) return;
     if (path === '/engines/manifest.json' || path === '/flyby/manifest.json' || path === '/ring/manifest.json' || path === '/sfx/manifest.json') {
-        event.respondWith(networkFirst(request));
+        event.respondWith(networkFirst(event));
         return;
     }
     // Engine builds are large; the app stores them itself, resumably.
