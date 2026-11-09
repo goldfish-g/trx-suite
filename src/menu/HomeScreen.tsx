@@ -14,6 +14,7 @@ import { resumeInterruptedImports, retryImport, useImports } from '../gamedata/i
 import { pushLayer } from '../input/controller';
 import { refreshLibrary, useLibrary } from '../library/store';
 import { applyUpdate, useInstall } from '../pwa/install';
+import { cameFromGame } from '../play/pages';
 import { Stage } from '../stage/Stage';
 import { ChevronLeft, ChevronRight, GearIcon, LockIcon, UpdateIcon, UserIcon } from '../ui/icons';
 import { MoveHint, Prompt, PromptBar } from '../ui/Prompt';
@@ -32,6 +33,7 @@ import { SettingsSheet } from './sheets/SettingsSheet';
 import { describeError, downloadGame, playGame } from './actions';
 import { reducedMotion } from './motion';
 import { CustomLevels } from '../custom/CustomLevels';
+import { StartScreen } from './StartScreen';
 
 type SheetState =
     | { kind: 'game'; key: string }
@@ -67,6 +69,8 @@ export function HomeScreen() {
     const [webglError, setWebglError] = useState(false);
     const [problem, setProblem] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    // The credits come first as the app starts, not on the way back from a game.
+    const [starting, setStarting] = useState(() => !cameFromGame());
 
     const { gamedata } = useLibrary();
     const catalog = useAccount((state) => state.catalog);
@@ -207,11 +211,11 @@ export function HomeScreen() {
         statuses.forEach((status, index) => ringRef.current?.setLocked(index, isLockedLook(status)));
     }, [statuses]);
 
-    // The custom levels screen shows the level flying by through it, without the ring.
+    // The custom levels screen and the start screen show the level flying by through them, without the ring.
     const customOpen = sheet?.kind === 'custom';
     useEffect(() => {
-        if (stageRef.current !== null) stageRef.current.showForeground = !customOpen;
-    }, [customOpen]);
+        if (stageRef.current !== null) stageRef.current.showForeground = !customOpen && !starting;
+    }, [customOpen, starting]);
 
     // Each turn of the ring knocks, however it was turned.
     const shownSelection = useRef(selected);
@@ -270,31 +274,33 @@ export function HomeScreen() {
     };
 
     // The ring turns on the d-pad and the bumpers; the prompts answer the rest.
-    useEffect(
-        () =>
-            pushLayer({
-                root: () => uiRef.current,
-                keepFocus: false,
-                onAction: (action) => {
-                    switch (action) {
-                        case 'left':
-                        case 'previous':
-                            turn(-1);
-                            return true;
-                        case 'right':
-                        case 'next':
-                            turn(1);
-                            return true;
-                        case 'up':
-                        case 'down':
-                            return true;
-                        default:
-                            return false;
-                    }
-                },
-            }),
-        [],
-    );
+    // Not before the start screen is gone: its layer must stay on top.
+    useEffect(() => {
+        if (starting) return undefined;
+        return pushLayer({
+            root: () => uiRef.current,
+            keepFocus: false,
+            onAction: (action) => {
+                switch (action) {
+                    case 'left':
+                    case 'previous':
+                        turn(-1);
+                        return true;
+                    case 'right':
+                    case 'next':
+                        turn(1);
+                        return true;
+                    case 'up':
+                    case 'down':
+                        return true;
+                    default:
+                        return false;
+                }
+            },
+        });
+        // turn() reads only refs, so the first one serves.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [starting]);
 
     // Dragging, flicking and tapping the ring.
     useEffect(() => {
@@ -378,14 +384,14 @@ export function HomeScreen() {
     const status = statuses[selected]!;
 
     return (
-        <main className={`home ${customOpen ? 'home--custom' : ''}`}>
+        <main className={`home ${customOpen ? 'home--custom' : ''} ${starting ? 'home--starting' : ''}`}>
             <canvas ref={canvasRef} className="home__stage" aria-hidden="true" />
             <div className="home__shade" aria-hidden="true" />
             {webglError ? (
                 <p className="home__webgl">This browser cannot draw 3D graphics (WebGL 2), which the games need.</p>
             ) : null}
 
-            <div className="home__ui" ref={uiRef} inert={sheet !== null}>
+            <div className="home__ui" ref={uiRef} inert={sheet !== null || starting}>
             <header className="topbar">
                 <div className="brand" aria-label="TRX">
                     <span className="brand__mark">
@@ -464,6 +470,7 @@ export function HomeScreen() {
             </footer>
             </div>
 
+            {starting ? <StartScreen onContinue={() => setStarting(false)} /> : null}
             {sheet?.kind === 'game' ? (
                 <GameSheet
                     item={RING_ITEMS.find((candidate) => candidate.key === sheet.key)!}

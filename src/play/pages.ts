@@ -12,6 +12,9 @@
 
 const FROM_GAME_KEY = 'trx-suite:from-game';
 
+/** Whether this page load is the menu coming back from a game. */
+let arrivedFromGame = false;
+
 interface PageState {
     fromGame?: boolean;
 }
@@ -26,8 +29,17 @@ export function leaveGame(): void {
 export function noteArrival(): void {
     if (sessionStorage.getItem(FROM_GAME_KEY) === null) return;
     sessionStorage.removeItem(FROM_GAME_KEY);
+    arrivedFromGame = true;
     // The router keeps its own fields in the state; they stay.
     history.replaceState({ ...(history.state as object | null), fromGame: true }, '');
+}
+
+/**
+ * Whether the menu opened because the player left a game just now, rather
+ * than as the app starts or on a reload.
+ */
+export function cameFromGame(): boolean {
+    return arrivedFromGame;
 }
 
 /** Opens a game page: in the menu's place when that menu took a game's, else after it. */

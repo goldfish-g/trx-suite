@@ -705,6 +705,277 @@ select {
     }
 }
 
+/* ------------------------------------------------------------ start screen */
+
+/* src/menu/StartScreen.tsx: the credits and where problems go, in a framed
+   box over the level flying by, before the menu shows. */
+.home__ui {
+    transition: opacity 260ms linear;
+}
+
+.home--starting .home__ui {
+    opacity: 0;
+}
+
+.start-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    /* Flex, not grid: the box's max-height of 100% is then the screen's. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
+    background: rgba(0, 0, 0, 0.45);
+    animation: fade 300ms linear;
+}
+
+.start {
+    display: flex;
+    flex-direction: column;
+    width: min(720px, 100%);
+    max-height: 100%;
+    padding: calc(var(--e) * 2);
+    background: var(--box-heavy);
+    box-shadow: var(--frame), 0 0 0 var(--e) #000;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.start__body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px 26px 2px;
+}
+
+.start__header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding-bottom: 12px;
+    text-align: center;
+}
+
+.start__title {
+    --gs: 4;
+    margin: 0;
+    line-height: 1;
+}
+
+.start__line {
+    margin: 0;
+    font-size: 0.95rem;
+    font-variant: small-caps;
+    letter-spacing: 0.14em;
+    color: var(--ink-dim);
+}
+
+.start__section {
+    padding: 14px 0;
+    border-top: var(--e) solid var(--rule);
+}
+
+.start__heading {
+    margin: 0 0 10px;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.start__text {
+    margin: 0 0 10px;
+}
+
+.start__text--quiet {
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+}
+
+.start strong {
+    color: var(--accent-bright);
+    font-weight: 700;
+}
+
+/* The part every player has to see: in a box of its own. */
+.start__section--problems {
+    margin: 2px 0 14px;
+    padding: 14px 18px 4px;
+    border-top: 0;
+    background: var(--notice);
+    box-shadow: var(--frame-dim);
+}
+
+.start__section--problems + .start__section {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.start__contacts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 4px 0 12px;
+}
+
+.start__credits,
+.start__repos {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.start__credits li {
+    position: relative;
+    margin: 0 0 8px;
+    padding-left: 18px;
+}
+
+.start__credits li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 0.62em;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    transform: rotate(45deg);
+}
+
+.start__repos {
+    display: grid;
+    gap: 10px 24px;
+}
+
+.start__repo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    padding-left: 12px;
+    border-left: calc(var(--e) * 2) solid var(--edge-dim-light);
+    line-height: 1.35;
+}
+
+.start__repo-name {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.start__repo-what {
+    color: var(--ink-dim);
+    font-size: 0.92rem;
+}
+
+.start__link {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: var(--edge-dim-light);
+    text-underline-offset: 0.18em;
+    overflow-wrap: anywhere;
+}
+
+.start__link:hover {
+    color: var(--accent-bright);
+    text-decoration-color: currentColor;
+}
+
+.start__repo .start__link {
+    font-size: 0.92rem;
+}
+
+.start__branch {
+    color: var(--ink-faint);
+}
+
+.start__legal {
+    margin: 2px 0 8px;
+    color: var(--ink-faint);
+    font-size: 0.82rem;
+    text-align: center;
+}
+
+.start__footer {
+    display: flex;
+    justify-content: center;
+    padding: 12px 18px 14px;
+    border-top: var(--e) solid var(--edge-dim-dark);
+    box-shadow: inset 0 var(--e) 0 var(--edge-dim-light);
+}
+
+.start__continue {
+    --gs: 1.5;
+    min-height: 54px;
+    padding: 0.4em 1.8em 0.4em 0.9em;
+}
+
+html[data-input='mouse'] .start__continue,
+html[data-input='touch'] .start__continue {
+    padding-left: 2.4em;
+    padding-right: 2.4em;
+}
+
+/* On a wide screen the repositories go two by two. */
+@media (min-width: 760px) and (min-height: 640px) {
+    .start__repos {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* A phone held upright: the box fills the screen. */
+@media (max-width: 560px) {
+    .start-layer {
+        padding: 0;
+    }
+
+    .start {
+        width: 100%;
+        height: 100%;
+    }
+
+    .start__body {
+        padding: calc(18px + var(--safe-top)) 18px 6px;
+    }
+
+    .start__title {
+        --gs: 3;
+    }
+
+    .start__footer {
+        padding-bottom: calc(14px + var(--safe-bottom));
+    }
+}
+
+/* A phone on its side: little height. */
+@media (max-height: 500px) {
+    .start-layer {
+        padding: 0 calc(16px + var(--safe-right)) 0 calc(16px + var(--safe-left));
+    }
+
+    .start {
+        height: 100%;
+    }
+
+    .start__body {
+        padding-top: 12px;
+    }
+
+    .start__title {
+        --gs: 2;
+    }
+
+    .start__footer {
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .start__continue {
+        --gs: 1;
+        min-height: 44px;
+    }
+}
+
 /* ------------------------------------------------------------ sheets */
 
 .sheet-layer {
