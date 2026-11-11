@@ -403,6 +403,8 @@ select {
     display: block;
     width: auto;
     height: 60px;
+    /* The kit's torch amber, in the look's own colour. */
+    color: var(--accent);
 }
 
 .spotlight {
@@ -763,6 +765,7 @@ select {
     display: block;
     width: auto;
     height: 88px;
+    color: var(--accent);
 }
 
 .start__section {
