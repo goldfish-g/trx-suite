@@ -2097,9 +2097,10 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 }
 
 /* Browse's credit to TRCustoms: its logo, and its name in its own site's
-   lettering. It sits in the bar's empty corner where the bar has one; a
-   phone, upright or on its side, has none, so it heads the levels there
-   instead and scrolls away with them. */
+   lettering. It sits in the bar's empty corner, smaller where the corner
+   is narrow (the screen measures, in src/custom/PoweredBy.tsx); where even
+   that is too small, and on a phone, upright or on its side, it heads the
+   levels instead and scrolls away with them. */
 .powered-by {
     display: flex;
     align-items: center;
@@ -2137,6 +2138,10 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     justify-self: start;
     gap: 10px;
     min-width: 0;
+    /* As big as the corner leaves it, the same in every look (the screen
+       measures, in src/custom/PoweredBy.tsx); smaller from its left edge. */
+    transform: scale(var(--credit-scale, 1));
+    transform-origin: left center;
 
     .powered-by__logo {
         height: 40px;
@@ -2188,8 +2193,17 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
     box-shadow: var(--frame);
 }
 
-/* The bar's corner is too narrow for it under 900 pixels, and gone on a phone. */
-@media (max-width: 899px), (max-height: 500px) {
+/* Too wide for the corner: hidden there, not gone, so it can be measured again. */
+.custom[data-credit='list'] .powered-by--bar {
+    visibility: hidden;
+}
+
+.custom[data-credit='list'] .powered-by--list {
+    display: flex;
+}
+
+/* A phone's bar has no corner for it. */
+@media (max-width: 640px), (max-height: 500px) {
     .powered-by--bar {
         display: none;
     }

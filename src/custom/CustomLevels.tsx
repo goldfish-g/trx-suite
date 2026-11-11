@@ -23,7 +23,7 @@ import { browseKey, hasMore, loadMore, SORTS, useBrowse, type BrowseQuery } from
 import { gameTitle, keepFocus } from './labels';
 import { BrowseCard, CloudCard, InstalledCard } from './LevelCard';
 import { installedCopy, LevelDetails } from './LevelDetails';
-import { PoweredBy } from './PoweredBy';
+import { PoweredBy, useCreditPlace } from './PoweredBy';
 import { useCloud } from '../cloud/sync';
 import { cloudLevelOf, cloudOnlyLevels, cloudProfilesOf } from '../cloud/view';
 
@@ -91,6 +91,7 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
     const shownGame: EngineNumber = games.includes(game) ? game : 1;
 
     useEffect(() => remember(SECTION_KEY, section), [section]);
+    useCreditPlace(root, section === 'browse');
     // A tab turns over like a page, by trigger, bumper, click or tap.
     const shownTab = useRef(`${section}:${shownGame}`);
     useEffect(() => {

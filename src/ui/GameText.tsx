@@ -5,12 +5,26 @@
 // script, is set in the text font instead, whole.
 
 import type { CSSProperties } from 'react';
-import { SHEETS, type Sheet } from './gameArt/sheets';
+import { LETTER_SPACING, SHEETS, WORD_SPACING, type Sheet } from './gameArt/sheets';
 import { useTheme } from './theme';
 
 export function canLetter(text: string, sheet: Sheet): boolean {
     for (const char of text) if (char !== ' ' && sheet.glyphs[char] === undefined) return false;
     return true;
+}
+
+/**
+ * How wide text is in the font's pixels, as the styles set it: each letter's
+ * advance, the gap between letters, a space between words. 0 for text the
+ * font cannot letter.
+ */
+export function letteredWidth(text: string, sheet: Sheet): number {
+    if (!canLetter(text, sheet)) return 0;
+    return text.split(' ').reduce((width, word, index) => {
+        const chars = [...word];
+        const advances = chars.reduce((sum, char) => sum + sheet.glyphs[char]![4], 0);
+        return width + advances + LETTER_SPACING * Math.max(0, chars.length - 1) + (index > 0 ? WORD_SPACING + LETTER_SPACING : 0);
+    }, 0);
 }
 
 export function GameText({ text, className }: { text: string; className?: string }) {
