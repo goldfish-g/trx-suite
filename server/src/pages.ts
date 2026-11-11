@@ -63,7 +63,7 @@ ${ok ? 'setTimeout(function(){try{window.close()}catch(e){}},400);' : ''}})();</
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="robots" content="noindex">
-<title>${escapeHtml(title)} · tombs.nexus</title>
+<title>${escapeHtml(title)} · Tombs Nexus</title>
 <style>${STYLE}</style>
 </head>
 <body>

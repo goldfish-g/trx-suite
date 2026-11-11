@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "tombs.nexus",
-  "short_name": "tombs.nexus",
+  "name": "Tombs Nexus",
+  "short_name": "Tombs Nexus",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",

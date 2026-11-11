@@ -68,7 +68,7 @@ export async function makeFixture(): Promise<Fixture> {
     await put(join(staticDir, 'index.html'), INDEX_HTML);
     await put(join(staticDir, 'assets', 'index-abc123.js'), 'console.log("app");');
     await put(join(staticDir, 'sw.js'), 'self.addEventListener("fetch", () => {});');
-    await put(join(staticDir, 'manifest.webmanifest'), '{"name":"tombs.nexus"}');
+    await put(join(staticDir, 'manifest.webmanifest'), '{"name":"Tombs Nexus"}');
     await put(join(staticDir, '.env'), 'SECRET=hunter2');
 
     return { root, dataDir, enginesDir, staticDir, cleanup: () => rm(root, { recursive: true, force: true }) };

@@ -52,7 +52,7 @@ export function PlayScreen() {
             if (unsupported !== null) return fail(unsupported);
             const profile = profileId === undefined ? undefined : await getProfile(profileId);
             if (profile === undefined) return fail('This profile does not exist any more.');
-            document.title = `${profile.name} · tombs.nexus`;
+            document.title = `${profile.name} · Tombs Nexus`;
             await runSession({
                 profile,
                 mod,

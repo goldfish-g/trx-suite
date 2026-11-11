@@ -97,7 +97,7 @@ export function HomeScreen() {
         }
         // Saves and custom levels in step with the cloud, now and as they change.
         startCloudSync();
-        document.title = 'tombs.nexus';
+        document.title = 'Tombs Nexus';
     }, []);
 
     // The theme of the game flying by, and the menu's sound effects.
