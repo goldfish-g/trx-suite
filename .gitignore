@@ -9,3 +9,4 @@ data/*
 !data/README.md
 !data/catalog.example.json
 .env
+/deploy/oracle/
