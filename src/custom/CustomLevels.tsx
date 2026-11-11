@@ -23,6 +23,7 @@ import { browseKey, hasMore, loadMore, SORTS, useBrowse, type BrowseQuery } from
 import { gameTitle, keepFocus } from './labels';
 import { BrowseCard, CloudCard, InstalledCard } from './LevelCard';
 import { installedCopy, LevelDetails } from './LevelDetails';
+import { PoweredBy } from './PoweredBy';
 import { useCloud } from '../cloud/sync';
 import { cloudLevelOf, cloudOnlyLevels, cloudProfilesOf } from '../cloud/view';
 
@@ -221,6 +222,7 @@ export function CustomLevels({ onClose }: { onClose(): void }) {
         <>
         <div className={`custom ${opened !== null ? 'custom--covered' : ''}`} ref={root} role="dialog" aria-modal="true" aria-label="Custom levels" inert={opened !== null || adding}>
             <header className="custom__header">
+                {section === 'browse' ? <PoweredBy place="bar" /> : null}
                 <div className="custom__tabs custom__tabs--sections" role="tablist" aria-label="Section">
                     <Glyph name="sectionPrevious" />
                     <SectionTab label="Library" on={section === 'installed'} onPick={() => setSection('installed')} />
@@ -427,6 +429,7 @@ function BrowseGrid({ query, scroller, gamedata, onOpen, onClearSearch }: Browse
     }, [arrived, key, scroller]);
     return (
         <>
+            <PoweredBy place="list" />
             {/* How many levels TRCustoms has is said in the search box; a search says how many it found. */}
             {query.search !== '' && list?.total !== null && list?.total !== undefined && list.total > 0 ? (
                 <p className="custom__count">
