@@ -182,13 +182,14 @@ export function HomeScreen() {
                 try {
                     const choice = await candidate.load();
                     if (choice === null || cancelled) continue;
-                    // A level of another game is coming: its music fades out while the level loads.
-                    nextTheme(choice.theme);
                     // Routes planned ahead for this very file, when it is one of the official games' own.
                     const planned = await plannedRoutes(choice.mod, choice.fileName, choice.bytes.length).catch(() => null);
                     if (cancelled) return;
                     // Some levels have nothing worth flying through (all dark, cramped or open to the void).
                     if (planned !== null && planned.length === 0) continue;
+                    // A level of another game is coming: the music fades out while the level loads.
+                    // Not before: a level passed over must not stop the music of the one still showing.
+                    nextTheme(choice.theme);
                     const prepared = await loadPreparedLevel(choice.bytes, choice.fileName, undefined, planned);
                     if (cancelled || stageRef.current === null) return;
                     if (prepared.routes.length === 0) continue;
