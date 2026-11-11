@@ -392,6 +392,25 @@ select {
     gap: 10px;
 }
 
+/* Where the buttons do not all fit with their names (the bar measures, in
+   src/menu/topbarFit.ts), Settings and the update show only their icons, or
+   their buttons, then the account too; the names stay for screen readers. */
+.topbar[data-fit] .prompt--chip[data-action='menu'],
+.topbar[data-fit] .prompt--chip[data-action='view'],
+.topbar[data-fit='all-icons'] .topbar__account {
+    min-width: 44px;
+}
+
+.topbar[data-fit] .prompt--chip[data-action='menu'] .prompt__label,
+.topbar[data-fit] .prompt--chip[data-action='view'] .prompt__label,
+.topbar[data-fit='all-icons'] .topbar__account .prompt__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
 .brand {
     display: flex;
     flex-direction: column;
@@ -623,22 +642,6 @@ select {
         gap: 0.4em;
         padding-left: 0.65em;
         padding-right: 0.65em;
-    }
-
-    /* Settings and the update show only their icons, or their buttons; the
-       words stay for screen readers. */
-    .topbar .prompt--chip[data-action='menu'],
-    .topbar .prompt--chip[data-action='view'] {
-        min-width: 44px;
-    }
-
-    .topbar .prompt--chip[data-action='menu'] .prompt__label,
-    .topbar .prompt--chip[data-action='view'] .prompt__label {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
     }
 
     .spotlight {

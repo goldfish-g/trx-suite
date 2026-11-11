@@ -35,6 +35,7 @@ import { describeError, downloadGame, playGame } from './actions';
 import { reducedMotion } from './motion';
 import { CustomLevels } from '../custom/CustomLevels';
 import { StartScreen } from './StartScreen';
+import { useTopbarFit } from './topbarFit';
 
 type SheetState =
     | { kind: 'game'; key: string }
@@ -61,6 +62,7 @@ export function HomeScreen() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const badgesRef = useRef<HTMLDivElement>(null);
     const uiRef = useRef<HTMLDivElement>(null);
+    const topbarRef = useRef<HTMLElement>(null);
     const ringRef = useRef<RingLayer | null>(null);
     const stageRef = useRef<Stage | null>(null);
     const [selected, setSelected] = useState(initialSelection);
@@ -77,6 +79,7 @@ export function HomeScreen() {
     const catalog = useAccount((state) => state.catalog);
     const progress = useImports((state) => state.progress);
     const updateReady = useInstall((state) => state.updateReady);
+    useTopbarFit(topbarRef, updateReady ? 'update' : '');
 
     const statuses = useMemo(
         () => RING_ITEMS.map((item) => itemStatus(item, gamedata, catalog, progress)),
@@ -394,7 +397,7 @@ export function HomeScreen() {
             ) : null}
 
             <div className="home__ui" ref={uiRef} inert={sheet !== null || starting}>
-            <header className="topbar">
+            <header className="topbar" ref={topbarRef}>
                 <div className="brand">
                     <BrandLogo className="brand__logo" />
                 </div>
