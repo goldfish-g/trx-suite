@@ -5,12 +5,14 @@ import { pullSavesForSession, pushSavesForSession } from '../cloud/sync';
 import { getGameData, listGameData, listGameDataFiles } from '../gamedata/store';
 import type { GameDataRecord } from '../gamedata/types';
 import { GAMES, type EngineNumber } from '../games/catalog';
+import { useInputDevice } from '../input/controller';
 import type { RetryNotice } from '../lib/download';
 import { markProfilePlayed, noteStorageMod } from '../profiles/store';
 import type { ProfileRecord } from '../profiles/types';
 import { createAdapters } from './adapters';
 import { baseModOf, borrowedFiles, GameFiles, hideOtherGames, type StagedGame } from './files';
 import { loadEngine } from './load';
+import { prepareStartSettings } from './settings';
 import type { TrxEngine } from './types';
 
 const PUSH_DELAY_MS = 3000;
@@ -167,6 +169,23 @@ export async function runSession(options: SessionOptions): Promise<number> {
             onStage({ kind: 'cloud' });
             await pullSavesForSession(profile.id, mod);
             onStage({ kind: 'starting' });
+        },
+        storageRead: (path) => {
+            if (engine === null) return;
+            const storageMod = path.slice(path.lastIndexOf('/') + 1);
+            const mods = new Set([storageMod, mod, own.mod, baseModOf(own)]);
+            try {
+                prepareStartSettings(engine.fs, {
+                    storagePath: path,
+                    engine: engineNumber,
+                    stringsDirs: ['/cfg', ...[...mods].map((name) => `/games/${name}`)],
+                    device: useInputDevice.getState().device,
+                    languages: navigator.languages ?? [navigator.language],
+                });
+            } catch (error) {
+                // The game plays with the settings it had.
+                console.error('[settings] the starting device was not set:', error);
+            }
         },
         onFlushed: () => {
             if (pushTimer !== null) clearTimeout(pushTimer);

@@ -16,6 +16,8 @@ export interface AdapterHooks {
     prepareMod(mod: string): Promise<void>;
     /** The engine reads this mod's saves next: the moment to bring in the cloud's. */
     beforeLoad?(mod: string): Promise<void>;
+    /** The storage at this path is read in, and the game reads its settings from it next. */
+    storageRead?(path: string): void;
     /** What the game saved is in the browser's storage now. */
     onFlushed?(): void;
 }
@@ -114,6 +116,7 @@ export function createAdapters(hooks: AdapterHooks): SessionAdapters {
                 // directories the engine writes into come after it.
                 engine.fs.mkdirTree(`${storage.path}/saves`);
                 engine.fs.mkdirTree(`${storage.path}/cfg`);
+                hooks.storageRead?.(storage.path);
             }
         },
 

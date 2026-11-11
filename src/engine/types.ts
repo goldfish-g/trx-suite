@@ -27,6 +27,7 @@ export interface TrxCreateOptions {
 export interface EngineFs {
     mkdirTree(path: string): void;
     writeFile(path: string, data: Uint8Array, opts?: { canOwn?: boolean }): void;
+    readFile(path: string): Uint8Array;
     symlink(target: string, path: string): void;
     analyzePath(path: string): { exists: boolean };
     readdir(path: string): string[];
