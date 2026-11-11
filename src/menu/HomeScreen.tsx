@@ -21,6 +21,7 @@ import { MoveHint, Prompt, PromptBar } from '../ui/Prompt';
 import { describeProgress } from '../library/describe';
 import { ProgressBar } from '../ui/ProgressBar';
 import { GameText } from '../ui/GameText';
+import { BrandLogo } from '../ui/BrandLogo';
 import { formatBytes } from '../ui/format';
 import { isLockedLook, itemStatus, RING_ITEMS, type ItemStatus } from './items';
 import { createArtifact, type Artifact } from './models';
@@ -93,7 +94,7 @@ export function HomeScreen() {
         }
         // Saves and custom levels in step with the cloud, now and as they change.
         startCloudSync();
-        document.title = 'TRX';
+        document.title = 'tombs.nexus';
     }, []);
 
     // The theme of the game flying by, and the menu's sound effects.
@@ -394,11 +395,8 @@ export function HomeScreen() {
 
             <div className="home__ui" ref={uiRef} inert={sheet !== null || starting}>
             <header className="topbar">
-                <div className="brand" aria-label="TRX">
-                    <span className="brand__mark">
-                        <GameText text="TRX" />
-                    </span>
-                    <span className="brand__line">Tomb Raider, in your browser</span>
+                <div className="brand">
+                    <BrandLogo className="brand__logo" />
                 </div>
                 <div className="topbar__actions">
                     {updateReady ? (

@@ -1,4 +1,4 @@
-# TRX Suite
+# tombs.nexus
 
 Tomb Raider I–IV and their expansions in the browser, played with the
 [TRX](https://github.com/LostArtefacts/TRX) engine's WebGL build. It installs

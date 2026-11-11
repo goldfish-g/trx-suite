@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { pushLayer } from '../input/controller';
+import { BrandLogo } from '../ui/BrandLogo';
 import { GameText } from '../ui/GameText';
 import { ExternalIcon } from '../ui/icons';
 import { Prompt } from '../ui/Prompt';
@@ -102,9 +103,8 @@ export function StartScreen({ onContinue }: { onContinue(): void }) {
                 <div className="start__body">
                     <header className="start__header">
                         <h1 className="start__title" id="start-title">
-                            <GameText text="TRX" />
+                            <BrandLogo className="start__logo" />
                         </h1>
-                        <p className="start__line">Tomb Raider, in your browser</p>
                     </header>
 
                     <section className="start__section">

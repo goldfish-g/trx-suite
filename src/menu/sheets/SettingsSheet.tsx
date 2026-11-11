@@ -40,7 +40,7 @@ export function SettingsSheet({ onClose, onNewFlyby }: { onClose(): void; onNewF
     };
 
     return (
-        <Sheet title="Settings" eyebrow="TRX" onClose={onClose}>
+        <Sheet title="Settings" eyebrow="tombs.nexus" onClose={onClose}>
             {mode !== 'installed' ? (
                 <section className="sheet__section">
                     <h3 className="sheet__heading">

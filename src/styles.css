@@ -360,6 +360,8 @@ select {
     inset: 0;
     pointer-events: none;
     background:
+        /* The logo's corner, so it reads over a bright level too. */
+        radial-gradient(ellipse 36% 28% at 0% 0%, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%),
         radial-gradient(ellipse 130% 120% at 50% 45%, transparent 62%, rgba(0, 0, 0, 0.32) 100%),
         linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, transparent 16%, transparent 56%, rgba(0, 0, 0, 0.66) 100%);
 }
@@ -393,19 +395,14 @@ select {
 .brand {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     line-height: 1.1;
 }
 
-.brand__mark {
-    --gs: 2;
-}
-
-.brand__line {
-    margin-top: 2px;
-    font-size: 0.82rem;
-    font-variant: small-caps;
-    letter-spacing: 0.12em;
-    color: var(--ink-dim);
+.brand__logo {
+    display: block;
+    width: auto;
+    height: 60px;
 }
 
 .spotlight {
@@ -607,13 +604,9 @@ select {
 }
 
 @media (max-width: 640px) {
-    .brand__line {
-        display: none;
-    }
-
     /* The brand and both chips share a phone's width. */
-    .brand__mark {
-        --gs: 1.5;
+    .brand__logo {
+        height: 40px;
     }
 
     .topbar {
@@ -669,8 +662,8 @@ select {
         padding-top: calc(10px + var(--safe-top));
     }
 
-    .brand__line {
-        display: none;
+    .brand__logo {
+        height: 44px;
     }
 
     .spotlight {
@@ -760,17 +753,16 @@ select {
 }
 
 .start__title {
-    --gs: 4;
+    display: flex;
+    justify-content: center;
     margin: 0;
     line-height: 1;
 }
 
-.start__line {
-    margin: 0;
-    font-size: 0.95rem;
-    font-variant: small-caps;
-    letter-spacing: 0.14em;
-    color: var(--ink-dim);
+.start__logo {
+    display: block;
+    width: auto;
+    height: 88px;
 }
 
 .start__section {
@@ -923,8 +915,8 @@ html[data-input='keyboard'] .source__repo:focus {
         padding: calc(18px + var(--safe-top)) 18px 6px;
     }
 
-    .start__title {
-        --gs: 3;
+    .start__logo {
+        height: 64px;
     }
 
     .start__footer {
@@ -946,8 +938,8 @@ html[data-input='keyboard'] .source__repo:focus {
         padding-top: 12px;
     }
 
-    .start__title {
-        --gs: 2;
+    .start__logo {
+        height: 44px;
     }
 
     .start__footer {
@@ -1827,7 +1819,6 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
 }
 
 /* Places that hold only the game's lettering: no line of the text font around it. */
-.brand__mark,
 .spotlight__title,
 .sheet__title,
 .play__heading {
@@ -1845,8 +1836,8 @@ html[data-input='keyboard'] .row:not(:focus-within) .row__prompts {
         --gi: 2;
     }
 
-    .brand__mark {
-        --gs: 3;
+    .brand__logo {
+        height: 84px;
     }
 
     .spotlight__title {
