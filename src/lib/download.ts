@@ -78,10 +78,21 @@ function describe(error: unknown): string {
     return error instanceof Error ? error.message : String(error);
 }
 
+/**
+ * Whether the server compressed its answer. Its Content-Length then counts
+ * the compressed bytes, while the body arrives unpacked: it says nothing of
+ * the file's size.
+ */
+function isCompressed(response: Response): boolean {
+    const encoding = response.headers.get('Content-Encoding')?.trim().toLowerCase();
+    return encoding !== undefined && encoding !== '' && encoding !== 'identity';
+}
+
 function totalFromHeaders(response: Response, offset: number): number | null {
     const range = response.headers.get('Content-Range');
     const fromRange = range === null ? NaN : Number(range.split('/')[1]);
     if (Number.isFinite(fromRange)) return fromRange;
+    if (isCompressed(response)) return null;
     const length = Number(response.headers.get('Content-Length'));
     return Number.isFinite(length) && length > 0 ? offset + length : null;
 }
@@ -249,7 +260,7 @@ async function fetchVersion(url: string): Promise<{ version: string; size?: numb
             signal: AbortSignal.timeout(8000),
         });
         if (!response.ok) return null;
-        const size = Number(response.headers.get('Content-Length'));
+        const size = isCompressed(response) ? NaN : Number(response.headers.get('Content-Length'));
         const version = [
             response.headers.get('ETag'),
             response.headers.get('Last-Modified'),
