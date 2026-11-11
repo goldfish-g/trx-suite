@@ -20,7 +20,7 @@ export interface Job {
 export async function archiveJobs(mod: string, zip: string): Promise<Job[]> {
     const entries = await listZip(zip);
     return entries
-        .filter((entry) => entry.path.includes('/levels/') && isScenic(entry.path.slice(entry.path.lastIndexOf('/') + 1), mod))
+        .filter((entry) => entry.path.includes('/levels/') && isScenic(entry.path.slice(entry.path.lastIndexOf('/') + 1)))
         .map((entry) => ({ mod, zip, path: entry.path }));
 }
 

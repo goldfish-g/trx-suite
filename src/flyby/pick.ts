@@ -53,7 +53,7 @@ async function libraryCandidates(): Promise<Candidate[][]> {
         const theme = libraryTheme(record.id, record.mod, files);
         const paths = files.filter((path) => {
             const name = path.slice(path.lastIndexOf('/') + 1);
-            return path.includes('/levels/') && isScenic(name, record.mod);
+            return path.includes('/levels/') && isScenic(name);
         });
         perGame.push(
             paths.map((path) => {
