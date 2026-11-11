@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/custom/convert/worker.ts", "src/custom/convert/stock.test.ts", "src/custom/convert/font.test.ts"]
+  "include": ["src/custom/convert/worker.ts", "src/custom/convert/stock.test.ts", "src/custom/convert/font.test.ts", "src/custom/convert/layout.test.ts"]
 }
