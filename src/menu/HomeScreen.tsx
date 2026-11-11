@@ -312,6 +312,8 @@ export function HomeScreen() {
         const canvas = canvasRef.current!;
         let start: { x: number; y: number; time: number; id: number } | null = null;
         let dragging = false;
+        // Whether the press now ending turned the ring, rather than tapping it.
+        let dragged = false;
         let lastX = 0;
         let lastTime = 0;
         let velocity = 0;
@@ -321,6 +323,7 @@ export function HomeScreen() {
             if (event.button !== 0) return;
             start = { x: event.clientX, y: event.clientY, time: performance.now(), id: event.pointerId };
             dragging = false;
+            dragged = false;
             lastX = event.clientX;
             lastTime = start.time;
             velocity = 0;
@@ -330,6 +333,7 @@ export function HomeScreen() {
             const dx = event.clientX - start.x;
             if (!dragging && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(event.clientY - start.y)) {
                 dragging = true;
+                dragged = true;
                 canvas.setPointerCapture(event.pointerId);
             }
             if (!dragging) return;
@@ -342,24 +346,27 @@ export function HomeScreen() {
         const up = (event: PointerEvent) => {
             if (start === null || event.pointerId !== start.id) return;
             const ring = ringRef.current;
-            if (ring !== null && dragging) {
-                setSelected(ring.release(velocity));
-            } else if (ring !== null) {
-                const rect = canvas.getBoundingClientRect();
-                const hit = ring.pick(
-                    ((event.clientX - rect.left) / rect.width) * 2 - 1,
-                    -((event.clientY - rect.top) / rect.height) * 2 + 1,
-                );
-                if (hit !== null) {
-                    if (hit === ring.frontIndex) open(hit);
-                    else {
-                        ring.select(hit);
-                        setSelected(hit);
-                    }
-                }
-            }
+            if (ring !== null && dragging) setSelected(ring.release(velocity));
             start = null;
             dragging = false;
+        };
+        // A tap answers the click that ends it, not the finger lifting: after
+        // a finger lifts, the browser clicks whatever is then under it, which
+        // would be what the tap opened, such as a level in Browse.
+        const tap = (event: MouseEvent) => {
+            const ring = ringRef.current;
+            if (ring === null || dragged) return;
+            const rect = canvas.getBoundingClientRect();
+            const hit = ring.pick(
+                ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                -((event.clientY - rect.top) / rect.height) * 2 + 1,
+            );
+            if (hit === null) return;
+            if (hit === ring.frontIndex) open(hit);
+            else {
+                ring.select(hit);
+                setSelected(hit);
+            }
         };
         let wheelAt = 0;
         const wheel = (event: WheelEvent) => {
@@ -375,12 +382,14 @@ export function HomeScreen() {
         canvas.addEventListener('pointermove', move);
         canvas.addEventListener('pointerup', up);
         canvas.addEventListener('pointercancel', up);
+        canvas.addEventListener('click', tap);
         canvas.addEventListener('wheel', wheel, { passive: false });
         return () => {
             canvas.removeEventListener('pointerdown', down);
             canvas.removeEventListener('pointermove', move);
             canvas.removeEventListener('pointerup', up);
             canvas.removeEventListener('pointercancel', up);
+            canvas.removeEventListener('click', tap);
             canvas.removeEventListener('wheel', wheel);
         };
     }, []);
