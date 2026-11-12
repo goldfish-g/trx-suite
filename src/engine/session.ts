@@ -7,7 +7,7 @@ import type { GameDataRecord } from '../gamedata/types';
 import { GAMES, type EngineNumber } from '../games/catalog';
 import { useInputDevice } from '../input/controller';
 import type { RetryNotice } from '../lib/download';
-import { markProfilePlayed, noteStorageMod } from '../profiles/store';
+import { markProfilePlayed, noteStorageMod, settleProfileEngine } from '../profiles/store';
 import type { ProfileRecord } from '../profiles/types';
 import { createAdapters } from './adapters';
 import { baseModOf, borrowedFiles, GameFiles, hideOtherGames, type StagedGame } from './files';
@@ -123,7 +123,7 @@ export async function runSession(options: SessionOptions): Promise<number> {
     let playing: string | null = null;
 
     onStage({ kind: 'engine', received: 0, total: null });
-    const loaded = await loadEngine(profile.engineVersion, {
+    const loaded = await loadEngine(await settleProfileEngine(profile), {
         signal,
         onRetry,
         onProgress: ({ received, total }) => onStage({ kind: 'engine', received, total }),

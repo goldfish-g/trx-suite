@@ -15,6 +15,7 @@ import { pushLayer } from '../input/controller';
 import { refreshLibrary, useLibrary } from '../library/store';
 import { applyUpdate, useInstall } from '../pwa/install';
 import { cameFromGame } from '../play/pages';
+import { settleProfileEngines } from '../profiles/store';
 import { Stage } from '../stage/Stage';
 import { ChevronLeft, ChevronRight, GearIcon, LockIcon, UpdateIcon, UserIcon } from '../ui/icons';
 import { MoveHint, Prompt, PromptBar } from '../ui/Prompt';
@@ -95,6 +96,8 @@ export function HomeScreen() {
             resumed = true;
             void resumeInterruptedImports();
         }
+        // Profiles on an engine build the server still offers.
+        void settleProfileEngines().catch((error: unknown) => console.warn('[profiles] moving to an offered engine failed:', error));
         // Saves and custom levels in step with the cloud, now and as they change.
         startCloudSync();
         document.title = 'Tombs Nexus';

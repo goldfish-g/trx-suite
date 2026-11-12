@@ -90,7 +90,7 @@ export function ProfileRow({
         >
             <span className="row__title">{profile.name}</span>
             <span className="row__meta">
-                Played {formatWhen(profile.lastPlayedAt)} · engine {profile.engineVersion}
+                Played {formatWhen(profile.lastPlayedAt)} · TRX {profile.engineVersion}
                 {synced ? (
                     <span className="row__cloud" title="Its saves are in your cloud">
                         <CloudIcon />

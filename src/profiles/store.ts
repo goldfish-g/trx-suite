@@ -1,3 +1,4 @@
+import { offeredEngine } from '../engine/versions';
 import type { EngineNumber } from '../games/catalog';
 import { announceLibraryChange, requestCloudSync } from '../lib/changes';
 import { getDb, newId } from '../lib/db';
@@ -64,6 +65,23 @@ export async function updateProfile(id: string, patch: Partial<ProfileRecord>): 
     if (profile === undefined) return;
     await db.put('profiles', { ...profile, ...patch });
     announceLibraryChange();
+}
+
+/**
+ * The build a profile plays (versions.ts offeredEngine), kept with it once it
+ * moves to another, so the cloud and the profile list name that one.
+ */
+export async function settleProfileEngine(profile: ProfileRecord): Promise<string> {
+    const engineVersion = await offeredEngine(profile.engineVersion);
+    if (engineVersion !== profile.engineVersion) {
+        await updateProfile(profile.id, { engineVersion, updatedAt: new Date().toISOString() });
+    }
+    return engineVersion;
+}
+
+/** Moves every profile whose build the server no longer offers onto the newest it does. */
+export async function settleProfileEngines(): Promise<void> {
+    for (const profile of await listProfiles()) await settleProfileEngine(profile);
 }
 
 export async function renameProfile(id: string, name: string): Promise<void> {

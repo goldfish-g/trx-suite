@@ -13,13 +13,37 @@ data/
   flyby/
     house.tr2             levels shown behind the menus
   engines/                TRX WebGL builds (ENGINES_DIR)
-    manifest.json         optional: {"versions": ["1.5.0"]}
-    1.5.0/
+    manifest.json         optional: {"versions": ["1.12-17-g319a4c2"]}
+    1.12-17-g319a4c2/
       trx-adapter.js
       trx-engine.js
       TRX.wasm
       TRX.data
 ```
+
+## Engine builds
+
+Each build is named after the version TRX gives itself, which its log and its
+saves carry too: `tools/get_version` in the TRX checkout, a release such as
+`1.12` or a development build such as `1.12-17-g319a4c2` (17 commits after
+1.12). The Docker build cannot see the checkout's git history, so it calls
+itself `?` unless told; set the version on its build directory before
+building, then package as usual:
+
+```sh
+v=$(git describe --dirty --always --abbrev=7 --tags --exclude latest --match 'trx-*' | sed 's/^trx-//')
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/app/" --entrypoint sh rrdash/trx-webgl:<image version> \
+    -c "meson configure /app/build/trx/webgl -Dtrx_version=$v && /app/tools/shared/docker/game-webgl/entrypoint.sh build --target release"
+```
+
+TRX.data packs `data/trx/ship`, including what `tools/download_assets` puts
+there (title pictures, The Golden Mask's levels, Tomb Raider's PC demo):
+without them it shrinks from about 335 MB to about 19 MB.
+
+Profiles keep the build they were made with while the server offers it. Once
+`manifest.json` stops listing a build, the app moves its profiles to the
+newest it lists, so leave the old directory in place until the page has been
+updated everywhere.
 
 ## catalog.json
 
