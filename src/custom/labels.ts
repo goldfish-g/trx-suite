@@ -22,6 +22,17 @@ export function gameTitle(engine: EngineNumber): string {
     return findGame(`tr${engine}`)?.title ?? `TR${engine}`;
 }
 
+/**
+ * What a lone level file takes from the original game it was made for when it
+ * plays through the engine's own trN-level: music always, and the sounds of
+ * Tomb Raider II and III, whose levels keep theirs in the game's main.sfx.
+ * Converted levels fetch what they use of the original from the server.
+ */
+export function loneLevelNotice(engine: EngineNumber): string {
+    const what = engine === 2 || engine === 3 ? 'sounds and music' : 'music';
+    return `A lone level file takes its ${what} from ${gameTitle(engine)}, which isn’t in your library: add it too to hear them.`;
+}
+
 export function authorsLine(level: Pick<CustomLevelSummary, 'authors'>): string | null {
     const { authors } = level;
     if (authors.length === 0) return null;

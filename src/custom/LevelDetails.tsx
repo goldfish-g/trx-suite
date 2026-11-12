@@ -8,7 +8,6 @@ import type { CustomLevelDetails, CustomLevelSummary } from '../../shared/api.ts
 import { baseModOf } from '../engine/files';
 import { cancelRedownload, retryImport, useImports } from '../gamedata/imports';
 import type { GameDataRecord } from '../gamedata/types';
-import { findGame } from '../games/catalog';
 import { playEffect } from '../audio/effects';
 import { pushLayer } from '../input/controller';
 import { describeProgress, describeSource } from '../library/describe';
@@ -27,7 +26,7 @@ import { fetchLevelDetails } from './api';
 import { Description } from './Description';
 import { Shot, useObjectUrl } from './LevelCard';
 import { ProfilesSheet } from './ProfilesSheet';
-import { authorsLine, gameTitle, keepFocus, lengthLabel, ratingTone } from './labels';
+import { authorsLine, gameTitle, keepFocus, lengthLabel, loneLevelNotice, ratingTone } from './labels';
 
 interface Props {
     /** A level from TRCustoms, as a list showed it. */
@@ -145,9 +144,9 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
     }, [shotCount]);
 
     const engine = record?.engine ?? level?.game ?? null;
-    const baseMod = record !== undefined ? baseModOf(record) : engine !== null ? `tr${engine}` : null;
-    const base = baseMod === null ? undefined : findGame(baseMod);
-    const hasBase = baseMod === null || gamedata.some((candidate) => candidate.layout === 'game' && candidate.mod === baseMod && candidate.status === 'ready');
+    // Converted levels fetch what they use of the original game as they come in; only lone level files lean on it.
+    const lone = record?.layout === 'level';
+    const hasBase = !lone || gamedata.some((candidate) => candidate.layout === 'game' && candidate.mod === baseModOf(record) && candidate.status === 'ready');
 
     const run = async (task: () => Promise<unknown>) => {
         setBusy(true);
@@ -282,12 +281,7 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                         </div>
                     ) : null}
                     {record?.status === 'failed' ? <p className="notice notice--error">{record.error ?? 'Adding it failed.'}</p> : null}
-                    {!hasBase && base !== undefined ? (
-                        <p className="notice">
-                            It builds on {base.title}, which isn’t in your library. TRX takes its title screen, music and sounds from there, so it may not
-                            start without it.
-                        </p>
-                    ) : null}
+                    {record?.layout === 'level' && !hasBase ? <p className="notice">{loneLevelNotice(record.engine)}</p> : null}
                     {replacing ? <p className="details__note">Downloading it again. Your saves stay, and so does the level you had if this fails.</p> : null}
                     {record?.reimportError !== undefined ? (
                         <p className="notice notice--error">Downloading it again failed: {record.reimportError} The level you had stays as it was.</p>

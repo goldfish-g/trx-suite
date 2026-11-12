@@ -4,14 +4,13 @@
 
 import { useState } from 'react';
 import type { GameDataRecord } from '../gamedata/types';
-import { ENGINE_NAMES } from '../games/catalog';
 import { useLibrary } from '../library/store';
 import { describeDetection, describeError, inspectPicked, type PickedFiles } from '../menu/actions';
 import { FilePicker } from '../menu/FilePicker';
 import { GameText } from '../ui/GameText';
 import { Sheet } from '../ui/Sheet';
 import { addLevelFromFiles } from './actions';
-import { gameTitle } from './labels';
+import { loneLevelNotice } from './labels';
 
 export function AddLevelSheet({ onClose, onAdded }: { onClose(): void; onAdded(record: GameDataRecord): void }) {
     const { gamedata } = useLibrary();
@@ -49,9 +48,10 @@ export function AddLevelSheet({ onClose, onAdded }: { onClose(): void; onAdded(r
 
     const detection = picked?.detection;
     const addable = detection?.kind === 'custom' || detection?.kind === 'level' || detection?.kind === 'convert';
-    const engine = detection?.kind === 'custom' || detection?.kind === 'level' ? detection.engine : null;
-    const baseMod = detection?.kind === 'custom' ? (detection.extendsMod ?? `tr${detection.engine}`) : engine !== null ? `tr${engine}` : null;
-    const hasBase = baseMod === null || gamedata.some((record) => record.layout === 'game' && record.mod === baseMod && record.status === 'ready');
+    // Converted levels fetch what they use of the original game as they come in; only lone level files lean on it.
+    const loneEngine = detection?.kind === 'level' ? detection.engine : null;
+    const hasBase =
+        loneEngine === null || gamedata.some((record) => record.layout === 'game' && record.mod === `tr${loneEngine}` && record.status === 'ready');
 
     return (
         <Sheet title="Add a custom level" eyebrow="From your device" onClose={onClose}>
@@ -84,12 +84,7 @@ export function AddLevelSheet({ onClose, onAdded }: { onClose(): void; onAdded(r
                                 </div>
                             </div>
                         ) : null}
-                        {addable && !hasBase && engine !== null ? (
-                            <p className="notice">
-                                It builds on {gameTitle(engine)} ({ENGINE_NAMES[engine]}), which isn’t in your library yet. Add it too, or the level may
-                                not start.
-                            </p>
-                        ) : null}
+                        {!hasBase && loneEngine !== null ? <p className="notice">{loneLevelNotice(loneEngine)}</p> : null}
                         <div className="sheet__actions">
                             {addable ? (
                                 <button className="button button--primary" data-autofocus disabled={busy} onClick={() => void add()}>
