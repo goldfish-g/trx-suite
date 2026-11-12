@@ -4,7 +4,7 @@
 // page: a download carries on from where it stopped.
 
 import { create } from 'zustand';
-import { CONVERTER_VERSION, convertLevel } from '../custom/convert';
+import { CONVERTER_VERSION, convertLevel, type Converted } from '../custom/convert';
 import type { EngineNumber } from '../games/catalog';
 import { DamagedArchiveError, readArchive, type ArchiveEntry } from '../lib/archive';
 import { requestCloudSync } from '../lib/changes';
@@ -77,6 +77,45 @@ function resumeKey(id: string): string {
     return `gamedata:${id}`;
 }
 
+/**
+ * The files of the original game a converted level uses and does not bring,
+ * fetched from the server, which holds the games, so the level plays without
+ * the player owning the original. Each goes where the converter asked, in the
+ * level's own directory; a music track takes the extension of the file the
+ * server has.
+ */
+async function fetchOriginalFiles(
+    converted: Converted,
+    mod: string,
+    signal: AbortSignal,
+    onProgress: (done: number, total: number) => void,
+): Promise<ArchiveEntry[]> {
+    const { needs } = converted;
+    if (needs.length === 0) return [];
+    const game = converted.extendsMod !== null && /^tr[123]$/.test(converted.extendsMod) ? converted.extendsMod : `tr${converted.engine}`;
+    const out: ArchiveEntry[] = [];
+    onProgress(0, needs.length);
+    for (const need of needs) {
+        signal.throwIfAborted();
+        let response: Response;
+        try {
+            response = await fetch(`/api/original/${game}/${need.kind}/${encodeURIComponent(need.name)}`, { signal });
+        } catch (error) {
+            if (signal.aborted) throw error;
+            throw new Error(`The files of the original game this level uses could not be fetched (${need.name}). Try again when you are online.`);
+        }
+        if (!response.ok) {
+            throw new Error(`The server could not give a file of the original game this level uses (${need.name}, ${response.status}). Try again later.`);
+        }
+        const blob = await response.blob();
+        const served = response.headers.get('x-file-name') ?? '';
+        const to = need.kind === 'music' ? need.to + served.replace(/^[^.]*/, '') : need.to;
+        out.push({ path: `games/${mod}/${to}`, size: blob.size, read: async () => blob });
+        onProgress(out.length, needs.length);
+    }
+    return out;
+}
+
 function describe(error: unknown): string {
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         return 'The browser ran out of storage space for the files.';
@@ -142,7 +181,10 @@ async function bringIn(record: GameDataRecord, input: ImportInput, signal: Abort
             onStep: (step) => converting(step),
         });
         if (converted.notes.length > 0) console.info(`[convert] ${record.name}:\n${converted.notes.join('\n')}`);
-        entries = converted.entries;
+        const original = await fetchOriginalFiles(converted, record.mod, signal, (done, total) =>
+            converting("Fetching the original game's files", done, total),
+        );
+        entries = [...converted.entries, ...original];
         target = { ...record, engine: converted.engine, extendsMod: converted.extendsMod ?? undefined };
     }
 

@@ -59,7 +59,10 @@ describe('copies of TRX injections', () => {
         expect([...out.keys()].filter((path) => path.includes('/injections/'))).toEqual([]);
     });
 
-    it('keep the jumping where the game brings animations of its own', async () => {
+    // TRX refuses an injection that is not in its own format (inject/common.c,
+    // "Invalid injection magic"), so a TR1X game's own animations cannot
+    // play, and its copy would only hide the animations TRX ships.
+    it('leave a TR1X game\'s own animations and jumping to TRX\'s, which it can read', async () => {
         const mod = 'custom-own-anims';
         const out = await convert([
             { path: 'cfg/TR1X_gameflow.json5', data: json({
@@ -72,9 +75,11 @@ describe('copies of TRX injections', () => {
             { path: 'data/injections/lara_animations.bin', data: new Uint8Array([1, 2, 3, 4]) },
             { path: 'data/injections/bin_jump.bin', data: JUMPING },
         ], mod);
-        expect(gameflow(out, mod).levels[0].injections).toEqual(expect.arrayContaining(['lara_animations.bin', 'lara_jumping.bin']));
-        expect(out.has(`games/${mod}/injections/lara_jumping.bin`)).toBe(true);
-        expect(out.has(`games/${mod}/injections/lara_animations.bin`)).toBe(true);
+        const injections = gameflow(out, mod).levels[0].injections;
+        expect(injections).toContain('lara_animations.bin');
+        expect(injections).not.toContain('lara_jumping.bin');
+        expect(out.has(`games/${mod}/injections/lara_jumping.bin`)).toBe(false);
+        expect(out.has(`games/${mod}/injections/lara_animations.bin`)).toBe(false);
     });
 
     it('are known by their contents in a game made for TRX', async () => {

@@ -4,7 +4,7 @@
 import type { EngineNumber } from '../../games/catalog';
 import { readModMeta } from '../../games/detect';
 import type { ArchiveEntry } from '../../lib/archive';
-import type { ConvertFile, ConvertReply, ConvertRequest } from './protocol';
+import type { BaseNeed, ConvertFile, ConvertReply, ConvertRequest } from './protocol';
 
 /**
  * The converter this build runs, by a hash of its source (vite.config.ts).
@@ -20,6 +20,8 @@ export interface Converted {
     extendsMod: string | null;
     /** What the converter changed, for the console. */
     notes: string[];
+    /** Files of the original game the package uses and lacks, which the caller fetches from the server. */
+    needs: BaseNeed[];
 }
 
 export interface ConvertOptions {
@@ -62,7 +64,7 @@ export async function convertLevel(entries: readonly ArchiveEntry[], options: Co
             worker.onmessage = (event: MessageEvent<ConvertReply>) => {
                 const message = event.data;
                 if (message.kind === 'step') options.onStep?.(message.label);
-                else if (message.kind === 'error') reject(new Error(`The level could not be converted: ${message.message}`));
+                else if (message.kind === 'error') reject(new Error(message.unplayable ? message.message : `The level could not be converted: ${message.message}`));
                 else resolve(message);
             };
             worker.onerror = (event) => {
@@ -79,7 +81,7 @@ export async function convertLevel(entries: readonly ArchiveEntry[], options: Co
         if (gameflow === undefined) throw new Error('The converter made no game flow for this level.');
         const meta = readModMeta(new TextDecoder().decode(gameflow.data));
         const engine = meta.engine === 1 || meta.engine === 2 || meta.engine === 3 || meta.engine === 4 ? meta.engine : done.gameVersion;
-        return { entries: done.files.map(asEntry), engine, extendsMod: meta.extendsMod ?? null, notes: done.notes };
+        return { entries: done.files.map(asEntry), engine, extendsMod: meta.extendsMod ?? null, notes: done.notes, needs: done.needs };
     } finally {
         worker.terminate();
     }

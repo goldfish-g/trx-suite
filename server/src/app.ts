@@ -25,6 +25,7 @@ import { createLoginStore, type LoginStore } from './logins.ts';
 import { createRingModels, type RingModelSet } from './ring.ts';
 import { createMenuSounds, type MenuSoundSet } from './sounds.ts';
 import { registerTrcustomsRoutes } from './trcustoms.ts';
+import { registerOriginalRoutes } from './originals.ts';
 import type { Fetch } from './upstream.ts';
 
 export interface AppDeps {
@@ -138,6 +139,7 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
         menuSounds: createMenuSounds(app.log),
     };
     registerContentRoutes(app, context);
+    registerOriginalRoutes(app, context);
     registerAccountRoutes(app, context);
     registerTrcustomsRoutes(app, context, { baseUrl: config.trcustomsUrl, mediaUrl: config.trcustomsMediaUrl });
     registerCloudRoutes(app, context, new CloudStore(config.cloudDir, { quotaBytes: config.cloudQuotaBytes }, context.now));

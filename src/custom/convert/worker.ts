@@ -10,6 +10,7 @@
 import { detectGameVersion, filterByLanguage, processFiles } from '../../../converter/client/src/converter/gamedata.ts';
 import { setupCustomGameflow } from '../../../converter/client/src/converter/gameflow.ts';
 import { migrateToCurrentTRX } from '../../../converter/client/src/converter/migrate.ts';
+import { UnplayableLevelError } from '../../../converter/client/src/converter/references.ts';
 import type { ConvertFile, ConvertReply, ConvertRequest } from './protocol.ts';
 
 function reply(message: ConvertReply, transfer: Transferable[] = []): void {
@@ -34,10 +35,13 @@ async function convert({ title, modId, files }: ConvertRequest): Promise<void> {
     const withGameflow = await setupCustomGameflow(mapped, modId, Number(version), false, title);
 
     reply({ kind: 'step', label: 'Bringing it up to date' });
-    const { files: out, notes } = await migrateToCurrentTRX(withGameflow, {
+    // What it needs of the original game comes from the server (imports.ts),
+    // so it plays without the player owning the game.
+    const { files: out, notes, needs } = await migrateToCurrentTRX(withGameflow, {
         modDir: modId,
         gameVersion: Number(version),
         upload: files,
+        fetchBase: true,
     });
 
     const result: ConvertFile[] = out.map((file) => ({ path: file.path, data: file.data }));
@@ -45,11 +49,11 @@ async function convert({ title, modId, files }: ConvertRequest): Promise<void> {
     for (const file of result) {
         if (file.data.buffer instanceof ArrayBuffer) buffers.add(file.data.buffer);
     }
-    reply({ kind: 'done', gameVersion: Number(version) as 1 | 2 | 3, files: result, notes }, [...buffers]);
+    reply({ kind: 'done', gameVersion: Number(version) as 1 | 2 | 3, files: result, notes, needs }, [...buffers]);
 }
 
 self.onmessage = (event: MessageEvent<ConvertRequest>) => {
     convert(event.data).catch((error: unknown) => {
-        reply({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
+        reply({ kind: 'error', message: error instanceof Error ? error.message : String(error), unplayable: error instanceof UnplayableLevelError });
     });
 };
