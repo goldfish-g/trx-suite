@@ -33,7 +33,7 @@ export function FilePicker({ disabled, onPick, fileLabel = 'Choose a file…', f
                 ref={fileInput}
                 type="file"
                 hidden
-                accept=".zip,.tar,.gz,.tgz,.phd,.tub,.tr2,.tr4"
+                accept=".zip,.rar,.tar,.gz,.tgz,.phd,.tub,.tr2,.tr4"
                 onChange={(event) => {
                     const files = [...(event.target.files ?? [])];
                     event.target.value = '';

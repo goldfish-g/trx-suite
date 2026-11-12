@@ -1,14 +1,18 @@
 import { ArchiveError, type ArchiveEntry } from './entry';
+import { isRar, readRar } from './rar';
 import { readTar } from './tar';
 import { readZip } from './zip';
 
 export { ArchiveError, DamagedArchiveError, type ArchiveEntry } from './entry';
 
-/** Lists the files of a zip, tar or tar.gz archive, telling them apart by content. */
+/** Lists the files of a zip, RAR, tar or tar.gz archive, telling them apart by content. */
 export async function readArchive(blob: Blob): Promise<ArchiveEntry[]> {
     const head = new Uint8Array(await blob.slice(0, 512).arrayBuffer());
     if (head[0] === 0x50 && head[1] === 0x4b) {
         return readZip(blob);
+    }
+    if (isRar(head)) {
+        return readRar(blob);
     }
     if (head[0] === 0x1f && head[1] === 0x8b) {
         return readTar(blob.stream().pipeThrough(new DecompressionStream('gzip')));
@@ -16,7 +20,7 @@ export async function readArchive(blob: Blob): Promise<ArchiveEntry[]> {
     if (new TextDecoder().decode(head.subarray(257, 262)) === 'ustar') {
         return readTar(blob.stream());
     }
-    throw new ArchiveError('This is not a zip, tar or tar.gz archive.');
+    throw new ArchiveError('This is not a zip, RAR, tar or tar.gz archive.');
 }
 
 /** Lists the files of a picked folder, at their paths inside it. */

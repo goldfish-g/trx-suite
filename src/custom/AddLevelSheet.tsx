@@ -1,4 +1,4 @@
-// Adds a custom level from files on the device: a zip or tar archive, level
+// Adds a custom level from files on the device: a zip, RAR or tar archive, level
 // files, or a folder. Levels made for the original games or an older engine
 // are converted for TRX as they come in.
 
@@ -57,7 +57,7 @@ export function AddLevelSheet({ onClose, onAdded }: { onClose(): void; onAdded(r
         <Sheet title="Add a custom level" eyebrow="From your device" onClose={onClose}>
             <section className="sheet__section">
                 <p className="sheet__text">
-                    Pick a level’s zip archive or its folder. TRX packages, levels made for the original games and levels made for older
+                    Pick a level’s zip or RAR archive, or its folder. TRX packages, levels made for the original games and levels made for older
                     engines all work: the TRX Level Converter turns them into packages of the current TRX as they come in.
                 </p>
                 <FilePicker disabled={busy} onPick={(files, fromFolder) => void inspect(files, fromFolder)} />

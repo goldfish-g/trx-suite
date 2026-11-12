@@ -45,7 +45,7 @@ export function keepFocus(event: { preventDefault(): void }): void {
  * lose only their extension.
  */
 export function levelNameFromArchive(fileName: string): string {
-    const base = fileName.replace(/\.(zip|tar|tar\.gz|tgz)$/i, '');
+    const base = fileName.replace(/\.(zip|rar|tar|tar\.gz|tgz)$/i, '');
     const name = /^\d+-(.+?)(?:-V\d+)?-[^-]+$/.exec(base)?.[1];
     if (name === undefined) return base;
     return name.replace(/([a-z])([A-Z0-9])/g, '$1 $2').replace(/([A-Z])([A-Z][a-z])/g, '$1 $2');
