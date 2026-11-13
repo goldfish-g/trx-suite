@@ -100,14 +100,28 @@ export function onWake(wake: () => void): () => void {
     return () => wakers.delete(wake);
 }
 
+function wake(): void {
+    const current = audioOutput();
+    if (current === null || document.hidden) return;
+    if (current.context.state !== 'running') void current.context.resume().catch(() => undefined);
+    for (const waker of wakers) waker();
+}
+
+/**
+ * Wakes the sound at once in a page the player has touched before, such as
+ * the menu coming back after a game in the same page.
+ */
+export function wakeIfTouched(): void {
+    if (output !== null && (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive === true) wake();
+}
+
+/** Lets the context sleep while the menu is gone, as a game with sound of its own takes its place. */
+export function sleepAudio(): void {
+    void output?.context.suspend().catch(() => undefined);
+}
+
 /** Wakes the context in the events that may start sound, and lets it sleep while the page is hidden. */
 export function installAudioWake(): () => void {
-    const wake = () => {
-        const current = audioOutput();
-        if (current === null || document.hidden) return;
-        if (current.context.state !== 'running') void current.context.resume().catch(() => undefined);
-        for (const waker of wakers) waker();
-    };
     const visibility = () => {
         const current = output;
         if (current === null) return;

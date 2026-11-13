@@ -50,7 +50,7 @@ export async function profilesOf(gamedataId: string): Promise<ProfileRecord[]> {
     return (await listProfiles()).filter((profile) => profile.gamedataId === gamedataId);
 }
 
-/** Starts the engine on a profile. Each session is a page of its own, for a fresh engine. */
+/** Starts the engine on a profile. Each session plays in a frame of its own, with a fresh engine. */
 export function playProfile(profile: ProfileRecord): void {
     openGame(`/play/${profile.id}`);
 }

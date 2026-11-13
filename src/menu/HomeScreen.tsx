@@ -7,7 +7,7 @@ import { refreshAccount, useAccount } from '../account/store';
 import { nextTheme, playEffect, showTheme, startMenuAudio } from '../audio';
 import { startCloudSync } from '../cloud/sync';
 import { FlybyLayer } from '../flyby/FlybyLayer';
-import { loadPreparedLevel } from '../flyby/load';
+import { loadPreparedLevel, releaseFlybyWorker } from '../flyby/load';
 import { plannedRoutes } from '../flyby/planned';
 import { flybyCandidates, rememberFlyby } from '../flyby/pick';
 import { resumeInterruptedImports, retryImport, useImports } from '../gamedata/imports';
@@ -57,8 +57,6 @@ function initialSelection(): number {
     }
 }
 
-let resumed = false;
-
 export function HomeScreen() {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const badgesRef = useRef<HTMLDivElement>(null);
@@ -92,10 +90,7 @@ export function HomeScreen() {
     useEffect(() => {
         void refreshLibrary();
         void refreshAccount();
-        if (!resumed) {
-            resumed = true;
-            void resumeInterruptedImports();
-        }
+        void resumeInterruptedImports();
         // Profiles on an engine build the server still offers.
         void settleProfileEngines().catch((error: unknown) => console.warn('[profiles] moving to an offered engine failed:', error));
         // Saves and custom levels in step with the cloud, now and as they change.
@@ -173,6 +168,8 @@ export function HomeScreen() {
             disposed = true;
             document.removeEventListener('visibilitychange', onVisibility);
             stage.dispose();
+            // Gone for good, as a game takes the menu's place: the level reader too.
+            if (!canvas.isConnected) releaseFlybyWorker();
             stageRef.current = null;
             ringRef.current = null;
         };

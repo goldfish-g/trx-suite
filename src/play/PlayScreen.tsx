@@ -7,14 +7,26 @@ import { formatBytes } from '../ui/format';
 import { GameText } from '../ui/GameText';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt, PromptBar } from '../ui/Prompt';
-import { leaveGame } from './pages';
+import { gameHost, leaveGame } from './pages';
 
 type ScreenState = SessionStage | { kind: 'loading' } | { kind: 'error'; message: string };
 
 const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
 
-/** Fills the screen on phones and tablets, sideways when the device allows. */
+/**
+ * Fills the screen on phones and tablets, sideways when the device allows:
+ * the whole app's page, which this game's frame covers, or else the frame.
+ */
 async function enterFullscreen(): Promise<void> {
+    const host = gameHost();
+    if (host !== null) {
+        try {
+            await host.enterFullscreen();
+            return;
+        } catch {
+            // The frame on its own, then.
+        }
+    }
     try {
         await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
         await (screen.orientation as ScreenOrientation & { lock?(o: string): Promise<void> }).lock?.('landscape');
@@ -23,7 +35,7 @@ async function enterFullscreen(): Promise<void> {
     }
 }
 
-/** Back to the menu, which takes this page's place (see pages.ts). */
+/** Back to the menu (see pages.ts). */
 function leave(): void {
     leaveGame();
 }
@@ -53,6 +65,7 @@ export function PlayScreen() {
             const profile = profileId === undefined ? undefined : await getProfile(profileId);
             if (profile === undefined) return fail('This profile does not exist any more.');
             document.title = `${profile.name} · Tombs Nexus`;
+            gameHost()?.setTitle(document.title);
             await runSession({
                 profile,
                 mod,
@@ -62,9 +75,13 @@ export function PlayScreen() {
                     setNotice(null);
                     setState(stage);
                 },
-                // A page of its own for each game, as for each session.
-                onSwitchMod: (next) =>
-                    location.replace(next === profile.mod ? `/play/${profile.id}` : `/play/${profile.id}?mod=${encodeURIComponent(next)}`),
+                // A fresh frame, with a fresh engine, for each game, as for each session.
+                onSwitchMod: (next) => {
+                    const url = next === profile.mod ? `/play/${profile.id}` : `/play/${profile.id}?mod=${encodeURIComponent(next)}`;
+                    const host = gameHost();
+                    if (host !== null) host.switchTo(url);
+                    else location.replace(url);
+                },
                 onRetry: ({ waitMs, reason }) =>
                     setNotice(`Connection lost (${reason}). Trying again in ${Math.ceil(waitMs / 1000)} s…`),
             });

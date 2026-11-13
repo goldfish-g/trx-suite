@@ -142,5 +142,9 @@ export class Stage {
         this.background?.dispose();
         this.foreground?.dispose();
         this.renderer.dispose();
+        // A menu that went for good (a game took its place) gives the graphics
+        // memory back now, not whenever its canvas is collected. A canvas
+        // still in the page is about to get a new stage (React's strict mode).
+        if (!this.canvas.isConnected) this.renderer.forceContextLoss();
     }
 }

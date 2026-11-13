@@ -10,6 +10,7 @@ import { DamagedArchiveError, readArchive, type ArchiveEntry } from '../lib/arch
 import { requestCloudSync } from '../lib/changes';
 import { newId } from '../lib/db';
 import { discardPartial, download } from '../lib/download';
+import { whenNoGame } from '../lib/gameOpen';
 import { planLayout } from './layout';
 import {
     deleteGameData,
@@ -162,9 +163,13 @@ async function bringIn(record: GameDataRecord, input: ImportInput, signal: Abort
                     }),
             });
         }
+        // Unpacking waits while a game plays, so it does not hold up the game.
+        await whenNoGame(signal);
         report(id, { phase: 'unpacking', done: 0, total: null, notice: null });
         entries = await readArchive(blob);
     }
+    // And so does converting, which takes a processor core the game uses.
+    await whenNoGame(signal);
 
     // Levels made for the original games or an older engine become a
     // package of the current TRX first, which also settles their game.
@@ -361,11 +366,16 @@ export function isImportRunning(id: string): boolean {
     return running.has(id);
 }
 
+let resumed = false;
+
 /**
  * Picks up the imports a reload of the page cut short. Downloads carry on;
  * uploads cannot, as the page no longer has the files.
  */
 export async function resumeInterruptedImports(): Promise<void> {
+    // Once per page: the menu shows again after each game, and imports it started run on.
+    if (resumed) return;
+    resumed = true;
     for (const record of await listGameData()) {
         if (record.status !== 'importing' || running.has(record.id)) continue;
         if (record.source.kind === 'upload') {

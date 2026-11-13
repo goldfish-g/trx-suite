@@ -23,6 +23,7 @@ import { getGameData, listGameData, listLevelInfo } from '../gamedata/store';
 import type { GameDataRecord } from '../gamedata/types';
 import { onCloudSyncRequest } from '../lib/changes';
 import { getDb } from '../lib/db';
+import { isGameOpen, onGameClosed } from '../lib/gameOpen';
 import { deleteProfile, getProfile, listProfiles, noteStorageMod, profileStoragePath, putProfile, updateProfile } from '../profiles/store';
 import type { ProfileRecord } from '../profiles/types';
 import { adoptTheme, themePick } from '../ui/theme';
@@ -500,12 +501,21 @@ let running: Promise<void> | null = null;
 let again = false;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let started = false;
+/** A sync asked for while a game played, which runs once it is over. */
+let held = false;
 
-/** Syncs now, or once the sync under way is done. */
+/**
+ * Syncs now, or once the sync under way is done. Not while a game plays in
+ * the page: a sync would write saves under it. It runs once the game is over.
+ */
 export function syncCloudNow(): Promise<void> {
     if (timer !== null) {
         clearTimeout(timer);
         timer = null;
+    }
+    if (isGameOpen()) {
+        held = true;
+        return running ?? Promise.resolve();
     }
     if (running !== null) {
         again = true;
@@ -516,12 +526,25 @@ export function syncCloudNow(): Promise<void> {
             do {
                 again = false;
                 await runSync();
-            } while (again);
+            } while (again && !isGameOpen());
+            // Asked for again as a game started: after the game.
+            if (again) {
+                again = false;
+                held = true;
+            }
         } finally {
             running = null;
         }
     })();
     return running;
+}
+
+/**
+ * Resolves once no sync is under way; for a game about to start, which must
+ * not have one write its saves as it reads them.
+ */
+export async function cloudSyncSettled(): Promise<void> {
+    while (running !== null) await running.catch(() => undefined);
 }
 
 /** Syncs soon, so that a burst of changes makes one sync. */
@@ -534,7 +557,8 @@ export function scheduleCloudSync(delayMs = 1500): void {
 /**
  * Keeps the cloud in step from now on, as the menus do: syncs now, when
  * something changes, on signing in, and when the connection comes back.
- * The play page does not, so a sync never writes saves under a running game.
+ * The game's own page does not, and a game playing in this page holds it
+ * (syncCloudNow), so a sync never writes saves under a running game.
  */
 export function startCloudSync(): void {
     if (started) {
@@ -543,6 +567,11 @@ export function startCloudSync(): void {
     }
     started = true;
     onCloudSyncRequest(() => scheduleCloudSync());
+    onGameClosed(() => {
+        if (!held) return;
+        held = false;
+        scheduleCloudSync(0);
+    });
     window.addEventListener('online', () => scheduleCloudSync(0));
     useAccount.subscribe((state, previous) => {
         const id = (me: typeof state.me) => me?.accounts.find((account) => account.provider === 'steam')?.id ?? null;

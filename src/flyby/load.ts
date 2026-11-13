@@ -30,6 +30,15 @@ function getWorker(): Worker | null {
     return worker;
 }
 
+/** Stops the worker, which a menu that went for good no longer needs; the next level starts another. */
+export function releaseFlybyWorker(): void {
+    if (worker === null) return;
+    worker.terminate();
+    worker = null;
+    for (const job of pending.values()) job.reject(new Error('The level reader stopped.'));
+    pending.clear();
+}
+
 export async function loadPreparedLevel(
     bytes: Uint8Array,
     fileName: string,

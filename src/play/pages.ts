@@ -1,49 +1,103 @@
-// Moving between the menu and a game without leaving pages behind.
+// Moving between the menu and a game.
 //
-// Browsers keep a page the player navigated away from alive for a while, in
-// case they go Back to it (Chrome's back/forward cache). A game page holds
-// the engine, a gigabyte or more, so every game played from the menu stayed
-// in memory, until after three or four the next one could not start
-// ("WebAssembly.Memory(): could not allocate memory"). A page that is
-// replaced in the history is not kept. So the menu always takes a game
-// page's place, and a menu that took a game's place gives its own place to
-// the next game, so menus do not pile up behind the game either. Back from
-// a game still leads to a menu.
+// A game plays in a frame over the menu's page (GameHost.tsx), not on a page
+// of its own, so the page and what it runs carry on while the game plays:
+// downloads above all. Leaving the game removes the frame, and with it the
+// engine; the menu shows again, without a page load. The game's frame is a
+// page of the app too (/play/<profile> inside the frame), which finds the
+// page above it through GAME_HOST and asks it to close the frame, to switch
+// games, or to fill the screen.
 
-const FROM_GAME_KEY = 'trx-suite:from-game';
+import type { NavigateFunction } from 'react-router-dom';
 
-/** Whether this page load is the menu coming back from a game. */
-let arrivedFromGame = false;
+/** What the page holding a game's frame offers the game inside it. */
+export interface GameHostApi {
+    /** Back to the menu: the frame goes. */
+    close(): void;
+    /** Plays url (/play/<profile>?mod=…) in a fresh frame instead, for another game picked in the engine. */
+    switchTo(url: string): void;
+    /** Fills the screen, sideways where the device allows; inside the player's tap. */
+    enterFullscreen(): Promise<void>;
+    setTitle(title: string): void;
+}
+
+const GAME_HOST = '__tombsNexusGameHost';
+
+type HostWindow = Window & { [GAME_HOST]?: GameHostApi };
+
+/** Offers api to a game's frame, until the returned function is called. */
+export function offerGameHost(api: GameHostApi): () => void {
+    (window as HostWindow)[GAME_HOST] = api;
+    return () => {
+        if ((window as HostWindow)[GAME_HOST] === api) delete (window as HostWindow)[GAME_HOST];
+    };
+}
+
+/** The page this game's frame plays in, when this page is one. */
+export function gameHost(): GameHostApi | null {
+    if (window.parent === window) return null;
+    try {
+        return (window.parent as HostWindow)[GAME_HOST] ?? null;
+    } catch {
+        // A page of another site, which this page has no business in.
+        return null;
+    }
+}
+
+let navigateTo: NavigateFunction | null = null;
+
+/** Lets pages.ts move between the app's screens, from inside the router. */
+export function setNavigator(navigate: NavigateFunction): void {
+    navigateTo = navigate;
+}
 
 interface PageState {
-    fromGame?: boolean;
+    /** Set on a game opened from the menu, which Back returns to. */
+    fromMenu?: boolean;
 }
 
-/** Back to the menu, in the game page's place. */
-export function leaveGame(): void {
-    sessionStorage.setItem(FROM_GAME_KEY, '1');
-    location.replace('/');
+function pageState(): PageState | undefined {
+    return (history.state as { usr?: PageState } | null)?.usr;
 }
 
-/** As the app starts: marks a menu that took a game's place, in its history entry. */
-export function noteArrival(): void {
-    if (sessionStorage.getItem(FROM_GAME_KEY) === null) return;
-    sessionStorage.removeItem(FROM_GAME_KEY);
-    arrivedFromGame = true;
-    // The router keeps its own fields in the state; they stay.
-    history.replaceState({ ...(history.state as object | null), fromGame: true }, '');
+/** Whether a game has shown in this page: any menu after it is the way back from a game. */
+let gameShown = false;
+
+/** As a game's frame shows. */
+export function noteGameShown(): void {
+    gameShown = true;
 }
 
 /**
- * Whether the menu opened because the player left a game just now, rather
- * than as the app starts or on a reload.
+ * Whether the menu shows because the player left a game, however they left
+ * it, rather than as the app starts or on a reload.
  */
 export function cameFromGame(): boolean {
-    return arrivedFromGame;
+    return gameShown;
 }
 
-/** Opens a game page: in the menu's place when that menu took a game's, else after it. */
+/** Opens a game over the menu (url: /play/<profile>). */
 export function openGame(url: string): void {
-    if ((history.state as PageState | null)?.fromGame === true) location.replace(url);
-    else location.assign(url);
+    if (navigateTo === null) location.assign(url);
+    else navigateTo(url, { state: { fromMenu: true } satisfies PageState });
+}
+
+/** In the page holding a game: back to the menu, where Back would lead. */
+export function closeGame(): void {
+    if (navigateTo === null) location.replace('/');
+    else if (pageState()?.fromMenu === true) navigateTo(-1);
+    else navigateTo('/', { replace: true });
+}
+
+/** In the page holding a game: url instead, in its place. */
+export function switchGame(url: string): void {
+    if (navigateTo === null) location.replace(url);
+    else navigateTo(url, { replace: true, state: pageState() });
+}
+
+/** In a game's own page: back to the menu. */
+export function leaveGame(): void {
+    const host = gameHost();
+    if (host !== null) host.close();
+    else location.replace('/');
 }
