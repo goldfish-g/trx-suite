@@ -100,6 +100,43 @@ export function withStartInput(text: string | null, input: StartInput, language:
     return JSON.stringify({ ...current, backend: input.backend, enable_touch_controls: input.touchControls }, null, 2);
 }
 
+// A converted custom level can come with settings of its own, the ones its
+// builder played it with (the converter keeps them as
+// games/<mod>/starting_settings.json5): how it draws, its bars and menus, its
+// sound. Playing the builder's archive, the engine would find them on its
+// first run. Here they go over the player's settings once for each version
+// of them, so a profile made before the level brought them gets them too,
+// and whatever the player changes afterwards stays.
+
+/** A short, stable name for a version of a game's starting settings. */
+export function settingsVersion(text: string): string {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 0x01000193);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * The settings file with a game's starting settings laid over it, or null
+ * to leave it as it is: a file or starting settings that do not parse. With
+ * no file yet, it starts with the language the game would have picked.
+ */
+export function withStartingSettings(text: string | null, starting: string, language: string | null): string | null {
+    let laid: unknown;
+    let current: unknown;
+    try {
+        laid = JSON.parse(starting);
+        current = text === null ? (language === null ? {} : { language }) : JSON.parse(text);
+    } catch {
+        return null;
+    }
+    const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+    if (!isObject(laid) || !isObject(current)) return null;
+    return JSON.stringify({ ...current, ...laid }, null, 2);
+}
+
 export interface StartSettings {
     /** The profile's storage for the mod, holding cfg/. */
     storagePath: string;
@@ -107,23 +144,51 @@ export interface StartSettings {
     engine: number;
     /** The directories whose strings files say which languages the game has. */
     stringsDirs: readonly string[];
+    /** Where the game keeps the settings it came with, if it has any. */
+    startingSettingsPath?: string;
     device: InputDevice;
     /** The player's languages, most wanted first, as the browser lists them. */
     languages: readonly string[];
 }
 
-/** Puts the player's starting device in the game's settings, before the game reads them. */
+/**
+ * Puts the settings the game came with, once, and the player's starting
+ * device in the game's settings, before the game reads them.
+ */
 export function prepareStartSettings(fs: EngineFs, options: StartSettings): void {
     const path = `${options.storagePath}/cfg/TR${options.engine}X.json5`;
+    const decoder = new TextDecoder();
     const exists = fs.analyzePath(path).exists;
-    const text = exists ? new TextDecoder().decode(fs.readFile(path)) : null;
+    let text = exists ? decoder.decode(fs.readFile(path)) : null;
     let language: string | null = null;
     if (text === null) {
         const names = options.stringsDirs.flatMap((dir) => (fs.analyzePath(dir).exists ? fs.readdir(dir) : []));
         language = firstRunLanguage(options.languages, languagesIn(names));
     }
+
+    // Which version of the game's starting settings this profile last took.
+    const markPath = `${options.storagePath}/cfg/starting_settings.version`;
+    let mark: string | null = null;
+    const starting = options.startingSettingsPath !== undefined && fs.analyzePath(options.startingSettingsPath).exists
+        ? decoder.decode(fs.readFile(options.startingSettingsPath))
+        : null;
+    let changed = false;
+    if (starting !== null) {
+        const version = settingsVersion(starting);
+        const taken = fs.analyzePath(markPath).exists ? decoder.decode(fs.readFile(markPath)).trim() : null;
+        if (taken !== version) {
+            const laid = withStartingSettings(text, starting, language);
+            if (laid !== null) {
+                text = laid;
+                mark = version;
+                changed = true;
+            }
+        }
+    }
+
     const next = withStartInput(text, startInputFor(options.device), language);
-    if (next === null) return;
+    if (next === null && !changed) return;
     fs.mkdirTree(`${options.storagePath}/cfg`);
-    fs.writeFile(path, new TextEncoder().encode(next));
+    fs.writeFile(path, new TextEncoder().encode(next ?? text!));
+    if (mark !== null) fs.writeFile(markPath, new TextEncoder().encode(mark));
 }

@@ -179,12 +179,13 @@ export async function runSession(options: SessionOptions): Promise<number> {
                     storagePath: path,
                     engine: engineNumber,
                     stringsDirs: ['/cfg', ...[...mods].map((name) => `/games/${name}`)],
+                    startingSettingsPath: `/games/${storageMod}/starting_settings.json5`,
                     device: useInputDevice.getState().device,
                     languages: navigator.languages ?? [navigator.language],
                 });
             } catch (error) {
                 // The game plays with the settings it had.
-                console.error('[settings] the starting device was not set:', error);
+                console.error("[settings] the game's starting settings were not set:", error);
             }
         },
         onFlushed: () => {
