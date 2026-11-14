@@ -3,7 +3,28 @@
 // left out was left out on purpose; the level scripts of an archive laid out
 // as a whole TRX, beside copies of TRX's own; and none of the original
 // engine's rules for a game that never ran on it.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// TRX's own pictures and the original levels are known by their contents; a
+// picture and a level of a few bytes stand in for them here.
+const known = vi.hoisted(async () => {
+    const { createHash } = await import('node:crypto');
+    const blobId = (data: Uint8Array) => createHash('sha1').update(`blob ${data.length}\0`).update(data).digest('hex').slice(0, 16);
+    const stockPicture = Uint8Array.from([7, 7, 7]);
+    const originalHouse = new Uint8Array(65);
+    new DataView(originalHouse.buffer).setUint32(0, 0xff180038, true);
+    originalHouse[64] = 42;
+    return { stockPicture, stockPictureId: blobId(stockPicture), originalHouse, originalHouseId: blobId(originalHouse) };
+});
+vi.mock('../../../converter/client/src/converter/stockpictures.generated.ts', async () => {
+    const { stockPictureId } = await known;
+    return { STOCK_PICTURES: { 'antarc.webp': [stockPictureId], 'house.webp': [stockPictureId] } };
+});
+vi.mock('../../../converter/client/src/converter/basefiles.generated.ts', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../../../converter/client/src/converter/basefiles.generated.ts')>();
+    const { originalHouseId } = await known;
+    return { ...actual, ORIGINAL_LEVELS: { ...actual.ORIGINAL_LEVELS, 3: { ...actual.ORIGINAL_LEVELS[3], 'house.tr2': originalHouseId } } };
+});
 import { detectGameVersion, processFiles } from '../../../converter/client/src/converter/gamedata.ts';
 import { setupCustomGameflow } from '../../../converter/client/src/converter/gameflow.ts';
 import { migrateToCurrentTRX } from '../../../converter/client/src/converter/migrate.ts';
@@ -130,13 +151,46 @@ describe("a TRX game's inventory ring", () => {
 });
 
 describe('a game laid out as a whole TRX', () => {
-    it("keeps the builder's level scripts, and TRX's own as TRX has them now", async () => {
-        const { read, notes } = await convert(wholeTRX(), 'custom-whole');
+    it("keeps the builder's level scripts", async () => {
+        const { read } = await convert(wholeTRX(), 'custom-whole');
         expect(read('scripts/antarc.lua')).toContain('trx.weather.severity = 4.0');
-        // A copy of TRX's house.lua as TRX ships it now: the gym's assault course timer.
+    });
+
+    it("keeps a copy of TRX's level script as its engine ran it where the level is the builder's own", async () => {
+        const { read, notes } = await convert(wholeTRX(), 'custom-ownhouse');
+        // TRX's house.lua now sets up the assault course readouts of TRX's
+        // own Lara's Home, which a home the builder made need not have.
+        expect(read('scripts/house.lua')).toContain('Setup shoals');
+        expect(read('scripts/house.lua')).toContain('trx_compat');
+        expect(read('scripts/house.lua')).not.toContain('common.ui.hud.assault');
+        expect(notes.join('\n')).toContain("Kept the copies of TRX's own scripts for house");
+    });
+
+    it("gives a copy of TRX's level script the current version where the level is the original game's", async () => {
+        const { originalHouse } = await known;
+        const files = wholeTRX().map((f) => (f.path.endsWith('/house.tr2') ? { ...f, data: originalHouse } : f));
+        const { read, notes } = await convert(files, 'custom-stockhouse');
         expect(read('scripts/house.lua')).toContain('common.ui.hud.assault');
         expect(read('scripts/house.lua')).not.toContain('trx_compat');
         expect(notes.join('\n')).toContain("unchanged copies of TRX's own scripts");
+    });
+
+    it("shows its own pictures on every screen, leaving out TRX's for other screen shapes beside them", async () => {
+        const { stockPicture } = await known;
+        const { paths, notes } = await convert(wholeTRX([
+            { path: 'CAC/games/tr3/images/antarc.webp', data: Uint8Array.from([1, 2, 3, 4]) },
+            { path: 'CAC/games/tr3/images/4x3/antarc.webp', data: stockPicture },
+            { path: 'CAC/games/tr3/images/house.webp', data: stockPicture },
+            { path: 'CAC/games/tr3/images/4x3/house.webp', data: stockPicture },
+            { path: 'CAC/games/tr3/images/3x2/india.webp', data: stockPicture },
+        ]), 'custom-shapes');
+        const mod = 'games/custom-shapes/images/';
+        expect(paths).toContain(mod + 'antarc.webp');
+        expect(paths).not.toContain(mod + '4x3/antarc.webp');
+        // Where the picture itself is TRX's, or the game has none, TRX's others stay as the builder's engine had them.
+        expect(paths).toContain(mod + '4x3/house.webp');
+        expect(paths).toContain(mod + '3x2/india.webp');
+        expect(notes.join('\n')).toContain("Left out 1 of TRX's own pictures for other screen shapes (4x3)");
     });
 
     it('runs none of the original engine\'s rules for a TOMBPC.DAT it never read', async () => {
