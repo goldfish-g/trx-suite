@@ -193,6 +193,38 @@ describe('a game laid out as a whole TRX', () => {
         expect(notes.join('\n')).toContain("Left out 1 of TRX's own pictures for other screen shapes (4x3)");
     });
 
+    it('shows no picture where its own install has none, as its TRX did', async () => {
+        // Temple of Orca names title_eu.webp for its menu and theend.webp in
+        // its credits, and brings neither: its TRX showed a black menu.
+        const flow = {
+            main_menu_picture: 'title_eu.webp',
+            title: { path: 'title.tr2', sequence: [{ type: 'exit_to_title' }] },
+            levels: [
+                { path: 'house.tr2', type: 'gym', sequence: [{ type: 'loop_game' }] },
+                { path: 'antarc.tr2', sequence: [
+                    { type: 'loading_screen', path: 'antarc.webp' },
+                    { type: 'loop_game' },
+                    { type: 'display_picture', credit: true, path: 'theend.webp' },
+                ] },
+            ],
+        };
+        const withFlow = (files: MappedFile[]) => files.map((f) => (f.path === 'CAC/games/tr3/gameflow.json5' ? { ...f, data: json(flow) } : f));
+        const picture = { path: 'CAC/games/tr3/images/ANTARC.png', data: Uint8Array.from([1, 2, 3, 4]) };
+        const { read, notes } = await convert(withFlow(wholeTRX([picture])), 'custom-nopicture');
+        const out = parseJSON5(read('gameflow.json5')!) as any;
+        expect(out.main_menu_picture).toBe('missing/title_eu.webp');
+        const antarc = out.levels.find((l: any) => l.path === 'antarc.tr2');
+        // TRX finds a picture whatever its case and under its other extensions.
+        expect(antarc.sequence.find((e: any) => e.type === 'loading_screen').path).toBe('antarc.webp');
+        expect(antarc.sequence.find((e: any) => e.type === 'display_picture').path).toBe('missing/theend.webp');
+        expect(notes.join('\n')).toContain('(theend.webp, title_eu.webp) missing');
+
+        // A game to drop into the player's TRX finds TRX's own pictures there.
+        const dropIn = withFlow(wholeTRX([picture])).filter((f) => !f.path.endsWith('TRX.exe'));
+        const { read: readDropIn } = await convert(dropIn, 'custom-dropin');
+        expect((parseJSON5(readDropIn('gameflow.json5')!) as any).main_menu_picture).toBe('title_eu.webp');
+    });
+
     it('runs none of the original engine\'s rules for a TOMBPC.DAT it never read', async () => {
         const { read, paths } = await convert(wholeTRX(), 'custom-notombpc');
         expect(paths.some((p) => /tombpc\.dat$/i.test(p) && !p.includes('/levels/'))).toBe(false);
