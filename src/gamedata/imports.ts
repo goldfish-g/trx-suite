@@ -4,7 +4,8 @@
 // page: a download carries on from where it stopped.
 
 import { create } from 'zustand';
-import { CONVERTER_VERSION, convertLevel, type Converted } from '../custom/convert';
+import { reportUnplayable } from '../custom/api';
+import { CONVERTER_VERSION, convertLevel, UnplayableError, type Converted } from '../custom/convert';
 import type { EngineNumber } from '../games/catalog';
 import { DamagedArchiveError, readArchive, type ArchiveEntry } from '../lib/archive';
 import { requestCloudSync } from '../lib/changes';
@@ -244,6 +245,10 @@ async function run(record: GameDataRecord, input: ImportInput, signal: AbortSign
     } catch (error) {
         if (signal.aborted) return;
         console.error(`[imports] ${record.name}:`, error);
+        // So the lists can tell others before they download it too.
+        if (error instanceof UnplayableError && record.source.kind === 'trcustoms') {
+            void reportUnplayable(record.source.levelId, record.source.fileId).catch(() => {});
+        }
         // Fetching a level that played again: it stays as it was while its files do.
         const fresh = await getGameData(id).catch(() => undefined);
         if (fresh?.replacing !== undefined && fresh.replacing.filesGone !== true) {

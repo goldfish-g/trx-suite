@@ -129,6 +129,8 @@ Engine builds, flyby levels and the ring's objects go to everyone.
 | `STATS_GEO_URL` | DB-IP's free country database | Where the monthly country database comes from (`{YYYY}`, `{MM}`); empty for no countries. |
 | `TRCUSTOMS_URL` | `https://trcustoms.org` | The TRCustoms the custom levels browser lists. The server asks it for levels and streams their archives, since TRCustoms sends no CORS headers. |
 | `TRCUSTOMS_MEDIA_URL` | `https://data.trcustoms.org/media` | Where TRCustoms keeps its screenshots. The server passes them on, as their missing CORP header keeps a cross-origin isolated page from showing them, and keeps the latest 64 MB in memory. |
+| `CHECKER_PATH` | `./server-dist/checker/check.mjs` | The converter as a Node script (`pnpm build` makes it). When a player's conversion says TRX cannot play a TRCustoms level, the server downloads that file and runs this on it, one level at a time, before the lists grey the level out. Without it, such reports are passed over. |
+| `UNPLAYABLE_DIR` | `$DATA_DIR/unplayable` | Where the verdicts on reported levels (`checks.json`) and the archive being checked are kept. |
 
 Paths are relative to the directory the server starts in.
 

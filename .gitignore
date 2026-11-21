@@ -10,3 +10,4 @@ data/*
 !data/catalog.example.json
 .env
 /deploy/oracle/
+/server-dist

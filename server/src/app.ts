@@ -24,19 +24,22 @@ import { requestPath, resolveInside, sendFile, statFile } from './files.ts';
 import { createLoginStore, type LoginStore } from './logins.ts';
 import { createRingModels, type RingModelSet } from './ring.ts';
 import { createMenuSounds, type MenuSoundSet } from './sounds.ts';
-import { registerTrcustomsRoutes } from './trcustoms.ts';
+import { registerTrcustomsRoutes, type TrcustomsRoutes } from './trcustoms.ts';
 import { registerOriginalRoutes } from './originals.ts';
 import { createGeo } from './stats/geo.ts';
 import { isStatsHost, registerStatsRoutes } from './stats/routes.ts';
 import { createStats, type LevelInfo, type Stats } from './stats/stats.ts';
 import { StatsStore } from './stats/store.ts';
 import type { Fetch } from './upstream.ts';
+import { loadChecker, Unplayable, type Checker } from './unplayable.ts';
 
 export interface AppDeps {
     /** Reaches Steam; tests pass a fake. */
     fetch?: Fetch;
     now?: () => number;
     logger?: FastifyServerOptions['logger'];
+    /** Converts reported levels; tests stand in for the built one (config.checkerPath). */
+    checker?: Checker | null;
 }
 
 /** What the route modules share. */
@@ -152,9 +155,25 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
     registerContentRoutes(app, context);
     registerOriginalRoutes(app, context);
     registerAccountRoutes(app, context);
-    const trcustoms = registerTrcustomsRoutes(app, context, { baseUrl: config.trcustomsUrl, mediaUrl: config.trcustomsMediaUrl });
+    // Levels players report TRX cannot play, checked with the converter;
+    // what it needs of TRCustoms comes once the routes are there.
+    let trcustoms: TrcustomsRoutes | null = null;
+    const unplayable = new Unplayable({
+        dir: config.unplayableDir,
+        checker: deps.checker !== undefined ? deps.checker : await loadChecker(config.checkerPath).catch((error: unknown) => {
+            app.log.warn(`The checker at ${config.checkerPath} does not run: ${(error as Error).message}`);
+            return null;
+        }),
+        describe: (id) => trcustoms!.describe(id),
+        download: (fileId, to, maxBytes, signal) => trcustoms!.download(fileId, to, maxBytes, signal),
+        now: context.now,
+        log: { info: (message) => app.log.info(message), warn: (message) => app.log.warn(message) },
+    });
+    app.addHook('onReady', async () => unplayable.start());
+    app.addHook('onClose', async () => unplayable.stop());
+    trcustoms = registerTrcustomsRoutes(app, context, { baseUrl: config.trcustomsUrl, mediaUrl: config.trcustomsMediaUrl }, unplayable);
     describeLevel = async (id) => {
-        const { name, authors, game, cover } = await trcustoms.describe(id);
+        const { name, authors, game, cover } = await trcustoms!.describe(id);
         return { name, authors, game, cover };
     };
     if (stats !== null) registerStatsRoutes(app, context, stats);

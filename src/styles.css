@@ -2593,6 +2593,20 @@ html[data-input='keyboard'] .level-card:focus-within {
     color: var(--ink);
 }
 
+/* A level TRX cannot play, as the server's converter found. */
+.level-card--unplayable .shot img,
+.level-card--unplayable .shot__placeholder {
+    filter: grayscale(1) brightness(0.5);
+}
+
+.level-card--unplayable .level-card__text {
+    opacity: 0.55;
+}
+
+.level-card__badge--unplayable {
+    color: var(--ink-dim);
+}
+
 .level-card__badge--cloud .icon {
     color: var(--accent-bright);
 }

@@ -2,7 +2,8 @@
 // brings: TRX reads no game flow at all when one of its levels is missing,
 // finds injections by name, and tells case apart.
 import { describe, expect, it } from 'vitest';
-import { settleReferences, type BaseNeed } from '../../../converter/client/src/converter/references.ts';
+import { checkHasLevels, settleReferences, UnplayableLevelError, type BaseNeed } from '../../../converter/client/src/converter/references.ts';
+import { createOutputZip } from '../../../converter/client/src/converter/zip.ts';
 import type { MappedFile } from '../../../converter/client/src/converter/types.ts';
 
 const encoder = new TextEncoder();
@@ -125,5 +126,48 @@ describe('files of the original game', () => {
             levels: [{ path: 'mine.tr2', music_track: 33, sequence: [] }],
         }, ['levels/mine.tr2', 'levels/title.tr2', 'main.sfx', 'music/cdaudio.wad']);
         expect(needs).toEqual([]);
+    });
+});
+
+describe('games with no level', () => {
+    const upload = (path: string, data = new Uint8Array([1])): MappedFile => ({ path, data });
+    // A self-extracting program: the program, then a ZIP of its files.
+    const program = (names: string[]): Uint8Array<ArrayBuffer> => {
+        const zip = createOutputZip(names.map((name) => ({ path: name, data: new Uint8Array([1]) })));
+        const out = new Uint8Array(4096 + zip.length);
+        out.set([0x4d, 0x5a]);
+        out.set(zip, 4096);
+        return out;
+    };
+    const stop = (files: MappedFile[], mapped: MappedFile[] = []): string => {
+        try {
+            checkHasLevels(files, mapped);
+        } catch (error) {
+            expect(error).toBeInstanceOf(UnplayableLevelError);
+            return (error as Error).message;
+        }
+        return '';
+    };
+
+    it('plays a game that brings a level', () => {
+        expect(stop([upload('DATA/LEVEL1.PHD')], [file('levels/level1.phd')])).toBe('');
+        expect(stop([upload('data/mine.TR2')], [file('levels/mine.TR2')])).toBe('');
+    });
+
+    it('says so of a mod of Tomb Raider I-III Remastered shipped as a program (TRCustoms 3972)', () => {
+        const exe = upload('TombRaiderOutbreak.exe', program(['zm_level.txt', '3/DATA/SEWER.TR2', '3\\tomb3.dll', 'winmm.dll']));
+        expect(stop([exe])).toBe('TRX cannot play this level: it is a mod of Tomb Raider I-III Remastered, which comes as a '
+            + 'Windows program (TombRaiderOutbreak.exe) that runs the Remastered games with their own code changed.');
+    });
+
+    it('says so of an installer TRX cannot open', () => {
+        expect(stop([upload('Setup.exe', program(['game/data/level1.phd']))])).toBe(
+            'TRX cannot play this level: it comes as a Windows program (Setup.exe) and has no level files TRX can read.');
+        expect(stop([upload('readme.txt'), upload('sub/Install.EXE', new Uint8Array(100))])).toContain('(Install.EXE)');
+    });
+
+    it('says so of files with no level', () => {
+        expect(stop([upload('readme.txt'), upload('music/02.ogg')], [file('music/02.ogg')])).toBe(
+            'TRX cannot play this level: its files hold no level.');
     });
 });

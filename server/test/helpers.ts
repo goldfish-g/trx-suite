@@ -97,6 +97,8 @@ export function testConfig(fixture: Fixture, overrides: Partial<Config> = {}): C
         statsDir: join(fixture.root, 'stats'),
         statsHost: 'stats.localhost',
         statsGeoUrl: '',
+        checkerPath: join(fixture.root, 'no-checker.mjs'),
+        unplayableDir: join(fixture.root, 'unplayable'),
         ...overrides,
     };
 }

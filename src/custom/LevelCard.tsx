@@ -98,11 +98,17 @@ interface BrowseCardProps {
 }
 
 export function BrowseCard({ level, installed, progress, onOpen }: BrowseCardProps) {
+    // Greyed, but it still opens, to say why.
+    const unplayable = level.unplayable !== undefined;
     return (
-        <li className="level-card">
-            <button type="button" className="level-card__face" data-level={level.id} onClick={() => onOpen(level)}>
+        <li className={`level-card ${unplayable ? 'level-card--unplayable' : ''}`}>
+            <button type="button" className="level-card__face" data-level={level.id} title={level.unplayable} onClick={() => onOpen(level)}>
                 <Shot src={level.cover} engine={level.game} />
-                {installed !== undefined ? <InstalledBadge record={installed} progress={progress} /> : null}
+                {installed !== undefined ? (
+                    <InstalledBadge record={installed} progress={progress} />
+                ) : unplayable ? (
+                    <span className="level-card__badge level-card__badge--unplayable">TRX can't play this</span>
+                ) : null}
                 <CardText level={level} />
             </button>
         </li>

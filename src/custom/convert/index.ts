@@ -12,6 +12,9 @@ import type { BaseNeed, ConvertFile, ConvertReply, ConvertRequest } from './prot
  */
 export const CONVERTER_VERSION: string = __CONVERTER_VERSION__;
 
+/** The converter's verdict that TRX cannot play the level; the message says why, for the player. */
+export class UnplayableError extends Error {}
+
 export interface Converted {
     /** The package's files, at games/<modId>/…. */
     entries: ArchiveEntry[];
@@ -64,7 +67,7 @@ export async function convertLevel(entries: readonly ArchiveEntry[], options: Co
             worker.onmessage = (event: MessageEvent<ConvertReply>) => {
                 const message = event.data;
                 if (message.kind === 'step') options.onStep?.(message.label);
-                else if (message.kind === 'error') reject(new Error(message.unplayable ? message.message : `The level could not be converted: ${message.message}`));
+                else if (message.kind === 'error') reject(message.unplayable ? new UnplayableError(message.message) : new Error(`The level could not be converted: ${message.message}`));
                 else resolve(message);
             };
             worker.onerror = (event) => {

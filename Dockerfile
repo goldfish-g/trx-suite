@@ -18,6 +18,8 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile && rm -rf /root/.cache /root/.local/share/pnpm
 COPY --from=build /app/dist ./dist
+# The converter, for checking levels players report TRX cannot play (server/src/unplayable.ts).
+COPY --from=build /app/server-dist ./server-dist
 COPY server ./server
 COPY shared ./shared
 EXPOSE 8080

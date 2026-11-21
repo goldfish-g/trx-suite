@@ -160,6 +160,8 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
         }
     };
 
+    // TRX cannot play the file TRCustoms offers, as the server's converter found: no download.
+    const unplayable = record === undefined && listed === undefined ? level?.unplayable : undefined;
     let primary = null;
     if (record?.status === 'ready') {
         primary = <Prompt action="confirm" label="Play" variant="primary" global icon={<PlayIcon />} disabled={busy} onPress={() => void run(() => playCustomLevel(record))} />;
@@ -180,7 +182,7 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                 onPress={() => void run(() => installFromCloud(entry))}
             />
         );
-    } else if (record === undefined && level?.file !== null && level?.file !== undefined && level.game !== null) {
+    } else if (unplayable === undefined && record === undefined && level?.file !== null && level?.file !== undefined && level.game !== null) {
         const file = level.file;
         primary = (
             <Prompt
@@ -281,6 +283,7 @@ export function LevelDetails({ summary: given, recordId, cloudMod, onClose }: Pr
                         </div>
                     ) : null}
                     {record?.status === 'failed' ? <p className="notice notice--error">{record.error ?? 'Adding it failed.'}</p> : null}
+                    {unplayable !== undefined ? <p className="notice notice--error">{unplayable}</p> : null}
                     {record?.layout === 'level' && !hasBase ? <p className="notice">{loneLevelNotice(record.engine)}</p> : null}
                     {replacing ? <p className="details__note">Downloading it again. Your saves stay, and so does the level you had if this fails.</p> : null}
                     {record?.reimportError !== undefined ? (

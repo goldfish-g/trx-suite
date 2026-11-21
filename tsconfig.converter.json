@@ -6,7 +6,7 @@
     "target": "ES2022",
     "lib": ["ES2023", "WebWorker"],
     "module": "ESNext",
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "skipLibCheck": true,
 
     "moduleResolution": "bundler",
@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/custom/convert/worker.ts", "src/custom/convert/stock.test.ts", "src/custom/convert/font.test.ts", "src/custom/convert/layout.test.ts", "src/custom/convert/guns.test.ts", "src/custom/convert/references.test.ts", "src/custom/convert/settings.test.ts", "src/custom/convert/intent.test.ts"]
+  "include": ["src/custom/convert/worker.ts", "src/custom/convert/run.ts", "src/custom/convert/check.ts", "src/custom/convert/check-env.d.ts", "src/custom/convert/stock.test.ts", "src/custom/convert/font.test.ts", "src/custom/convert/layout.test.ts", "src/custom/convert/guns.test.ts", "src/custom/convert/references.test.ts", "src/custom/convert/settings.test.ts", "src/custom/convert/intent.test.ts"]
 }

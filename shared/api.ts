@@ -114,6 +114,12 @@ export interface CustomLevelSummary {
     reviews: number;
     /** The newest version of its archive; null when it has none. */
     file: CustomLevelFile | null;
+    /**
+     * Why TRX cannot play that archive, as the server's converter found when
+     * a player's conversion said so (POST /api/trcustoms/levels/:id/unplayable
+     * with { fileId }); absent when nothing says so.
+     */
+    unplayable?: string;
 }
 
 export interface CustomLevelFile {

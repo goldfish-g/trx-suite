@@ -6,7 +6,9 @@
 // of a download, each resume included, gets a fresh link to the storage
 // behind TRCustoms, whose links work for a minute.
 
-import { Readable } from 'node:stream';
+import { createWriteStream } from 'node:fs';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import type { FastifyInstance } from 'fastify';
 import type {
@@ -20,6 +22,7 @@ import type {
 import type { Context } from './app.ts';
 import { badRequest, HttpError, notFound } from './errors.ts';
 import { call, isRecord, readJson, type Upstream } from './upstream.ts';
+import type { Unplayable } from './unplayable.ts';
 
 const UPSTREAM: Upstream = { service: 'TRCustoms', code: 'trcustoms_unreachable' };
 
@@ -44,6 +47,8 @@ const JSON_CACHE_ENTRIES = 300;
 const MEDIA_CACHE_BYTES = 64 * 1024 * 1024;
 /** Until the storage answers; after that the page notices a stalled download itself. */
 const STORAGE_TIMEOUT_MS = 20_000;
+/** A whole download this server makes itself, to check a level (unplayable.ts). */
+const CHECK_DOWNLOAD_TIMEOUT_MS = 30 * 60_000;
 /** TRCustoms names every image after a UUID. */
 const MEDIA_PATH = /^level_images\/[A-Za-z0-9_-]+\.(?:jpe?g|png|webp|gif)$/i;
 const PASSED_HEADERS = ['content-type', 'content-length', 'content-range', 'accept-ranges', 'etag', 'last-modified', 'content-disposition'];
@@ -204,15 +209,28 @@ function parseId(value: string, what: string): number {
     return Number(value);
 }
 
+export interface TrcustomsRoutes {
+    describe(id: number): Promise<CustomLevelDetails>;
+    /** Downloads a file of a level to a path, failing past maxBytes. */
+    download(fileId: number, to: string, maxBytes: number, signal?: AbortSignal): Promise<void>;
+}
+
 export function registerTrcustomsRoutes(
     app: FastifyInstance,
     context: Context,
     options: TrcustomsOptions,
-): { describe: (id: number) => Promise<CustomLevelDetails> } {
+    unplayable: Unplayable | null = null,
+): TrcustomsRoutes {
     const { fetch } = context;
     const lists = jsonCache<CustomLevelPage>(context.now);
     const levels = jsonCache<CustomLevelDetails>(context.now);
     const images = imageCache();
+
+    /** A level with what the checks found of its newest file (unplayable.ts), which changes more often than the caches. */
+    const marked = <T extends CustomLevelSummary>(level: T): T => {
+        const reason = unplayable?.reasonFor(level.id, level.file?.id);
+        return reason === undefined ? level : { ...level, unplayable: reason };
+    };
 
     app.get<{ Querystring: { game?: string; page?: string; sort?: string; search?: string } }>(
         '/api/trcustoms/levels',
@@ -229,7 +247,7 @@ export function registerTrcustomsRoutes(
             if (search !== '') url.searchParams.set('search', search);
 
             reply.header('cache-control', 'private, max-age=120');
-            return lists(url.href, async () => {
+            const listed = await lists(url.href, async () => {
                 const response = await call(fetch, UPSTREAM, url);
                 // A page past the end answers 404 "Invalid page.".
                 if (response.status === 404) return { levels: [], page, pages: page - 1, total: 0 };
@@ -247,6 +265,7 @@ export function registerTrcustomsRoutes(
                     total: count(body.total_count),
                 };
             });
+            return { ...listed, levels: listed.levels.map(marked) };
         },
     );
 
@@ -267,7 +286,18 @@ export function registerTrcustomsRoutes(
     app.get<{ Params: { id: string } }>('/api/trcustoms/levels/:id', async (request, reply): Promise<CustomLevelDetails> => {
         const id = parseId(request.params.id, 'level');
         reply.header('cache-control', 'private, max-age=120');
-        return describe(id);
+        return marked(await describe(id));
+    });
+
+    // A player's conversion of this file said TRX cannot play it. The
+    // server checks for itself before the lists say so (unplayable.ts).
+    app.post<{ Params: { id: string }; Body: unknown }>('/api/trcustoms/levels/:id/unplayable', async (request, reply) => {
+        const id = parseId(request.params.id, 'level');
+        const body = request.body;
+        const fileId = isRecord(body) ? body.fileId : undefined;
+        if (typeof fileId !== 'number' || !Number.isInteger(fileId) || fileId <= 0 || fileId > 999_999_999) throw badRequest('fileId must be the id of a file of the level.');
+        await unplayable?.report(id, fileId, request.ip);
+        return reply.code(202).send();
     });
 
     app.get<{ Params: { '*': string } }>('/api/trcustoms/media/*', async (request, reply) => {
@@ -342,5 +372,23 @@ export function registerTrcustomsRoutes(
         return reply.send(Readable.fromWeb(file.body as unknown as WebReadableStream<Uint8Array>));
     });
 
-    return { describe };
+    const download = async (fileId: number, to: string, maxBytes: number, signal?: AbortSignal): Promise<void> => {
+        const link = await storageLink(fileId);
+        const timeout = AbortSignal.timeout(CHECK_DOWNLOAD_TIMEOUT_MS);
+        const file = await fetch(link, { signal: signal === undefined ? timeout : AbortSignal.any([timeout, signal]) });
+        if (file.status !== 200 || file.body === null) {
+            await file.body?.cancel();
+            throw new Error(`the storage behind TRCustoms answered HTTP ${file.status}`);
+        }
+        let bytes = 0;
+        const limit = new Transform({
+            transform(chunk: Buffer, _encoding, done) {
+                bytes += chunk.length;
+                done(bytes > maxBytes ? new Error(`the file is larger than ${maxBytes} bytes`) : null, chunk);
+            },
+        });
+        await pipeline(Readable.fromWeb(file.body as unknown as WebReadableStream<Uint8Array>), limit, createWriteStream(to));
+    };
+
+    return { describe, download };
 }

@@ -37,6 +37,10 @@ export interface Config {
     statsHost: string;
     /** Where the monthly country database comes from ({YYYY}, {MM}); empty for no countries. */
     statsGeoUrl: string;
+    /** The built checker (server-dist/checker/check.mjs), which converts levels players report TRX cannot play; none there turns the reports off. */
+    checkerPath: string;
+    /** Where the verdicts on those levels are kept. */
+    unplayableDir: string;
 }
 
 /** DB-IP's free country database (CC BY 4.0), a new one each month. */
@@ -163,6 +167,8 @@ export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): LoadedC
             statsDir: resolve(cwd, nonEmpty(env.STATS_DIR) ?? resolve(dataDir, 'stats')),
             statsHost: (env.STATS_HOST ?? `stats.${new URL(publicUrl).hostname}`).trim().toLowerCase(),
             statsGeoUrl: env.STATS_GEO_URL ?? DBIP_COUNTRY_URL,
+            checkerPath: resolve(cwd, nonEmpty(env.CHECKER_PATH) ?? 'server-dist/checker/check.mjs'),
+            unplayableDir: resolve(cwd, nonEmpty(env.UNPLAYABLE_DIR) ?? resolve(dataDir, 'unplayable')),
         },
         warnings,
     };

@@ -32,3 +32,17 @@ export function fetchLevelPage(
 export function fetchLevelDetails(id: number, signal?: AbortSignal): Promise<CustomLevelDetails> {
     return getJson(`/api/trcustoms/levels/${id}`, signal);
 }
+
+/**
+ * Tells the server a level's file came out unplayable here: the converter
+ * said TRX cannot play it. The server checks for itself, then the lists mark
+ * the level so nobody else downloads it for nothing.
+ */
+export async function reportUnplayable(levelId: number, fileId: number): Promise<void> {
+    await fetch(`/api/trcustoms/levels/${levelId}/unplayable`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ fileId }),
+        keepalive: true,
+    });
+}
