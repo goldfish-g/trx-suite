@@ -3,6 +3,7 @@
 // the game's main thing, such as Play or Download, and (X) opens its details.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SITE_TITLE } from '../../shared/site.ts';
 import { refreshAccount, useAccount } from '../account/store';
 import { nextTheme, playEffect, showTheme, startMenuAudio } from '../audio';
 import { startCloudSync } from '../cloud/sync';
@@ -95,7 +96,7 @@ export function HomeScreen() {
         void settleProfileEngines().catch((error: unknown) => console.warn('[profiles] moving to an offered engine failed:', error));
         // Saves and custom levels in step with the cloud, now and as they change.
         startCloudSync();
-        document.title = 'Tombs Nexus';
+        document.title = SITE_TITLE;
     }, []);
 
     // The theme of the game flying by, and the menu's sound effects.

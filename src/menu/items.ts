@@ -35,7 +35,7 @@ export const RING_ITEMS: readonly RingItem[] = [
     official('tr1-ub', 'cat', 'Tomb Raider Gold · 1998', { roughness: 0.55, scale: 0.92 }),
     official('tr2-gm', 'mask', 'Tomb Raider II Gold · 1999', { metalness: 0.45, roughness: 0.4 }),
     official('tr3-la', 'hand', 'Tomb Raider III Gold · 2000', { glow: 0.55, roughness: 0.35 }),
-    { key: 'custom', game: null, title: 'Custom Levels', tagline: 'Levels made by the community', artifact: 'compass', look: { turn: [18, 0, 0], metalness: 0.35, roughness: 0.5 } },
+    { key: 'custom', game: null, title: 'Custom Levels', tagline: 'TRLE levels made by the community', artifact: 'compass', look: { turn: [18, 0, 0], metalness: 0.35, roughness: 0.5 } },
 ];
 
 export type ItemStatus =

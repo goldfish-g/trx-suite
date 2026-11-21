@@ -771,6 +771,13 @@ select {
     color: var(--accent);
 }
 
+.start__tagline {
+    margin: 6px 0 0;
+    color: var(--ink-dim);
+    font-size: 0.95rem;
+    text-wrap: balance;
+}
+
 .start__section {
     padding: 14px 0;
     border-top: var(--e) solid var(--rule);

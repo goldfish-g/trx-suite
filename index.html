@@ -8,19 +8,79 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Tombs Nexus" />
-    <meta property="og:title" content="Tombs Nexus" />
+    <!-- What search results and link previews show. The address is shared/site.ts SITE_URL. -->
+    <title>Tombs Nexus · Play Tomb Raider and TRLE levels online</title>
+    <meta name="description" content="Play TRLE custom levels from TRCustoms and Tomb Raider I–IV online, in your browser, with TRX. Installs as an app and plays offline." />
+    <link rel="canonical" href="https://tombs.nexus/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Tombs Nexus" />
+    <meta property="og:url" content="https://tombs.nexus/" />
+    <meta property="og:title" content="Tombs Nexus · Play Tomb Raider and TRLE levels online" />
+    <meta property="og:description" content="TRLE custom levels and Tomb Raider I–IV, online in your browser. Installs as an app and plays offline." />
     <meta property="og:image" content="https://tombs.nexus/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Tombs Nexus logo" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://tombs.nexus/#website",
+            "name": "Tombs Nexus",
+            "url": "https://tombs.nexus/",
+            "inLanguage": "en"
+          },
+          {
+            "@type": "WebApplication",
+            "name": "Tombs Nexus",
+            "url": "https://tombs.nexus/",
+            "image": "https://tombs.nexus/og-image.png",
+            "description": "TRLE custom levels from TRCustoms and Tomb Raider I–IV with their Gold expansions, played online in the browser with the TRX engine. It installs as an app and plays offline once a game is downloaded.",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript and WebGL 2",
+            "isPartOf": { "@id": "https://tombs.nexus/#website" }
+          }
+        ]
+      }
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <title>Tombs Nexus</title>
+    <!-- Without JavaScript, the app's empty screen gives way to the words below. -->
+    <noscript><style>#root { display: none; }</style></noscript>
   </head>
   <body>
     <div id="root"></div>
+    <!-- For browsers without JavaScript, and crawlers that read the page as sent. -->
+    <noscript>
+      <main style="max-width: 40rem; margin: 0 auto; padding: 2rem 1rem; color: #e8dcc0; font: 17px/1.55 Georgia, serif">
+        <h1>Tombs Nexus</h1>
+        <p>
+          Play TRLE custom levels and Tomb Raider I, II, III and IV with their Gold expansions online, in your browser,
+          on the <a style="color: #f0a33c" href="https://github.com/LostArtefacts/TRX">TRX</a> engine. It installs as an app
+          and, once a game is downloaded, plays without a connection.
+        </p>
+        <p><strong>Tombs Nexus needs JavaScript and WebGL.</strong> Turn JavaScript on, or open it in a recent browser.</p>
+        <h2>The games</h2>
+        <ul>
+          <li>
+            Tomb Raider (1996), Tomb Raider II (1997), Tomb Raider III (1998), The Last Revelation (1999) and The Lost Artifact
+            (2000): sign in with Steam to download the copies you own, the originals or the Remastered collections, or add the
+            files from your own copy.
+          </li>
+          <li>Unfinished Business (1998) and The Golden Mask (1999): free for everyone.</li>
+          <li>
+            TRLE custom levels for Tomb Raider I–III from <a style="color: #f0a33c" href="https://trcustoms.org">TRCustoms</a>:
+            browse and play them, free, without signing in. Each level belongs to the builder who made it.
+          </li>
+        </ul>
+      </main>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

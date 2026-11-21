@@ -26,6 +26,7 @@ import { createRingModels, type RingModelSet } from './ring.ts';
 import { createMenuSounds, type MenuSoundSet } from './sounds.ts';
 import { registerTrcustomsRoutes, type TrcustomsRoutes } from './trcustoms.ts';
 import { registerOriginalRoutes } from './originals.ts';
+import { registerSeoRoutes } from './seo.ts';
 import { createGeo } from './stats/geo.ts';
 import { isStatsHost, registerStatsRoutes } from './stats/routes.ts';
 import { createStats, type LevelInfo, type Stats } from './stats/stats.ts';
@@ -116,6 +117,9 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
             throw new HttpError(403, 'cross_site', 'This server does not take requests from other sites.');
         }
     });
+
+    // Search engines index the public site's home and stats pages only.
+    registerSeoRoutes(app, config);
 
     // Bodyless POSTs sent with a JSON content type are common enough from
     // fetch() that refusing them would only cause confusion.

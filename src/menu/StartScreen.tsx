@@ -105,6 +105,7 @@ export function StartScreen({ onContinue }: { onContinue(): void }) {
                         <h1 className="start__title" id="start-title">
                             <BrandLogo className="start__logo" />
                         </h1>
+                        <p className="start__tagline">Tomb Raider and TRLE custom levels, online in your browser</p>
                     </header>
 
                     <section className="start__section">

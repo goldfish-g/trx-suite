@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { SITE_TITLE } from '../../shared/site.ts';
 import { cloudSyncSettled } from '../cloud/sync';
 import { resumeInterruptedImports } from '../gamedata/imports';
 import { pushLayer } from '../input/controller';
@@ -42,7 +43,7 @@ export function GameHost() {
     useEffect(() => pushLayer({ root: () => null, keepFocus: false, onAction: () => true }), []);
 
     useEffect(() => {
-        document.title = 'Tombs Nexus';
+        document.title = SITE_TITLE;
         let filled = false;
         let closing = false;
         const stop = offerGameHost({
