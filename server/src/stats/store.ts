@@ -1,6 +1,7 @@
 // Where the stats are kept: an SQLite file of counts by day. Nothing in it
-// names a person or a device. Visitors are told apart within a day by a hash
-// of their address and browser with a salt that changes every day; the hashes
+// names a person or a device. Within a day, people are told apart by a hash of
+// their address, and their devices by one of address and browser, made with a
+// salt that changes every day; the hashes
 // and the salts go after two days, so no one can be followed from one day to
 // the next. Signed-in players are counted by a keyed hash of their Steam id,
 // which is what lets the page say how many come back.
@@ -90,15 +91,19 @@ export class StatsStore {
         return this.db.prepare('SELECT 1 FROM seen WHERE day = ? AND key = ?').get(day, key) !== undefined;
     }
 
-    /** A visitor's name for one day: no other day's can be linked to it. */
-    visitor(day: string, address: string, userAgent: string): string {
+    /**
+     * A visitor's name for one day, no other day's linked to it: of the
+     * address alone for a person, of the address and browser for a device.
+     */
+    visitor(day: string, address: string, userAgent?: string): string {
         let salt = this.salts.get(day);
         if (salt === undefined) {
             this.putSalt.run(day, randomBytes(16).toString('hex'));
             salt = (this.getSalt.get(day) as { salt: string }).salt;
             this.salts.set(day, salt);
         }
-        return createHash('sha256').update(`${salt}\n${address}\n${userAgent}`).digest('base64url').slice(0, 22);
+        const name = userAgent === undefined ? address : `${address}\n${userAgent}`;
+        return createHash('sha256').update(`${salt}\n${name}`).digest('base64url').slice(0, 22);
     }
 
     /** Forgets visitor hashes, session ids and salts older than a couple of days. */

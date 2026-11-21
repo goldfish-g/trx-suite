@@ -153,6 +153,18 @@ describe('POST /api/stats/events', () => {
         expect(nextDay.daily.at(-1)).toMatchObject({ visits: 1, visitors: 1 });
     });
 
+    it('counts one person per address, and each browser there as a device', async () => {
+        const before = await summary();
+        await send([open()], { address: '203.0.113.99' });
+        await send([open({ screen: 'desktop' } as Partial<StatsEvent>)], { address: '203.0.113.99', agent: FIREFOX_WINDOWS });
+        const after = await summary();
+        expect(after.totals.visits - before.totals.visits).toBe(2);
+        expect(after.totals.visitors - before.totals.visitors).toBe(1);
+        const browsers = (stats: StatsResponse, key: string) => stats.devices.browser.find((entry) => entry.key === key)?.n ?? 0;
+        expect(browsers(after, 'Chrome') - browsers(before, 'Chrome')).toBe(1);
+        expect(browsers(after, 'Firefox') - browsers(before, 'Firefox')).toBe(1);
+    });
+
     it('turns away what is not a list of events, and other sites', async () => {
         expect((await app.inject({ method: 'POST', url: '/api/stats/events', payload: { events: 'no' } })).statusCode).toBe(400);
         expect((await send(Array.from({ length: 51 }, () => open()))).statusCode).toBe(400);

@@ -127,9 +127,10 @@ export function StatsPage() {
                 </p>
                 <p>
                     The server looks up the country of an address the moment a visit arrives and keeps only the country. To count a person
-                    once a day, it keeps a hash of their address and browser made with a key that changes every day; both go after two days,
-                    so no one can be followed from one day to the next. Players signed in with Steam are counted by a keyed hash of their
-                    Steam account, which is how this page knows how many come back, and which Steam games signed-in players own.
+                    once a day, it keeps a hash of their address, and to count their devices one of their address and browser, made with a
+                    key that changes every day; they go after two days, so no one can be followed from one day to the next. People logged in
+                    with Steam are counted by a keyed hash of their Steam account, which is how this page knows how many come back, and
+                    which Steam games logged-in users own.
                 </p>
                 <p className="foot__credits">
                     Country lookup: <a href="https://db-ip.com">IP Geolocation by DB-IP</a> (CC BY 4.0). Custom levels:{' '}
@@ -155,9 +156,9 @@ function Sections({ stats, loading, metric, onMetric }: { stats: StatsResponse; 
                 <Tile label="Time played" value={formatMinutes(totals.minutesPlayed)} note={`${formatCount(totals.plays)} game sessions`} />
                 <Tile label="Custom levels installed" value={formatCount(totals.levelInstalls + totals.fileInstalls)} note={`${formatCount(totals.levelInstalls)} from TRCustoms`} />
                 <Tile
-                    label="Steam players"
+                    label="Logged in users"
                     value={formatCount(totals.players)}
-                    note={`${formatCount(totals.returningPlayers)} came back · ${formatCount(totals.newPlayers)} new here`}
+                    note={`${formatCount(totals.returningPlayers)} returning · ${formatCount(totals.newPlayers)} new`}
                 />
                 <Tile label="Installed as an app" value={formatCount(totals.appInstalls)} note={`${formatCount(totals.gameInstalls)} games installed`} />
             </div>
@@ -269,25 +270,25 @@ function Sections({ stats, loading, metric, onMetric }: { stats: StatsResponse; 
             </Card>
 
             <div className="grid">
-                <DeviceCard title="Screens" tally={stats.devices.screen} group="screen" note="People a day." />
-                <DeviceCard title="App or browser tab" tally={stats.devices.display} group="display" note="People a day." />
-                <DeviceCard title="Controls" tally={stats.devices.input} group="input" note="People a day who used each; one may use several." />
+                <DeviceCard title="Screens" tally={stats.devices.screen} group="screen" note="Devices a day." />
+                <DeviceCard title="App or browser tab" tally={stats.devices.display} group="display" note="Devices a day." />
+                <DeviceCard title="Controls" tally={stats.devices.input} group="input" note="Devices a day that used each; one may use several." />
                 <DeviceCard title="Controllers" tally={stats.devices.pad} group="pad" note="By the buttons they wear." />
-                <DeviceCard title="Menu looks" tally={stats.devices.look} group="look" note="The look picked in the settings." />
-                <DeviceCard title="Browsers" tally={stats.devices.browser} group="browser" />
-                <DeviceCard title="Systems" tally={stats.devices.os} group="os" />
-                <Card title="Languages" note="Of the browser." table={tallyTable(stats.devices.lang, languageName, 'People')}>
+                <DeviceCard title="Menu looks" tally={stats.devices.look} group="look" note="The look picked in the settings, devices a day." />
+                <DeviceCard title="Browsers" tally={stats.devices.browser} group="browser" note="Devices a day." />
+                <DeviceCard title="Systems" tally={stats.devices.os} group="os" note="Devices a day." />
+                <Card title="Languages" note="Of the browser, devices a day." table={tallyTable(stats.devices.lang, languageName, 'Devices')}>
                     {stats.devices.lang.length === 0 ? <Empty>No one yet.</Empty> : <Bars rows={tallyRows(stats.devices.lang, languageName)} limit={8} />}
                 </Card>
                 <Card title="Where they came from" note="The site a link was on, for visits that came from one." table={tallyTable(stats.referrers, (key) => key, 'Visits')}>
                     {stats.referrers.length === 0 ? <Empty>No links followed yet.</Empty> : <Bars rows={tallyRows(stats.referrers, (key) => key)} />}
                 </Card>
                 <Card
-                    title="Steam games of signed-in players"
-                    note={`Of ${formatCount(totals.players)} players${stats.steam.private > 0 ? `; ${formatCount(stats.steam.private)} keep their games private` : ''}.`}
-                    table={tallyTable(stats.steam.owned, steamProductName, 'Players')}
+                    title="Steam games of logged-in users"
+                    note={`Of ${formatCount(totals.players)} logged-in ${totals.players === 1 ? 'user' : 'users'}${stats.steam.private > 0 ? `; ${formatCount(stats.steam.private)} keep their games private` : ''}.`}
+                    table={tallyTable(stats.steam.owned, steamProductName, 'Users')}
                 >
-                    {stats.steam.owned.length === 0 ? <Empty>No one signed in yet.</Empty> : <Bars rows={tallyRows(stats.steam.owned, steamProductName)} />}
+                    {stats.steam.owned.length === 0 ? <Empty>No one logged in yet.</Empty> : <Bars rows={tallyRows(stats.steam.owned, steamProductName)} />}
                 </Card>
             </div>
 

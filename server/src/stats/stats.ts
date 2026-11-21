@@ -108,10 +108,13 @@ export function createStats(options: StatsOptions) {
             case 'open': {
                 store.count(day, 'visits', '');
                 if (event.referrer !== undefined) store.count(day, 'referrer', referrerOf(event.referrer));
-                const visitor = store.visitor(day, sender.address, sender.userAgent);
-                if (store.firstSighting(day, `v:${visitor}`)) {
+                // A person is an address, whatever browsers it uses; the
+                // devices are each browser at that address.
+                if (store.firstSighting(day, `a:${store.visitor(day, sender.address)}`)) {
                     store.count(day, 'visitors', '');
                     store.count(day, 'country', options.geo?.country(sender.address) ?? 'unknown');
+                }
+                if (store.firstSighting(day, `v:${store.visitor(day, sender.address, sender.userAgent)}`)) {
                     store.count(day, 'screen', event.screen);
                     store.count(day, 'display', event.display);
                     store.count(day, 'look', event.look);
@@ -123,9 +126,9 @@ export function createStats(options: StatsOptions) {
                 return;
             }
             case 'input': {
-                const visitor = store.visitor(day, sender.address, sender.userAgent);
-                if (store.firstSighting(day, `i:${visitor}:${event.device}`)) store.count(day, 'input', event.device);
-                if (event.pad !== undefined && store.firstSighting(day, `p:${visitor}:${event.pad}`)) store.count(day, 'pad', event.pad);
+                const device = store.visitor(day, sender.address, sender.userAgent);
+                if (store.firstSighting(day, `i:${device}:${event.device}`)) store.count(day, 'input', event.device);
+                if (event.pad !== undefined && store.firstSighting(day, `p:${device}:${event.pad}`)) store.count(day, 'pad', event.pad);
                 return;
             }
             case 'install':
