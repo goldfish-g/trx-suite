@@ -112,6 +112,32 @@ function referrerHost(): string | undefined {
     }
 }
 
+/** Set on a device once its installed app has been counted; never sent anywhere. */
+const APP_COUNTED = 'trx-suite:stats-app-counted';
+
+/**
+ * Counts the installed app once per device, the first time it opens as one.
+ * Every browser tells a page it runs as an installed app, while only some
+ * say when they install it (Safari and Firefox never do), so this counts the
+ * same everywhere, and installs from before the stats too.
+ */
+function reportAppInstall(): void {
+    if (!isStandalone()) return;
+    try {
+        if (localStorage.getItem(APP_COUNTED) !== null) return;
+    } catch {
+        // Nowhere to note it, so it could only count again and again.
+        return;
+    }
+    void report({ type: 'appinstalled' }).then(() => {
+        try {
+            localStorage.setItem(APP_COUNTED, '1');
+        } catch {
+            // Counted again next time, then.
+        }
+    });
+}
+
 /** Reports the visit and the devices it uses, and sends what waits. Once, on the menu page. */
 export function reportVisit(): void {
     const draft: Draft = {
@@ -134,7 +160,7 @@ export function reportVisit(): void {
         report(device === 'gamepad' && pad !== undefined ? { type: 'input', device, pad } : { type: 'input', device });
     });
 
-    window.addEventListener('appinstalled', () => report({ type: 'appinstalled' }));
+    reportAppInstall();
     window.addEventListener('online', () => scheduleFlush(0));
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') void flush();

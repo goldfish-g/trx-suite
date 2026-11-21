@@ -121,9 +121,9 @@ export function StatsPage() {
             <footer className="foot">
                 <h2>What is counted</h2>
                 <p>
-                    The app tells this server when it opens, which kind of screen and controls it is used with, each minute a game is on screen,
-                    what finished installing, and what Lara did, read from the save files. It sends no name and no id of the player or the
-                    device, and sets no cookie for it.
+                    The app tells this server when it opens (and the first time it opens as an installed app), which kind of screen and
+                    controls it is used with, each minute a game is on screen, what finished installing, and what Lara did, read from the save
+                    files. It sends no name and no id of the player or the device, and sets no cookie for it.
                 </p>
                 <p>
                     The server looks up the country of an address the moment a visit arrives and keeps only the country. To count a person

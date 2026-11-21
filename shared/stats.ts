@@ -82,7 +82,7 @@ export type StatsEvent = EventBase &
               level?: number;
           }
         | {
-              /** The browser installed the app. */
+              /** The app opened as an installed app, the first time on this device. */
               type: 'appinstalled';
           }
         | {
