@@ -204,7 +204,11 @@ function parseId(value: string, what: string): number {
     return Number(value);
 }
 
-export function registerTrcustomsRoutes(app: FastifyInstance, context: Context, options: TrcustomsOptions): void {
+export function registerTrcustomsRoutes(
+    app: FastifyInstance,
+    context: Context,
+    options: TrcustomsOptions,
+): { describe: (id: number) => Promise<CustomLevelDetails> } {
     const { fetch } = context;
     const lists = jsonCache<CustomLevelPage>(context.now);
     const levels = jsonCache<CustomLevelDetails>(context.now);
@@ -246,10 +250,8 @@ export function registerTrcustomsRoutes(app: FastifyInstance, context: Context, 
         },
     );
 
-    app.get<{ Params: { id: string } }>('/api/trcustoms/levels/:id', async (request, reply): Promise<CustomLevelDetails> => {
-        const id = parseId(request.params.id, 'level');
-        reply.header('cache-control', 'private, max-age=120');
-        return levels(String(id), async () => {
+    const describe = (id: number): Promise<CustomLevelDetails> =>
+        levels(String(id), async () => {
             const url = new URL(`/api/levels/${id}/`, options.baseUrl);
             const response = await call(fetch, UPSTREAM, url);
             if (response.status === 404) throw notFound('TRCustoms has no such level, or it is not public.');
@@ -261,6 +263,11 @@ export function registerTrcustomsRoutes(app: FastifyInstance, context: Context, 
             if (!isRecord(body)) throw new HttpError(502, UPSTREAM.code, 'TRCustoms sent an answer this server could not read.');
             return detailsOf(body, options);
         });
+
+    app.get<{ Params: { id: string } }>('/api/trcustoms/levels/:id', async (request, reply): Promise<CustomLevelDetails> => {
+        const id = parseId(request.params.id, 'level');
+        reply.header('cache-control', 'private, max-age=120');
+        return describe(id);
     });
 
     app.get<{ Params: { '*': string } }>('/api/trcustoms/media/*', async (request, reply) => {
@@ -334,4 +341,6 @@ export function registerTrcustomsRoutes(app: FastifyInstance, context: Context, 
         if (file.body === null) return reply.send();
         return reply.send(Readable.fromWeb(file.body as unknown as WebReadableStream<Uint8Array>));
     });
+
+    return { describe };
 }

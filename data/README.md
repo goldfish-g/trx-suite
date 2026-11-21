@@ -123,6 +123,10 @@ Engine builds, flyby levels and the ring's objects go to everyone.
 | `LOG_LEVEL` | `info` | Fastify's log level. |
 | `CLOUD_DIR` | `$DATA_DIR/cloud` | Where the cloud saves of players signed in with Steam are kept. Back it up: it is the only copy of their saves the server has. |
 | `CLOUD_QUOTA_MB` | `256` | What one account may keep in the cloud, in megabytes. |
+| `STATS` | on | `0` turns the public stats off: the server then counts nothing. |
+| `STATS_DIR` | `<DATA_DIR>/stats` | Where the stats (`stats.db`) and the country database are kept. |
+| `STATS_HOST` | `stats.<PUBLIC_URL's host>` | The host name the stats page answers on; the proxy must send it here too. Empty for none. |
+| `STATS_GEO_URL` | DB-IP's free country database | Where the monthly country database comes from (`{YYYY}`, `{MM}`); empty for no countries. |
 | `TRCUSTOMS_URL` | `https://trcustoms.org` | The TRCustoms the custom levels browser lists. The server asks it for levels and streams their archives, since TRCustoms sends no CORS headers. |
 | `TRCUSTOMS_MEDIA_URL` | `https://data.trcustoms.org/media` | Where TRCustoms keeps its screenshots. The server passes them on, as their missing CORP header keeps a cross-origin isolated page from showing them, and keeps the latest 64 MB in memory. |
 

@@ -7,8 +7,10 @@ import type { GameDataRecord } from '../gamedata/types';
 import { GAMES, type EngineNumber } from '../games/catalog';
 import { useInputDevice } from '../input/controller';
 import type { RetryNotice } from '../lib/download';
-import { markProfilePlayed, noteStorageMod, settleProfileEngine } from '../profiles/store';
+import { markProfilePlayed, noteStorageMod, profileStoragePath, settleProfileEngine } from '../profiles/store';
 import type { ProfileRecord } from '../profiles/types';
+import { createLaraTracker } from '../stats/lara';
+import { playedLabel, report, startPlayClock } from '../stats/report';
 import { createAdapters } from './adapters';
 import { baseModOf, borrowedFiles, GameFiles, hideOtherGames, type StagedGame } from './files';
 import { loadEngine } from './load';
@@ -121,6 +123,10 @@ export async function runSession(options: SessionOptions): Promise<number> {
     const engineNumber = (switched !== null ? engineOf(switched, games) : undefined) ?? (isolated(own) ? own.engine : profile.engine);
     // The game the engine opened storage for first; opening another means the player switched.
     let playing: string | null = null;
+    // For the stats: minutes on screen, and what Lara did, from the saves.
+    const label = playedLabel(own, mod);
+    const lara = createLaraTracker((counts) => report({ type: 'lara', game: label.game, ...counts }));
+    let stopClock = null as (() => void) | null;
 
     onStage({ kind: 'engine', received: 0, total: null });
     const loaded = await loadEngine(await settleProfileEngine(profile), {
@@ -139,6 +145,7 @@ export async function runSession(options: SessionOptions): Promise<number> {
         if (pushTimer !== null) clearTimeout(pushTimer);
         pushTimer = null;
         pushing = pushing.then(() => pushSavesForSession(profile.id, loadedMods()));
+        void lara.check();
         return pushing;
     };
     const { adapters, flushNow, loadedMods } = createAdapters({
@@ -152,6 +159,7 @@ export async function runSession(options: SessionOptions): Promise<number> {
                 kind: 'gate',
                 pass: () => {
                     onStage({ kind: 'running' });
+                    stopClock ??= startPlayClock(label);
                     pass();
                 },
             }),
@@ -168,6 +176,7 @@ export async function runSession(options: SessionOptions): Promise<number> {
         beforeLoad: async (mod) => {
             onStage({ kind: 'cloud' });
             await pullSavesForSession(profile.id, mod);
+            await lara.mark(profileStoragePath(profile.id, mod));
             onStage({ kind: 'starting' });
         },
         storageRead: (path) => {
@@ -225,8 +234,9 @@ export async function runSession(options: SessionOptions): Promise<number> {
         window.removeEventListener('resize', onResize);
         window.visualViewport?.removeEventListener('resize', onResize);
         document.removeEventListener('visibilitychange', onHide);
+        stopClock?.();
         await flushNow();
-        // The menus sync whatever does not make it in time.
-        await Promise.race([push(), new Promise((resolve) => setTimeout(resolve, 5000))]);
+        // The menus sync whatever does not make it in time; the stats get the last of Lara.
+        await Promise.race([Promise.all([push(), lara.check()]), new Promise((resolve) => setTimeout(resolve, 5000))]);
     }
 }

@@ -29,7 +29,18 @@ export interface Config {
     cloudDir: string;
     /** What one account may keep in the cloud, in bytes. */
     cloudQuotaBytes: number;
+    /** Whether the server counts visits and play for the public stats. */
+    stats: boolean;
+    /** Where the stats are kept. */
+    statsDir: string;
+    /** The host name the stats page answers on, such as stats.tombs.nexus; empty for none. */
+    statsHost: string;
+    /** Where the monthly country database comes from ({YYYY}, {MM}); empty for no countries. */
+    statsGeoUrl: string;
 }
+
+/** DB-IP's free country database (CC BY 4.0), a new one each month. */
+export const DBIP_COUNTRY_URL = 'https://download.db-ip.com/free/dbip-country-lite-{YYYY}-{MM}.mmdb.gz';
 
 export class ConfigError extends Error {}
 
@@ -148,6 +159,10 @@ export function loadConfig(env: NodeJS.ProcessEnv, cwd = process.cwd()): LoadedC
             trcustomsMediaUrl: (nonEmpty(env.TRCUSTOMS_MEDIA_URL) ?? 'https://data.trcustoms.org/media').replace(/\/*$/, '/'),
             cloudDir: resolve(cwd, nonEmpty(env.CLOUD_DIR) ?? resolve(dataDir, 'cloud')),
             cloudQuotaBytes: Math.round(cloudQuotaMb * 1024 * 1024),
+            stats: env.STATS !== '0',
+            statsDir: resolve(cwd, nonEmpty(env.STATS_DIR) ?? resolve(dataDir, 'stats')),
+            statsHost: (env.STATS_HOST ?? `stats.${new URL(publicUrl).hostname}`).trim().toLowerCase(),
+            statsGeoUrl: env.STATS_GEO_URL ?? DBIP_COUNTRY_URL,
         },
         warnings,
     };

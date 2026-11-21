@@ -115,6 +115,7 @@ export function registerAccountRoutes(app: FastifyInstance, context: Context): v
         // app's cookie jar wherever the player signed in on Steam.
         const accounts = mergeAccount(readAccounts(request, config), login.result.account);
         writeAccounts(request, reply, accounts, config);
+        context.stats?.signedIn(login.result.account);
         return { status: 'done', me: buildMe(accounts, config) };
     });
 

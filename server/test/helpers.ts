@@ -93,6 +93,10 @@ export function testConfig(fixture: Fixture, overrides: Partial<Config> = {}): C
         trcustomsMediaUrl: 'https://data.trcustoms.test/media/',
         cloudDir: join(fixture.root, 'cloud'),
         cloudQuotaBytes: 1024 * 1024,
+        stats: true,
+        statsDir: join(fixture.root, 'stats'),
+        statsHost: 'stats.localhost',
+        statsGeoUrl: '',
         ...overrides,
     };
 }

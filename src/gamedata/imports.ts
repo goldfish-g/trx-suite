@@ -11,6 +11,7 @@ import { requestCloudSync } from '../lib/changes';
 import { newId } from '../lib/db';
 import { discardPartial, download } from '../lib/download';
 import { whenNoGame } from '../lib/gameOpen';
+import { reportInstall } from '../stats/report';
 import { planLayout } from './layout';
 import {
     deleteGameData,
@@ -235,6 +236,8 @@ async function run(record: GameDataRecord, input: ImportInput, signal: AbortSign
             await bringIn(record, input, signal);
         }
         await discardPartial(resumeKey(id));
+        // Fetching one again is no new install.
+        if (record.replacing === undefined) reportInstall(record);
         await requestPersistentStorage();
         // A custom level for the cloud to list, or a game whose profiles the cloud keeps.
         requestCloudSync();

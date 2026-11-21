@@ -26,6 +26,10 @@ import { createRingModels, type RingModelSet } from './ring.ts';
 import { createMenuSounds, type MenuSoundSet } from './sounds.ts';
 import { registerTrcustomsRoutes } from './trcustoms.ts';
 import { registerOriginalRoutes } from './originals.ts';
+import { createGeo } from './stats/geo.ts';
+import { isStatsHost, registerStatsRoutes } from './stats/routes.ts';
+import { createStats, type LevelInfo, type Stats } from './stats/stats.ts';
+import { StatsStore } from './stats/store.ts';
 import type { Fetch } from './upstream.ts';
 
 export interface AppDeps {
@@ -44,6 +48,8 @@ export interface Context {
     logins: LoginStore;
     ringModels: (catalog: Catalog) => Promise<RingModelSet>;
     menuSounds: (catalog: Catalog) => Promise<MenuSoundSet>;
+    /** The public stats, unless they are off. */
+    stats: Stats | null;
 }
 
 /** Paths the page's client-side routes must never shadow. */
@@ -129,6 +135,10 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
 
     app.setNotFoundHandler((_request, reply) => reply.code(404).send(apiError('not_found', 'Not found.')));
 
+    // TRCustoms' routes describe levels, which the stats name; they come later.
+    let describeLevel: ((id: number) => Promise<LevelInfo>) | null = null;
+    const stats = config.stats ? createAppStats(app, config, deps, (id) => describeLevel?.(id) ?? Promise.reject(new Error('not ready'))) : null;
+
     const context: Context = {
         config,
         fetch: deps.fetch ?? globalThis.fetch,
@@ -137,23 +147,61 @@ export async function buildApp(config: Config, deps: AppDeps = {}): Promise<Fast
         logins: createLoginStore(deps.now),
         ringModels: createRingModels(app.log),
         menuSounds: createMenuSounds(app.log),
+        stats,
     };
     registerContentRoutes(app, context);
     registerOriginalRoutes(app, context);
     registerAccountRoutes(app, context);
-    registerTrcustomsRoutes(app, context, { baseUrl: config.trcustomsUrl, mediaUrl: config.trcustomsMediaUrl });
+    const trcustoms = registerTrcustomsRoutes(app, context, { baseUrl: config.trcustomsUrl, mediaUrl: config.trcustomsMediaUrl });
+    describeLevel = async (id) => {
+        const { name, authors, game, cover } = await trcustoms.describe(id);
+        return { name, authors, game, cover };
+    };
+    if (stats !== null) registerStatsRoutes(app, context, stats);
     registerCloudRoutes(app, context, new CloudStore(config.cloudDir, { quotaBytes: config.cloudQuotaBytes }, context.now));
     registerPageRoutes(app, config);
     return app;
 }
 
+function createAppStats(app: FastifyInstance, config: Config, deps: AppDeps, describeLevel: (id: number) => Promise<LevelInfo>): Stats {
+    const now = deps.now ?? Date.now;
+    const store = new StatsStore(join(config.statsDir, 'stats.db'));
+    const geo =
+        config.statsGeoUrl === ''
+            ? null
+            : createGeo({
+                  path: join(config.statsDir, 'country.mmdb'),
+                  url: config.statsGeoUrl,
+                  fetch: deps.fetch ?? globalThis.fetch,
+                  now,
+                  log: { info: (message) => app.log.info(message), warn: (message) => app.log.warn(message) },
+              });
+    app.addHook('onReady', async () => {
+        void geo?.start();
+    });
+    app.addHook('onClose', async () => store.close());
+    return createStats({ store, geo, cloudDir: config.cloudDir, now, describeLevel, log: { warn: (message) => app.log.warn(message) } });
+}
+
 /** The built page, with index.html standing in for the page's own routes. */
 function registerPageRoutes(app: FastifyInstance, config: Config): void {
     const indexPath = join(config.staticDir, 'index.html');
+    // The stats page is a page of its own, built into stats/.
+    const statsPath = join(config.staticDir, 'stats', 'index.html');
 
     app.get('/*', async (request, reply) => {
         const path = requestPath(request);
         if (SERVER_PATHS.test(path)) throw notFound();
+        if (isStatsHost(request, config)) {
+            if (!extname(path.slice(path.lastIndexOf('/') + 1))) {
+                const statsStats = await statFile(statsPath);
+                if (statsStats) return sendFile(request, reply, statsPath, statsStats, { cacheControl: 'no-cache' });
+                throw notFound();
+            }
+        } else if ((path === '/stats' || path === '/stats/') && config.statsHost !== '') {
+            // The app's own address for its stats leads to their host.
+            return reply.redirect(`${new URL(config.publicUrl).protocol}//${config.statsHost}/`, 302);
+        }
 
         const file = resolveInside(config.staticDir, path);
         const stats = file && (await statFile(file));

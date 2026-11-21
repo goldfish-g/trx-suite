@@ -7,6 +7,7 @@ import { installInput } from './input/controller';
 import { gameHost, setNavigator } from './play/pages';
 import { registerServiceWorker } from './pwa/install';
 import { keepScreenOn } from './pwa/wakeLock';
+import { reportVisit } from './stats/report';
 import { trackPixelRatio } from './ui/pixels';
 import { applyTheme } from './ui/theme';
 import './styles.css';
@@ -24,7 +25,10 @@ const PlayScreen = lazy(() => import('./play/PlayScreen').then((module) => ({ de
 const framed = gameHost() !== null;
 
 installInput();
-if (!framed) registerServiceWorker();
+if (!framed) {
+    registerServiceWorker();
+    reportVisit();
+}
 keepScreenOn();
 trackPixelRatio();
 applyTheme();

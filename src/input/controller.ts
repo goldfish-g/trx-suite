@@ -77,7 +77,15 @@ function initialState(): InputState {
 /** The kind of device the player used last, which the prompts follow. */
 export const useInputDevice = create<InputState>(initialState);
 
+let deviceUsed: ((device: InputDevice, pad?: PadStyle) => void) | null = null;
+
+/** Hears every use of a device, the same one again included (for the stats). */
+export function onDeviceUsed(listener: (device: InputDevice, pad?: PadStyle) => void): void {
+    deviceUsed = listener;
+}
+
 function noteDevice(device: InputDevice, pad?: PadStyle): void {
+    deviceUsed?.(device, pad);
     const state = useInputDevice.getState();
     if (state.device === device && (pad === undefined || state.pad === pad)) return;
     useInputDevice.setState(pad === undefined ? { device } : { device, pad });
