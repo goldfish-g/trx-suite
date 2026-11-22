@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SITE_TITLE } from '../../shared/site.ts';
 import { cloudSyncSettled } from '../cloud/sync';
-import { resumeInterruptedImports } from '../gamedata/imports';
+import { redownloadGameData, resumeInterruptedImports } from '../gamedata/imports';
 import { pushLayer } from '../input/controller';
 import { gameOpened } from '../lib/gameOpen';
 import { closeGame, noteGameShown, offerGameHost, switchGame } from './pages';
@@ -54,6 +54,12 @@ export function GameHost() {
                 closeGame();
             },
             switchTo: switchGame,
+            redownload: (gamedataId) => {
+                void redownloadGameData(gamedataId);
+                if (closing) return;
+                closing = true;
+                closeGame();
+            },
             setTitle: (title) => {
                 document.title = title;
             },

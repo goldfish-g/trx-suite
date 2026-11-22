@@ -5,6 +5,7 @@
 // the engine can list but not read. Switching to one starts a new session.
 
 import { GAMES, type EngineNumber } from '../games/catalog';
+import { readGameDataFile } from '../gamedata/store';
 import type { GameDataFile, GameDataRecord } from '../gamedata/types';
 
 /** The part of the engine's file system staging uses. */
@@ -143,7 +144,7 @@ export class GameFiles {
             const path = absolute(file.path);
             this.fs.mkdirTree(path.slice(0, path.lastIndexOf('/')));
             // Handed over, not copied: one copy of each file in memory as the level starts.
-            this.fs.writeFile(path, new Uint8Array(await file.blob.arrayBuffer()), { canOwn: true });
+            this.fs.writeFile(path, await readGameDataFile(file), { canOwn: true });
             this.filled.add(file.path);
             done += file.blob.size;
             onProgress?.(done, total);

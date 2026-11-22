@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { checkBrowserSupport, runSession, type SessionStage } from '../engine/session';
+import { redownloadGameData } from '../gamedata/imports';
+import { DamagedGameDataError, getGameData } from '../gamedata/store';
 import { KEYS, pushLayer } from '../input/controller';
 import { getProfile } from '../profiles/store';
 import { formatBytes } from '../ui/format';
@@ -9,7 +11,38 @@ import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt, PromptBar } from '../ui/Prompt';
 import { gameHost, leaveGame } from './pages';
 
-type ScreenState = SessionStage | { kind: 'loading' } | { kind: 'error'; message: string };
+/** A way out of an error, beside trying again. */
+interface Repair {
+    label: string;
+    run(): void;
+}
+
+type ScreenState = SessionStage | { kind: 'loading' } | { kind: 'error'; message: string; repair?: Repair };
+
+/**
+ * What to tell the player about a game whose stored files read back damaged,
+ * and the way to mend them: downloading it again, which keeps its profiles
+ * and saves, for a game that came from a download.
+ */
+async function damagedFiles(error: DamagedGameDataError): Promise<{ message: string; repair?: Repair }> {
+    console.error(error);
+    const record = await getGameData(error.gamedataId);
+    const what = `The files of ${record?.name ?? 'this game'} came back damaged from this browser's storage, where an earlier version of Tombs Nexus put them.`;
+    if (record === undefined || record.source.kind === 'upload') {
+        return { message: `${what} In the menu, remove the game's files from this device and add them again. Profiles and saves stay.` };
+    }
+    return {
+        message: `${what} Downloading the game again mends them. Profiles and saves stay.`,
+        repair: {
+            label: 'Download again',
+            run: () => {
+                const host = gameHost();
+                if (host !== null) host.redownload(record.id);
+                else void redownloadGameData(record.id).then(leaveGame);
+            },
+        },
+    };
+}
 
 const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
 
@@ -86,8 +119,13 @@ export function PlayScreen() {
                     setNotice(`Connection lost (${reason}). Trying again in ${Math.ceil(waitMs / 1000)} s…`),
             });
             leave();
-        })().catch((error: unknown) => {
+        })().catch(async (error: unknown) => {
             if (controller.signal.aborted) return;
+            if (error instanceof DamagedGameDataError) {
+                const { message, repair } = await damagedFiles(error);
+                if (!controller.signal.aborted) setState({ kind: 'error', message, repair });
+                return;
+            }
             console.error(error);
             fail(error instanceof Error ? error.message : String(error));
         });
@@ -187,7 +225,11 @@ function Overlay({ state, notice, rootRef }: { state: ScreenState; notice: strin
                         </h1>
                         <p className="play__error">{state.message}</p>
                         <PromptBar className="play__prompts">
-                            <Prompt action="confirm" label="Try again" variant="primary" global onPress={() => location.reload()} />
+                            {state.repair !== undefined ? (
+                                <Prompt action="confirm" label={state.repair.label} variant="primary" global onPress={state.repair.run} />
+                            ) : (
+                                <Prompt action="confirm" label="Try again" variant="primary" global onPress={() => location.reload()} />
+                            )}
                             <Prompt action="back" label="Back to the menu" global onPress={leave} />
                         </PromptBar>
                     </div>

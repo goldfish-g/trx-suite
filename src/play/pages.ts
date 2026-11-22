@@ -16,6 +16,8 @@ export interface GameHostApi {
     close(): void;
     /** Plays url (/play/<profile>?mod=…) in a fresh frame instead, for another game picked in the engine. */
     switchTo(url: string): void;
+    /** Fetches a game's files again, from the page that outlives the frame, and goes back to the menu. */
+    redownload(gamedataId: string): void;
     /** Fills the screen, sideways where the device allows; inside the player's tap. */
     enterFullscreen(): Promise<void>;
     setTitle(title: string): void;

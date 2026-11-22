@@ -27,9 +27,38 @@ export async function updateGameData(id: string, patch: Partial<GameDataRecord>)
     announceLibraryChange();
 }
 
+/**
+ * Stores a file of a game's data: a copy of its bytes, never the Blob as it
+ * is. Each file of a stored zip archive is a slice of the downloaded
+ * archive, and Safari's IndexedDB keeps a slice as the whole stretch of the
+ * download it lies in, which it reads back from the wrong place and at many
+ * times the size.
+ */
 export async function putGameDataFile(file: GameDataFile): Promise<void> {
+    const blob = new Blob([await file.blob.arrayBuffer()], { type: file.blob.type });
     const db = await getDb();
-    await db.put('files', file);
+    await db.put('files', { ...file, blob });
+}
+
+/** A stored file that reads back as other than it was stored (see putGameDataFile). */
+export class DamagedGameDataError extends Error {
+    readonly gamedataId: string;
+
+    constructor(file: GameDataFile, read: number) {
+        super(`${file.path} reads back as ${read} bytes from this browser's storage, not the ${file.blob.size} it holds.`);
+        this.name = 'DamagedGameDataError';
+        this.gamedataId = file.gamedataId;
+    }
+}
+
+/**
+ * A stored file's bytes, checked against its size: the files an earlier
+ * version of the app stored in Safari read back as more than they are.
+ */
+export async function readGameDataFile(file: GameDataFile): Promise<Uint8Array> {
+    const bytes = new Uint8Array(await file.blob.arrayBuffer());
+    if (bytes.byteLength !== file.blob.size) throw new DamagedGameDataError(file, bytes.byteLength);
+    return bytes;
 }
 
 export async function listGameDataFiles(gamedataId: string): Promise<GameDataFile[]> {
