@@ -285,7 +285,7 @@ export interface StoredDownloadOptions extends Omit<DownloadOptions, 'resumeKey'
     /**
      * The Cache Storage cache earlier versions of the app kept the file in,
      * whose copy plays when the server cannot be reached and nothing is
-     * stored yet.
+     * stored yet. It goes before the file downloads anew, to make room.
      */
     legacyCache?: string;
 }
@@ -334,6 +334,11 @@ export async function downloadStored(url: string, options: StoredDownloadOptions
     if (hit !== undefined && (server?.size === undefined || hit.blob.size === server.size)) return found(hit.blob, key);
 
     const resumeKey = `cache:${key}`;
+    // Older versions, kept for offline use, make room for this one first.
+    for (const old of kept) {
+        if (old !== key) await db.delete('stored', old);
+    }
+    if (legacyCache !== undefined && typeof caches !== 'undefined') await caches.delete(legacyCache).catch(() => false);
     let blob = await download(rest.httpCache === true ? key : absolute, {
         ...rest,
         expectedSize: rest.expectedSize ?? server?.size,
@@ -341,13 +346,14 @@ export async function downloadStored(url: string, options: StoredDownloadOptions
     });
     try {
         await db.put('stored', { key, url: absolute, blob });
-        for (const old of kept) {
-            if (old !== key) await db.delete('stored', old);
-        }
         // The stored copy, which waits on disk, rather than the one just put together.
         blob = (await db.get('stored', key))?.blob ?? blob;
-    } catch {
-        // Out of storage: the file still works, it downloads again next time.
+    } catch (error) {
+        // Out of storage: the file still works, from the download's own
+        // parts, which stay for the next time, which then needs no download.
+        // Discarding them would leave the blob reading from files gone.
+        console.warn(`[download] ${absolute} could not be stored:`, error);
+        return { blob, url: key, reachable: server !== null };
     }
     await discardPartial(resumeKey);
     return { blob, url: key, reachable: server !== null };
