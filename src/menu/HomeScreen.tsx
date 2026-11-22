@@ -74,6 +74,8 @@ export function HomeScreen() {
     const [busy, setBusy] = useState(false);
     // The credits come first as the app starts, not on the way back from a game.
     const [starting, setStarting] = useState(() => !cameFromGame());
+    // A hidden extra: (L3) or H leaves only the level flying by, under the logo.
+    const [flybyOnly, setFlybyOnly] = useState(false);
 
     const { gamedata } = useLibrary();
     const catalog = useAccount((state) => state.catalog);
@@ -220,8 +222,8 @@ export function HomeScreen() {
     // The custom levels screen and the start screen show the level flying by through them, without the ring.
     const customOpen = sheet?.kind === 'custom';
     useEffect(() => {
-        if (stageRef.current !== null) stageRef.current.showForeground = !customOpen && !starting;
-    }, [customOpen, starting]);
+        if (stageRef.current !== null) stageRef.current.showForeground = !customOpen && !starting && !flybyOnly;
+    }, [customOpen, starting, flybyOnly]);
 
     // Each turn of the ring knocks, however it was turned.
     const shownSelection = useRef(selected);
@@ -299,6 +301,9 @@ export function HomeScreen() {
                     case 'up':
                     case 'down':
                         return true;
+                    case 'hide':
+                        setFlybyOnly(true);
+                        return true;
                     default:
                         return false;
                 }
@@ -307,6 +312,41 @@ export function HomeScreen() {
         // turn() reads only refs, so the first one serves.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [starting]);
+
+    // With the menu hidden, the action button flies through another level:
+    // (A), or Ctrl as in the games. (L3), H, (B) or a click bring the menu back.
+    useEffect(() => {
+        if (!flybyOnly) return undefined;
+        const another = () => setFlybyNonce((n) => n + 1);
+        if (document.activeElement instanceof HTMLElement && uiRef.current?.contains(document.activeElement)) document.activeElement.blur();
+        const pop = pushLayer({
+            root: () => null,
+            keepFocus: false,
+            onAction: (action, repeat) => {
+                if (repeat) return true;
+                if (action === 'confirm') another();
+                else if (action === 'hide' || action === 'back') setFlybyOnly(false);
+                return true;
+            },
+        });
+        // Ctrl alone: not when it is part of a shortcut, such as Ctrl+R.
+        let ctrlAlone = false;
+        const keyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Control') ctrlAlone = false;
+            else if (!event.repeat) ctrlAlone = true;
+        };
+        const keyUp = (event: KeyboardEvent) => {
+            if (event.key === 'Control' && ctrlAlone) another();
+            ctrlAlone = false;
+        };
+        window.addEventListener('keydown', keyDown);
+        window.addEventListener('keyup', keyUp);
+        return () => {
+            pop();
+            window.removeEventListener('keydown', keyDown);
+            window.removeEventListener('keyup', keyUp);
+        };
+    }, [flybyOnly]);
 
     // Dragging, flicking and tapping the ring.
     useEffect(() => {
@@ -399,14 +439,14 @@ export function HomeScreen() {
     const status = statuses[selected]!;
 
     return (
-        <main className={`home ${customOpen ? 'home--custom' : ''} ${starting ? 'home--starting' : ''}`}>
+        <main className={`home ${customOpen ? 'home--custom' : ''} ${starting ? 'home--starting' : ''} ${flybyOnly ? 'home--flyby' : ''}`}>
             <canvas ref={canvasRef} className="home__stage" aria-hidden="true" />
             <div className="home__shade" aria-hidden="true" />
             {webglError ? (
                 <p className="home__webgl">This browser cannot draw 3D graphics (WebGL 2), which the games need.</p>
             ) : null}
 
-            <div className="home__ui" ref={uiRef} inert={sheet !== null || starting}>
+            <div className="home__ui" ref={uiRef} inert={sheet !== null || starting || flybyOnly}>
             <header className="topbar" ref={topbarRef}>
                 <div className="brand">
                     <BrandLogo className="brand__logo" />
@@ -482,6 +522,8 @@ export function HomeScreen() {
             </footer>
             </div>
 
+            {/* Over the ring, so a click while the menu is hidden only brings it back. */}
+            {flybyOnly ? <div className="home__flyby" aria-hidden="true" onClick={() => setFlybyOnly(false)} /> : null}
             {starting ? <StartScreen onContinue={() => setStarting(false)} /> : null}
             {sheet?.kind === 'game' ? (
                 <GameSheet

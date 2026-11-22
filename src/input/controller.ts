@@ -41,7 +41,9 @@ export type MenuAction =
     /** Left trigger, Z: the section before, such as Installed beside Browse. */
     | 'sectionPrevious'
     /** Right trigger, C. */
-    | 'sectionNext';
+    | 'sectionNext'
+    /** Left stick press, H: on the home screen, the menu goes and leaves the level flying by. */
+    | 'hide';
 
 export type InputDevice = 'keyboard' | 'gamepad' | 'mouse' | 'touch';
 
@@ -229,6 +231,7 @@ export const KEYS: Record<string, MenuAction> = {
     e: 'next',
     z: 'sectionPrevious',
     c: 'sectionNext',
+    h: 'hide',
     PageUp: 'previous',
     PageDown: 'next',
 };
@@ -249,6 +252,7 @@ export const KEY_LABELS: Record<MenuAction, string> = {
     next: 'E',
     sectionPrevious: 'Z',
     sectionNext: 'C',
+    hide: 'H',
 };
 
 function isTyping(target: EventTarget | null): boolean {
@@ -292,6 +296,7 @@ const PAD_BUTTONS: [number, MenuAction][] = [
     [7, 'sectionNext'], // right trigger
     [8, 'view'], // View / Create / −
     [9, 'menu'], // Start / Options / +
+    [10, 'hide'], // left stick press
     [12, 'up'],
     [13, 'down'],
     [14, 'left'],

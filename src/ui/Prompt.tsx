@@ -31,6 +31,7 @@ const PAD: Record<PadStyle, Record<PadAction, Art>> = {
         // TRX's START and BACK are as wide as words; the old marks fit a chip.
         menu: { cap: '≡' },
         view: { cap: '⧉' },
+        hide: { cap: 'LS' },
     },
     playstation: {
         confirm: 'controller button cross',
@@ -43,6 +44,7 @@ const PAD: Record<PadStyle, Record<PadAction, Art>> = {
         sectionNext: 'controller button r2',
         menu: 'controller button options',
         view: 'controller button share',
+        hide: { cap: 'L3' },
     },
     // Nintendo prints its letters the other way round from where Xbox has them.
     nintendo: {
@@ -56,6 +58,7 @@ const PAD: Record<PadStyle, Record<PadAction, Art>> = {
         sectionNext: { cap: 'ZR' },
         menu: { cap: '+' },
         view: { cap: '−' },
+        hide: { cap: 'LS' },
     },
 };
 
