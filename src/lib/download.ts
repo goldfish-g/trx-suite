@@ -134,8 +134,12 @@ export async function download(url: string, options: DownloadOptions = {}): Prom
     if (resumeKey !== undefined) {
         const kept = await loadPartial(resumeKey, url);
         if (kept !== null) {
-            parts = kept;
-            received = kept.reduce((sum, part) => sum + part.size, 0);
+            // Copies of their bytes, a part at a time. A Blob read from
+            // IndexedDB and stored again is, in Safari, the same stored data,
+            // which goes when the parts are discarded: the file kept from them
+            // would then no longer read ("The object can not be found here").
+            for (const part of kept) parts.push(new Blob([await part.arrayBuffer()]));
+            received = parts.reduce((sum, part) => sum + part.size, 0);
         } else {
             await discardPartial(resumeKey);
         }
@@ -331,7 +335,11 @@ export async function downloadStored(url: string, options: StoredDownloadOptions
 
     const key = `${absolute}?v=${encodeURIComponent(server?.version ?? 'unknown')}`;
     const hit = await db.get('stored', key);
-    if (hit !== undefined && (server?.size === undefined || hit.blob.size === server.size)) return found(hit.blob, key);
+    if (hit !== undefined && (server?.size === undefined || hit.blob.size === server.size)) {
+        if (await readable(hit.blob)) return found(hit.blob, key);
+        // Stored by an earlier version from parts since discarded: it downloads again.
+        await db.delete('stored', key);
+    }
 
     const resumeKey = `cache:${key}`;
     // Older versions, kept for offline use, make room for this one first.
@@ -369,5 +377,25 @@ async function readLegacyCache(cacheName: string, absolute: string): Promise<{ b
         return response === undefined ? null : { blob: await response.blob(), url: request!.url };
     } catch {
         return null;
+    }
+}
+
+/** Forgets every stored file whose address keep turns down. */
+export async function forgetStored(keep: (url: string) => boolean): Promise<void> {
+    const db = await getDb();
+    for (const key of await db.getAllKeys('stored')) {
+        const url = key.slice(0, key.lastIndexOf('?v='));
+        if (!keep(url)) await db.delete('stored', key);
+    }
+}
+
+/** Whether a stored Blob's first and last bytes still read, as they do unless its data is gone. */
+async function readable(blob: Blob): Promise<boolean> {
+    try {
+        await blob.slice(0, 1).arrayBuffer();
+        await blob.slice(Math.max(0, blob.size - 1)).arrayBuffer();
+        return true;
+    } catch {
+        return false;
     }
 }

@@ -2,9 +2,10 @@
 // version the server reports, so a build downloads once and starts even when
 // the network is down.
 
-import { downloadStored, type DownloadProgress, type RetryNotice, type StoredDownload } from '../lib/download';
+import { downloadStored, forgetStored, type DownloadProgress, type RetryNotice, type StoredDownload } from '../lib/download';
 import { EnginePackage } from './package';
 import type { CreateTrx } from './types';
+import { loadEngineVersions } from './versions';
 
 /** Where earlier versions of the app kept engine builds: Cache Storage, which Safari reads into memory whole. */
 const LEGACY_CACHE = 'trx-engines';
@@ -90,6 +91,8 @@ export async function loadEngine(version: string, options: LoadEngineOptions = {
     const [adapter, script, wasm, data] = files as [StoredDownload, StoredDownload, StoredDownload, StoredDownload];
     // Every file is stored anew, so the copies an earlier version of the app kept can go.
     if (files.every((file) => file.reachable) && typeof caches !== 'undefined') await caches.delete(LEGACY_CACHE).catch(() => false);
+    // Builds the server no longer offers only take up room, 385 MB each.
+    if (files.every((file) => file.reachable)) void forgetOtherEngines(version).catch(() => {});
     const blobUrl = (blob: Blob, name: (typeof FILES)[number]) => URL.createObjectURL(new Blob([blob], { type: TYPES[name] }));
     const enginePackage = await EnginePackage.split(script.blob, data.blob);
     const adapterUrl = blobUrl(adapter.blob, 'trx-adapter.js');
@@ -115,4 +118,12 @@ export async function loadEngine(version: string, options: LoadEngineOptions = {
     } finally {
         URL.revokeObjectURL(adapterUrl);
     }
+}
+
+/** Forgets the files of every engine build but this one and those the server offers. */
+async function forgetOtherEngines(version: string): Promise<void> {
+    const offered = await loadEngineVersions();
+    const root = new URL('/engines/', location.href).href;
+    const keep = [...offered, version].map((name) => new URL(`/engines/${name}/`, location.href).href);
+    await forgetStored((url) => !url.startsWith(root) || keep.some((prefix) => url.startsWith(prefix)));
 }
