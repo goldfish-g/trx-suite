@@ -15,9 +15,13 @@ import { createAdapters } from './adapters';
 import { baseModOf, borrowedFiles, GameFiles, hideOtherGames, type StagedGame } from './files';
 import { loadEngine } from './load';
 import { prepareStartSettings } from './settings';
+import { EngineStoppedError } from './stopped';
 import type { TrxEngine } from './types';
 
 const PUSH_DELAY_MS = 3000;
+
+/** How many of the engine's last lines of output a session keeps, to tell why it stopped. */
+const KEPT_LINES = 40;
 
 export type SessionStage =
     | { kind: 'engine'; received: number; total: number | null }
@@ -127,6 +131,13 @@ export async function runSession(options: SessionOptions): Promise<number> {
     const label = playedLabel(own, mod);
     const lara = createLaraTracker((counts) => report({ type: 'lara', game: label.game, ...counts }));
     let stopClock = null as (() => void) | null;
+    // Whether the player started the game, past which the engine ending is the player leaving.
+    let gamePassed = false;
+    const lines: string[] = [];
+    const keep = (text: string) => {
+        lines.push(text);
+        if (lines.length > KEPT_LINES) lines.shift();
+    };
 
     onStage({ kind: 'engine', received: 0, total: null });
     const loaded = await loadEngine(await settleProfileEngine(profile), {
@@ -158,6 +169,7 @@ export async function runSession(options: SessionOptions): Promise<number> {
             onStage({
                 kind: 'gate',
                 pass: () => {
+                    gamePassed = true;
                     onStage({ kind: 'running' });
                     stopClock ??= startPlayClock(label);
                     pass();
@@ -208,6 +220,14 @@ export async function runSession(options: SessionOptions): Promise<number> {
         jsUrl: loaded.jsUrl,
         wasmUrl: loaded.wasmUrl,
         dataUrl: loaded.dataUrl,
+        onStdout: (text) => {
+            console.log(text);
+            keep(text);
+        },
+        onStderr: (text) => {
+            console.warn(text);
+            keep(text);
+        },
     });
     loaded.releaseStartupFiles();
 
@@ -232,7 +252,9 @@ export async function runSession(options: SessionOptions): Promise<number> {
         files.placeStandIns();
         await files.use(switched ?? own.mod, (done, total) => onStage({ kind: 'files', done, total }));
         await markProfilePlayed(profile.id);
-        return await started.run(engineArgs(profile, own, mod, engineNumber));
+        const code = await started.run(engineArgs(profile, own, mod, engineNumber));
+        if (!gamePassed) throw new EngineStoppedError(code, lines);
+        return code;
     } finally {
         window.removeEventListener('resize', onResize);
         window.visualViewport?.removeEventListener('resize', onResize);

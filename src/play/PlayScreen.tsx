@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { checkBrowserSupport, runSession, type SessionStage } from '../engine/session';
+import { EngineStoppedError } from '../engine/stopped';
 import { redownloadGameData } from '../gamedata/imports';
 import { DamagedGameDataError, getGameData } from '../gamedata/store';
 import { KEYS, pushLayer } from '../input/controller';
@@ -9,7 +10,7 @@ import { formatBytes } from '../ui/format';
 import { GameText } from '../ui/GameText';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Prompt, PromptBar } from '../ui/Prompt';
-import { gameHost, leaveGame } from './pages';
+import { gameHost, leaveGame, reloadOutdatedHost } from './pages';
 
 /** A way out of an error, beside trying again. */
 interface Repair {
@@ -89,10 +90,14 @@ export function PlayScreen() {
 
     useEffect(() => {
         const controller = new AbortController();
+        // The step the game was at, for an error to say where it happened.
+        let step: SessionStage | { kind: 'loading' } = { kind: 'loading' };
         const fail = (message: string) => {
             if (!controller.signal.aborted) setState({ kind: 'error', message });
         };
         (async () => {
+            // The page above, left open across an update, becomes this build first.
+            if (reloadOutdatedHost()) return;
             const unsupported = checkBrowserSupport();
             if (unsupported !== null) return fail(unsupported);
             const profile = profileId === undefined ? undefined : await getProfile(profileId);
@@ -105,6 +110,7 @@ export function PlayScreen() {
                 canvas: canvasRef.current!,
                 signal: controller.signal,
                 onStage: (stage) => {
+                    step = stage;
                     setNotice(null);
                     setState(stage);
                 },
@@ -127,7 +133,10 @@ export function PlayScreen() {
                 return;
             }
             console.error(error);
-            fail(error instanceof Error ? error.message : String(error));
+            if (!(error instanceof Error)) return fail(String(error));
+            if (error instanceof EngineStoppedError) return fail(error.message);
+            // The kind of error and the step tell more than a browser's message alone.
+            fail(`${error.message} (${error.name}, at "${describeStage(step).heading}")`);
         });
         return () => controller.abort();
     }, [profileId, mod]);
@@ -271,6 +280,9 @@ function describeStage(state: SessionStage | { kind: 'loading' }): {
             };
         case 'starting':
             return { heading: 'Starting the engine', fraction: null };
+        case 'gate':
+        case 'running':
+            return { heading: 'Playing', fraction: null };
         case 'cloud':
             return { heading: 'Bringing in your saves', fraction: null, detail: 'From the cloud' };
         case 'files':

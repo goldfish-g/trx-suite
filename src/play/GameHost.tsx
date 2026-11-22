@@ -47,6 +47,7 @@ export function GameHost() {
         let filled = false;
         let closing = false;
         const stop = offerGameHost({
+            build: __BUILD_ID__,
             // Once: a game may ask again on its way out.
             close: () => {
                 if (closing) return;

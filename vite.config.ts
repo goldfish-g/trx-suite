@@ -33,7 +33,11 @@ export default defineConfig({
         https,
     },
     preview: { headers: crossOriginIsolationHeaders },
-    define: { __CONVERTER_VERSION__: JSON.stringify(converterVersion(root)) },
+    define: {
+        __CONVERTER_VERSION__: JSON.stringify(converterVersion(root)),
+        // Tells the pages of one build from those of another (play/pages.ts).
+        __BUILD_ID__: JSON.stringify(new Date().toISOString()),
+    },
     worker: { format: 'es' },
     // The converter's worker uses fflate. Found only once a level is converted,
     // it would make the dev server reload the page mid-import.

@@ -12,6 +12,8 @@ import type { NavigateFunction } from 'react-router-dom';
 
 /** What the page holding a game's frame offers the game inside it. */
 export interface GameHostApi {
+    /** The build of the page holding the frame (__BUILD_ID__). */
+    build: string;
     /** Back to the menu: the frame goes. */
     close(): void;
     /** Plays url (/play/<profile>?mod=…) in a fresh frame instead, for another game picked in the engine. */
@@ -33,6 +35,26 @@ export function offerGameHost(api: GameHostApi): () => void {
     return () => {
         if ((window as HostWindow)[GAME_HOST] === api) delete (window as HostWindow)[GAME_HOST];
     };
+}
+
+/** The build of the app a game's frame last reloaded the page above it for. */
+const HOST_RELOADED_KEY = 'trx-suite:host-reloaded-for';
+
+/**
+ * Reloads the page holding this game's frame when it is of another build:
+ * an app left open across an update keeps its page while each game's frame
+ * loads afresh, and the two would use storage each its own way: the older
+ * page cannot even open the database once the frame has upgraded it. Once
+ * per build, so a page that stays old cannot reload for ever. True while it
+ * reloads.
+ */
+export function reloadOutdatedHost(): boolean {
+    const host = gameHost();
+    if (host === null || host.build === __BUILD_ID__) return false;
+    if (sessionStorage.getItem(HOST_RELOADED_KEY) === __BUILD_ID__) return false;
+    sessionStorage.setItem(HOST_RELOADED_KEY, __BUILD_ID__);
+    window.top?.location.reload();
+    return true;
 }
 
 /** The page this game's frame plays in, when this page is one. */
