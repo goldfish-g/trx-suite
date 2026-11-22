@@ -272,11 +272,25 @@ async function fetchVersion(url: string): Promise<{ version: string; size?: numb
     }
 }
 
-export interface CachedDownloadOptions extends Omit<DownloadOptions, 'resumeKey'> {
-    cacheName: string;
+/** A file kept by version (see downloadStored). */
+export interface StoredFile {
+    /** The address of the version, as `<address>?v=<version>`. */
+    key: string;
+    /** The absolute address, which names no version. */
+    url: string;
+    blob: Blob;
 }
 
-export interface CachedFile {
+export interface StoredDownloadOptions extends Omit<DownloadOptions, 'resumeKey'> {
+    /**
+     * The Cache Storage cache earlier versions of the app kept the file in,
+     * whose copy plays when the server cannot be reached and nothing is
+     * stored yet.
+     */
+    legacyCache?: string;
+}
+
+export interface StoredDownload {
     blob: Blob;
     /** The address of the version the blob holds, as `url?v=<version>`. */
     url: string;
@@ -285,55 +299,69 @@ export interface CachedFile {
 }
 
 /**
- * Downloads url like download does, and keeps the result in Cache Storage
- * under the version the server reports, so it downloads once per version.
- * When the server cannot be reached, the last version kept is used. With
- * httpCache, the download goes to the version's own address, which the
- * browser's HTTP cache may keep too.
+ * Downloads url like download does, and keeps the result in IndexedDB under
+ * the version the server reports, so it downloads once per version. When the
+ * server cannot be reached, the last version kept is used. With httpCache,
+ * the download goes to the version's own address, which the browser's HTTP
+ * cache may keep too.
+ *
+ * IndexedDB, not Cache Storage: a Blob read back from IndexedDB stays on
+ * disk until something reads it, while Safari brings a whole Cache Storage
+ * answer into the page's memory, several times over, as soon as it is
+ * matched. For the engine's 350 MB package that came to 1.5 GB, more than
+ * iOS lets a page have.
  */
-export async function downloadCached(url: string, options: CachedDownloadOptions): Promise<CachedFile> {
-    const { cacheName, ...rest } = options;
+export async function downloadStored(url: string, options: StoredDownloadOptions): Promise<StoredDownload> {
+    const { legacyCache, ...rest } = options;
     const absolute = new URL(url, location.href).href;
-    const cache = await caches.open(cacheName).catch(() => null);
-    const kept = (await cache?.keys())?.filter((request) => request.url.startsWith(`${absolute}?v=`)) ?? [];
+    const db = await getDb();
+    const kept = await db.getAllKeysFromIndex('stored', 'byUrl', absolute);
     const server = await fetchVersion(absolute);
+    const found = (blob: Blob, key: string): StoredDownload => {
+        rest.onProgress?.({ received: blob.size, total: blob.size });
+        return { blob, url: key, reachable: server !== null };
+    };
 
-    if (server === null && kept.length > 0) {
-        const last = kept[kept.length - 1]!;
-        const response = await cache?.match(last);
-        if (response !== undefined) {
-            const blob = await response.blob();
-            rest.onProgress?.({ received: blob.size, total: blob.size });
-            return { blob, url: last.url, reachable: false };
-        }
+    if (server === null) {
+        const last = kept.length > 0 ? await db.get('stored', kept[kept.length - 1]!) : undefined;
+        if (last !== undefined) return found(last.blob, last.key);
+        const legacy = legacyCache === undefined ? null : await readLegacyCache(legacyCache, absolute);
+        if (legacy !== null) return found(legacy.blob, legacy.url);
     }
 
     const key = `${absolute}?v=${encodeURIComponent(server?.version ?? 'unknown')}`;
-    const hit = await cache?.match(key);
-    if (hit !== undefined) {
-        const blob = await hit.blob();
-        if (server?.size === undefined || blob.size === server.size) {
-            rest.onProgress?.({ received: blob.size, total: blob.size });
-            return { blob, url: key, reachable: server !== null };
-        }
-    }
+    const hit = await db.get('stored', key);
+    if (hit !== undefined && (server?.size === undefined || hit.blob.size === server.size)) return found(hit.blob, key);
 
     const resumeKey = `cache:${key}`;
-    const blob = await download(rest.httpCache === true ? key : absolute, {
+    let blob = await download(rest.httpCache === true ? key : absolute, {
         ...rest,
         expectedSize: rest.expectedSize ?? server?.size,
         resumeKey,
     });
-    if (cache !== null) {
-        try {
-            await cache.put(key, new Response(blob));
-            for (const request of kept) {
-                if (request.url !== key) await cache.delete(request);
-            }
-        } catch {
-            // Out of storage: the file still works, it downloads again next time.
+    try {
+        await db.put('stored', { key, url: absolute, blob });
+        for (const old of kept) {
+            if (old !== key) await db.delete('stored', old);
         }
+        // The stored copy, which waits on disk, rather than the one just put together.
+        blob = (await db.get('stored', key))?.blob ?? blob;
+    } catch {
+        // Out of storage: the file still works, it downloads again next time.
     }
     await discardPartial(resumeKey);
     return { blob, url: key, reachable: server !== null };
+}
+
+/** The last version of url an earlier version of the app kept in Cache Storage. */
+async function readLegacyCache(cacheName: string, absolute: string): Promise<{ blob: Blob; url: string } | null> {
+    try {
+        if (typeof caches === 'undefined' || !(await caches.has(cacheName))) return null;
+        const cache = await caches.open(cacheName);
+        const request = (await cache.keys()).filter((kept) => kept.url.startsWith(`${absolute}?v=`)).at(-1);
+        const response = request === undefined ? undefined : await cache.match(request);
+        return response === undefined ? null : { blob: await response.blob(), url: request!.url };
+    } catch {
+        return null;
+    }
 }

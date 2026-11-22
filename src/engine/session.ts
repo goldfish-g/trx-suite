@@ -226,6 +226,9 @@ export async function runSession(options: SessionOptions): Promise<number> {
         // A custom level has the engine to itself: the games the engine
         // carries would otherwise be there to switch to.
         if (isolated(own)) hideOtherGames(started.fs, new Set([own.mod, baseModOf(own)]));
+        // The pictures and levels the engine carries, of the game played and
+        // the games it extends; every other game's stay empty (package.ts).
+        await loaded.package.fill(started.fs, [mod, own.mod, baseModOf(own)]);
         files.placeStandIns();
         await files.use(switched ?? own.mod, (done, total) => onStage({ kind: 'files', done, total }));
         await markProfilePlayed(profile.id);

@@ -5,8 +5,8 @@
 //   install, so the app opens with no connection.
 // - The background levels every player gets, and the objects on the
 //   menu's ring, are cached on install too.
-// - Engines and game data are stored by the app itself (Cache Storage and
-//   IndexedDB), with resumable downloads; the worker stays out of their way.
+// - Engines and game data are stored by the app itself (IndexedDB), with
+//   resumable downloads; the worker stays out of their way.
 // - Every page it serves carries the cross-origin isolation headers, which
 //   the engine's threads need, even when it comes from the cache.
 

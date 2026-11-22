@@ -69,8 +69,8 @@ menu, store sign-in and offline support.
   account that owns them, or their remaster. Anyone can add the files of
   their own copy instead, bought anywhere, which never leave the device.
 - **Offline.** A service worker keeps the app and the background levels;
-  engine builds and game files stay in the browser (Cache Storage and
-  IndexedDB). Downloads resume after a reload or a dropped connection.
+  engine builds and game files stay in the browser (IndexedDB). Downloads
+  resume after a reload or a dropped connection.
 - **Dressed like the games' menus**, and the player picks which: Tomb
   Raider, II or III, under Settings → Look. Titles and button labels are in
   that game's in-game lettering and the prompts show its controller and
