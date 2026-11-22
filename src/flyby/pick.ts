@@ -5,6 +5,7 @@
 import type { FlybyLevel, FlybyManifest } from '../../shared/api.ts';
 import { findOfficialGame, OFFICIAL_GAMES } from '../../shared/games.ts';
 import { libraryTheme, serverTheme, type MenuTheme } from '../audio/themes';
+import { findDamagedGameData } from '../gamedata/damaged';
 import { getGameDataFile, listGameData, listGameDataPaths } from '../gamedata/store';
 import { LEVEL_TITLES } from '../games/levels';
 import { isScenic } from './scenic';
@@ -44,6 +45,8 @@ interface Candidate {
 }
 
 async function libraryCandidates(): Promise<Candidate[][]> {
+    // Never a level, or music, from a game stored damaged.
+    await findDamagedGameData();
     const records = (await listGameData()).filter(
         (record) => record.status === 'ready' && record.layout === 'game' && OFFICIAL_MODS.has(record.mod),
     );

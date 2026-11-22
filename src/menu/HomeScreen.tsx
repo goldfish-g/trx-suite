@@ -11,6 +11,7 @@ import { FlybyLayer } from '../flyby/FlybyLayer';
 import { loadPreparedLevel, releaseFlybyWorker } from '../flyby/load';
 import { plannedRoutes } from '../flyby/planned';
 import { flybyCandidates, rememberFlyby } from '../flyby/pick';
+import { findDamagedGameData } from '../gamedata/damaged';
 import { resumeInterruptedImports, retryImport, useImports } from '../gamedata/imports';
 import { pushLayer } from '../input/controller';
 import { refreshLibrary, useLibrary } from '../library/store';
@@ -94,6 +95,8 @@ export function HomeScreen() {
         void refreshLibrary();
         void refreshAccount();
         void resumeInterruptedImports();
+        // Games an earlier version stored damaged show as failed, to bring in again.
+        void findDamagedGameData();
         // Profiles on an engine build the server still offers.
         void settleProfileEngines().catch((error: unknown) => console.warn('[profiles] moving to an offered engine failed:', error));
         // Saves and custom levels in step with the cloud, now and as they change.
